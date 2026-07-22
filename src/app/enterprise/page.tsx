@@ -84,7 +84,7 @@ export default async function EnterprisePage({
           <StateCard
             icon={<LockKeyhole />}
             title="請先登入歲悅帳號"
-            text="機構管理者與員工都沿用 Email 驗證碼帳號，不需建立另一組企業密碼。"
+            text="機構管理者與員工沿用同一個歲悅帳號，可選密碼或 Email 驗證碼登入。"
             action={
               <Link
                 className="button-primary mt-5"

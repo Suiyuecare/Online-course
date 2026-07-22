@@ -1019,7 +1019,7 @@ alter table public.refunds
   add column if not exists request_idempotency_key uuid,
   add column if not exists refund_scope text not null default 'individual'
     check (refund_scope in ('individual', 'enterprise_seats')),
-  add constraint refunds_approved_quantity_check
+  add constraint refunds_approved_not_above_requested_check
     check (approved_quantity is null or seat_quantity is null or approved_quantity <= seat_quantity),
   add constraint refunds_enterprise_amount_check
     check (
@@ -2575,7 +2575,7 @@ set search_path = ''
 as $$
 declare
   allowance_row public.invoice_records%rowtype;
-  parent_invoice_id uuid;
+  target_parent_invoice_id uuid;
   claim_token uuid := gen_random_uuid();
 begin
   if not exists (
@@ -2583,13 +2583,13 @@ begin
     where u.id = target_actor_id and u.raw_app_meta_data ->> 'platform_role' = 'admin'
   ) then raise exception 'PLATFORM_ADMIN_REQUIRED'; end if;
 
-  select ir.parent_invoice_id into parent_invoice_id
+  select ir.parent_invoice_id into target_parent_invoice_id
   from public.invoice_records ir
   where ir.id = target_invoice_record_id and ir.record_type = 'allowance';
-  if parent_invoice_id is null then raise exception 'ENTERPRISE_ALLOWANCE_NOT_FOUND'; end if;
+  if target_parent_invoice_id is null then raise exception 'ENTERPRISE_ALLOWANCE_NOT_FOUND'; end if;
   perform 1
   from public.invoice_records parent
-  where parent.id = parent_invoice_id
+  where parent.id = target_parent_invoice_id
     and parent.record_type = 'invoice'
     and parent.status = 'issued'
   for share;
@@ -2601,7 +2601,7 @@ begin
   for update;
   if allowance_row.id is null
     or allowance_row.record_type <> 'allowance'
-    or allowance_row.parent_invoice_id is distinct from parent_invoice_id
+    or allowance_row.parent_invoice_id is distinct from target_parent_invoice_id
     or allowance_row.allowance_status not in ('none', 'failed')
     or allowance_row.allowance_manual_reconciliation_required
     or allowance_row.allowance_number is not null then

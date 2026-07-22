@@ -8,7 +8,7 @@
 
 - 歲悅橘色品牌：`#EA880C`、奶油色 `#FFF8ED`，白字主按鈕使用可讀性較高的 `#B45309`
 - 既有歲悅牛奶盒 Logo 與 1200×630 LINE／Facebook 分享圖
-- Supabase Google OAuth、Email 六位數 OTP 與 PKCE callback
+- Supabase Email 密碼註冊、六位數信箱驗證、密碼／OTP 登入與密碼重設
 - `app_metadata.platform_role` 的學員／客服／管理員角色
 - 綠界 AioCheckOut V5 測試／正式網址環境鎖定、官方 CheckMacValue 範例測試、金額核對、冪等付款通知
 - 付款瀏覽器返回不解鎖；只有驗證成功的 ReturnURL 才建立 entitlement 與 enrollment
@@ -63,20 +63,23 @@ pnpm dev
 
 ## 外部服務設定順序
 
-1. 建立 Supabase 測試專案並依檔名順序套用 migration（最後一份為 `20260719160746_phase_four_enterprise_training.sql`）。
-2. Auth Email 範本必須使用 `{{ .Token }}` 顯示六位數 OTP；Google callback 加入 `/auth/callback` allowlist。
-3. 將管理員的 `app_metadata.platform_role` 設為 `admin`；客服設為 `support`，不可使用 user metadata 授權。
-4. 設定 Cloudflare Stream API token、customer code 與 webhook secret。
-5. 產生並安全保存 32-byte 積分個資加密金鑰：`openssl rand -hex 32`，寫入 `LEARNER_DATA_ENCRYPTION_KEY`。正式資料產生後不可直接更換；輪替前必須先完成資料重加密。
-6. 登入 `/admin/courses` 建立課程、章節、單元與題庫，上傳影片並等待 ready；積分課填完核定資料後才可發布。
-7. 設定綠界測試 MerchantID、HashKey、HashIV；ReturnURL 為 `/api/webhooks/ecpay`。
-8. 建立 Zoom Server-to-Server OAuth 與 General App 的 Meeting SDK 憑證，訂閱 meeting started/ended、participant joined/left webhook；Callback 指向 `/api/webhooks/zoom`。
-9. Zoom 帳戶需把「誰可以分享」設為「僅主持人」、關閉學員改名與雲端自動錄影；API 另固定加入靜音、10 分鐘提早入場及 `auto_recording=none`。
-10. 產生直播密碼加密金鑰：`openssl rand -hex 32`，寫入 `LIVE_SECRET_ENCRYPTION_KEY`。
-11. 驗證 Resend 寄件網域，設定 `RESEND_API_KEY`、`RESEND_FROM_EMAIL` 與隨機 `CRON_SECRET`；Vercel Cron 每小時執行提醒與清理逾時座位。
-12. 將同一組環境變數加入 Vercel Preview，以非積分內部場完成全流程，再測一場積分課；確認 Zoom 報表與歲悅出席秒數後才把正式環境 `FEATURE_LIVE_COURSES` 設為 `true`。
-13. 啟用綠界 MIG 4.0 測試電子發票，設定 `ECPAY_INVOICE_*`；測試環境不得填真實客戶 Email。正式切換時同時將 `ECPAY_ENV` 與 `ECPAY_INVOICE_ENV` 設為 `production`，不可自訂其他金流主機。
-14. 先以內部錄播機構、再以非積分直播機構、最後正式積分機構完成驗證，才將 `FEATURE_ENTERPRISE` 設為 `true`。
+1. 建立 Supabase 測試專案並依檔名順序套用 migration（企業階段後接 `20260720163201_fix_enterprise_allowance_parent_reference.sql` 安全修復）。
+2. Supabase Auth 啟用 Email signup、Confirm Email 與 8 字元密碼下限，停用 Google provider；confirmation、magic link、recovery 範本都使用 `{{ .Token }}` 顯示六位數 OTP。
+3. 正式測試前設定自有 SMTP（可沿用 Resend）。2026-06-03 後建立的 Free 專案若使用 Supabase 預設寄信服務，不能自訂品牌 Auth 信件範本，且預設寄信額度只適合開發測試。
+4. 將管理員的 `app_metadata.platform_role` 設為 `admin`；客服設為 `support`，不可使用 user metadata 授權。
+5. 設定 Cloudflare Stream API token、customer code 與 webhook secret。
+6. 產生並安全保存 32-byte 積分個資加密金鑰：`openssl rand -hex 32`，寫入 `LEARNER_DATA_ENCRYPTION_KEY`。正式資料產生後不可直接更換；輪替前必須先完成資料重加密。
+7. 登入 `/admin/courses` 建立課程、章節、單元與題庫，上傳影片並等待 ready；積分課填完核定資料後才可發布。
+8. 設定綠界測試 MerchantID、HashKey、HashIV；ReturnURL 為 `/api/webhooks/ecpay`。
+9. 建立 Zoom Server-to-Server OAuth 與 General App 的 Meeting SDK 憑證，訂閱 meeting started/ended、participant joined/left webhook；Callback 指向 `/api/webhooks/zoom`。
+10. Zoom 帳戶需把「誰可以分享」設為「僅主持人」、關閉學員改名與雲端自動錄影；API 另固定加入靜音、10 分鐘提早入場及 `auto_recording=none`。
+11. 產生直播密碼加密金鑰：`openssl rand -hex 32`，寫入 `LIVE_SECRET_ENCRYPTION_KEY`。
+12. 驗證 Resend 寄件網域，設定 `RESEND_API_KEY`、`RESEND_FROM_EMAIL` 與隨機 `CRON_SECRET`；Vercel Cron 每小時執行提醒與清理逾時座位。
+13. 將同一組環境變數加入 Vercel Preview，以非積分內部場完成全流程，再測一場積分課；確認 Zoom 報表與歲悅出席秒數後才把正式環境 `FEATURE_LIVE_COURSES` 設為 `true`。
+14. 啟用綠界 MIG 4.0 測試電子發票，設定 `ECPAY_INVOICE_*`；測試環境不得填真實客戶 Email。正式切換時同時將 `ECPAY_ENV` 與 `ECPAY_INVOICE_ENV` 設為 `production`，不可自訂其他金流主機。
+15. 先以內部錄播機構、再以非積分直播機構、最後正式積分機構完成驗證，才將 `FEATURE_ENTERPRISE` 設為 `true`。
+
+目前 Vercel Hobby 封閉測試環境的兩個 Cron 暫設為每天一次；正式啟用直播 24 小時／1 小時提醒與企業到期作業前，須升級支援每小時排程的方案並恢復小時級 schedule。
 
 環境變數範本在 `.env.example`。未設定 Zoom、直播加密金鑰或功能開關時，入場與 webhook 會安全拒絕，不會洩漏會議資訊。
 
@@ -86,7 +89,7 @@ pnpm dev
 | ----------------------------------- | -------------------------------------- |
 | `/`                                 | 歲悅品牌首頁                           |
 | `/courses/dementia-care-pilot`      | NT$100 非積分測試課介紹                |
-| `/login`                            | Google／Email 六位數登入               |
+| `/login`                            | 建立帳號、密碼／Email 六位數登入       |
 | `/checkout/dementia-care-pilot`     | 綠界測試結帳                           |
 | `/dashboard`                        | 訂單、進度、測驗與證明                 |
 | `/learn/dementia-care-pilot`        | 受保護播放器與在席確認                 |
@@ -105,11 +108,13 @@ pnpm dev
 
 ## 資料與安全
 
-- Migration：`supabase/migrations/20260719040126_initial_learning_platform_schema.sql`
-- 封閉測試增量：`supabase/migrations/20260719044059_closed_beta_core.sql`
-- 正式積分課增量：`supabase/migrations/20260719063101_phase_two_accreditation_operations.sql`
-- 同步直播增量：`supabase/migrations/20260719100323_phase_three_live_courses.sql`
-- 企業機構增量：`supabase/migrations/20260719160746_phase_four_enterprise_training.sql`
+- APM 清理安全基線：`supabase/migrations/20260720161816_reset_apm_to_suiyue.sql`
+- Migration：`supabase/migrations/20260720161818_initial_learning_platform_schema.sql`
+- 封閉測試增量：`supabase/migrations/20260720161820_closed_beta_core.sql`
+- 正式積分課增量：`supabase/migrations/20260720161822_phase_two_accreditation_operations.sql`
+- 同步直播增量：`supabase/migrations/20260720161824_phase_three_live_courses.sql`
+- 企業機構增量：`supabase/migrations/20260720161826_phase_four_enterprise_training.sql`
+- 企業折讓 RPC 安全修復：`supabase/migrations/20260720163201_fix_enterprise_allowance_parent_reference.sql`
 - 全部 public tables 啟用 RLS；付款、影音與學習寫入由伺服器 secret client 執行
 - 學員不能直接 insert/update learning events、playback segments、quiz attempts、orders 或 satisfaction
 - payment events、learning events、audit events 不提供學員 update/delete policy

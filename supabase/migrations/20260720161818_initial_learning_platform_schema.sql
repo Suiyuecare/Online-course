@@ -336,7 +336,7 @@ create table public.certificates (
   id uuid primary key default gen_random_uuid(),
   enrollment_id uuid not null unique references public.enrollments(id) on delete cascade,
   learner_id uuid not null references auth.users(id) on delete cascade,
-  verification_code text not null unique default encode(gen_random_bytes(16), 'hex'),
+  verification_code text not null unique default encode(extensions.gen_random_bytes(16), 'hex'),
   issued_at timestamptz not null default now(),
   revoked_at timestamptz,
   revocation_reason text

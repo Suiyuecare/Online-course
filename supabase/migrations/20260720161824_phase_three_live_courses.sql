@@ -78,7 +78,7 @@ create table public.live_session_bookings (
   source_order_id uuid references public.orders(id),
   status text not null default 'held'
     check (status in ('held', 'confirmed', 'transferred', 'refunded', 'cancelled', 'expired')),
-  customer_key text not null unique default encode(gen_random_bytes(24), 'hex'),
+  customer_key text not null unique default encode(extensions.gen_random_bytes(24), 'hex'),
   held_until timestamptz not null default (now() + interval '15 minutes'),
   confirmed_at timestamptz,
   transferred_from uuid references public.live_session_bookings(id),

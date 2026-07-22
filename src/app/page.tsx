@@ -19,7 +19,7 @@ const steps = [
   [
     "01",
     "快速登入",
-    "使用 Google 或 Email 六位數驗證碼，不用記密碼。",
+    "建立 Email 帳號後，可選密碼或六位數驗證碼登入。",
     KeyRound,
   ],
   [
@@ -96,7 +96,7 @@ export default function Home() {
                   <div>
                     <p className="text-xs font-bold text-slate-500">簡單開始</p>
                     <p className="font-black text-[#4A3016]">
-                      Email 六位數登入
+                      密碼或六位數登入
                     </p>
                   </div>
                 </div>

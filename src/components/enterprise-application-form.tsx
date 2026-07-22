@@ -78,7 +78,7 @@ export function EnterpriseApplicationForm() {
           首次由歲悅審核機構與統編。通過後，機構管理者可自行購買名額、邀請員工、指派課程與下載報表。
         </p>
         <ul className="mt-7 grid gap-3 text-sm font-bold text-orange-50">
-          <li>• 學員沿用原本歲悅 Email 驗證碼帳號</li>
+          <li>• 學員沿用原本歲悅帳號，可用密碼或驗證碼登入</li>
           <li>• 同一統編只建立一個機構</li>
           <li>• 身分證與長照資料不會提供給機構</li>
         </ul>
