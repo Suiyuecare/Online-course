@@ -6806,18 +6806,22 @@ begin
   if not found or request_row.proposed_by = actor then
     raise exception 'DISTINCT_PROVIDER_ANOMALY_REVIEWER_REQUIRED';
   end if;
-  select lease,
+  select lease.* into lease_row
+  from public.live_join_leases lease
+  where lease.id = request_row.live_join_lease_id
+  for update;
+  if not found then
+    raise exception 'PROVIDER_ANOMALY_LEASE_NOT_FOUND';
+  end if;
+  select
     booking.live_session_id,
     coalesce(meeting.meeting_uuid, meeting.meeting_number)
-  into lease_row, target_session, provider_meeting_uuid
-  from public.live_join_leases lease
-  join public.live_bookings booking
-    on booking.id = lease.live_booking_id
+  into target_session, provider_meeting_uuid
+  from public.live_bookings booking
   join private.zoom_meetings meeting
     on meeting.live_session_id = booking.live_session_id
-  where lease.id = request_row.live_join_lease_id
-  for update of lease;
-  if lease_row.id is null then
+  where booking.id = lease_row.live_booking_id;
+  if not found then
     raise exception 'PROVIDER_ANOMALY_LEASE_NOT_FOUND';
   end if;
   insert into public.provider_anomaly_resolution_decisions (

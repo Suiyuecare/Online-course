@@ -53,7 +53,7 @@ describe("clean migration chain", () => {
       "grant suiyue_audit_owner, suiyue_money_owner to postgres",
     );
     expect(migrations).toContain(
-      "grant usage, create on schema public to\\n  suiyue_audit_owner, suiyue_money_owner",
+      "grant usage, create on schema public to\n  suiyue_audit_owner, suiyue_money_owner",
     );
     expect(migrations).toContain(
       "grant usage, create on schema internal to suiyue_audit_owner",
@@ -79,6 +79,18 @@ describe("clean migration chain", () => {
     expect(routineDrop).toBeGreaterThan(-1);
     expect(routineDrop).toBeGreaterThan(policyDrop);
     expect(tableDrop).toBeGreaterThan(routineDrop);
+  });
+
+  it("does not mix a composite row target with scalar INTO targets", () => {
+    const bootstrap = readFileSync(
+      join(migrationDirectory, "20260724011637_rls_grants_bootstrap.sql"),
+      "utf8",
+    );
+    expect(bootstrap).not.toMatch(
+      /into\s+[a-z_][a-z0-9_]*_row\s*,\s*[a-z_][a-z0-9_]*/i,
+    );
+    expect(bootstrap).toContain("select lease.* into lease_row");
+    expect(bootstrap).toContain("into target_session, provider_meeting_uuid");
   });
 
   it("starts every feature switch disabled", () => {
