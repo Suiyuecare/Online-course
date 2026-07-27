@@ -24,6 +24,9 @@ const expectedFiles = [
   "20260724235000_quality_revocation_preview.sql",
   "20260724236000_accreditation_submission_and_provider_ttl.sql",
   "20260724237000_quality_concurrency_hardening.sql",
+  "20260724238000_runtime_lint_commerce.sql",
+  "20260724238100_runtime_lint_learning.sql",
+  "20260724238200_runtime_lint_org_accreditation.sql",
 ];
 if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) {
   throw new Error(

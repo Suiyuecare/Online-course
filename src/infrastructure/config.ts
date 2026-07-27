@@ -130,6 +130,7 @@ export function productionReadiness() {
     auth: Boolean(
       process.env.NEXT_PUBLIC_SUPABASE_URL &&
         process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY &&
+        process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY &&
         config.SUPABASE_SECRET_KEY &&
         config.TURNSTILE_SECRET_KEY &&
         config.IDENTITY_RISK_ENDPOINT &&
@@ -138,7 +139,8 @@ export function productionReadiness() {
         config.IDENTITY_RECOVERY_TOKEN,
     ),
     stream: Boolean(
-      config.CLOUDFLARE_ACCOUNT_ID &&
+      process.env.NEXT_PUBLIC_CLOUDFLARE_STREAM_CUSTOMER_CODE &&
+        config.CLOUDFLARE_ACCOUNT_ID &&
         config.CLOUDFLARE_STREAM_API_TOKEN &&
         config.CLOUDFLARE_STREAM_WEBHOOK_SECRET &&
         config.CLOUDFLARE_STREAM_SIGNING_KEY_ID &&
