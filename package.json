@@ -1,39 +1,53 @@
 {
   "name": "suiyue-academy",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=22 <25",
+    "pnpm": "11.2.2"
+  },
+  "packageManager": "pnpm@11.2.2",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "test": "vitest run"
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify:sql": "node scripts/verify-sql.mjs",
+    "verify:secrets": "node scripts/verify-secrets.mjs",
+    "verify:legacy": "node scripts/verify-legacy.mjs",
+    "verify:deps": "pnpm audit --prod",
+    "verify:diff": "git diff --check",
+    "verify": "pnpm format:check && pnpm verify:diff && pnpm lint && pnpm typecheck && pnpm test && pnpm verify:sql && pnpm verify:secrets && pnpm verify:legacy && pnpm verify:deps && pnpm build"
   },
   "dependencies": {
-    "@react-email/components": "1.0.12",
-    "@supabase/ssr": "^0.12.3",
-    "@supabase/supabase-js": "^2.110.7",
+    "@cloudflare/stream-react": "1.9.3",
+    "@react-email/render": "2.0.6",
+    "@supabase/ssr": "0.12.3",
+    "@supabase/supabase-js": "2.110.7",
     "@zoom/meetingsdk": "6.2.0",
-    "clsx": "^2.1.1",
-    "exceljs": "^4.4.0",
-    "lucide-react": "^1.25.0",
-    "next": "16.2.10",
+    "exceljs": "4.4.0",
+    "next": "16.2.11",
     "qrcode": "1.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "resend": "6.9.2",
-    "zod": "^4.4.3"
+    "svix": "1.84.1",
+    "zod": "4.4.3"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "22.18.11",
     "@types/qrcode": "1.5.6",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.10",
-    "tailwindcss": "^4",
-    "typescript": "^5",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "eslint": "9.39.3",
+    "eslint-config-next": "16.2.11",
+    "prettier": "3.6.2",
+    "typescript": "5.9.3",
     "vitest": "3.2.4"
   }
 }

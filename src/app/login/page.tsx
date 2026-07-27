@@ -1,19 +1,31 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import { LoginForm } from "@/components/login-form";
+import { PhoneLogin } from "@/components/phone-login";
+import { localProvidersAllowed } from "@/domain/identity";
 
-export const metadata: Metadata = { title: "登入" };
+export const metadata: Metadata = { title: "手機登入" };
 
 export default function LoginPage() {
+  const localTestMode = localProvidersAllowed({
+    nodeEnv: process.env.NODE_ENV,
+    appEnv: process.env.APP_ENV,
+    allowMocks: process.env.ALLOW_LOCAL_MOCK_PROVIDERS,
+  });
   return (
-    <Suspense
-      fallback={
-        <main className="grid min-h-screen place-items-center bg-[#FFF8ED] font-bold text-[#694115]">
-          載入登入頁面…
-        </main>
-      }
-    >
-      <LoginForm />
-    </Suspense>
+    <section className="auth-page shell">
+      <PhoneLogin
+        localTestMode={localTestMode}
+        turnstileSiteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+      />
+      <aside className="auth-help">
+        <h2>沒有收到簡訊？</h2>
+        <ol>
+          <li>確認號碼是台灣 09 開頭手機。</li>
+          <li>等待 60 秒再重新傳送。</li>
+          <li>重新開機或確認沒有封鎖簡訊。</li>
+          <li>仍無法收到時，請由客服建立協助案件。</li>
+        </ol>
+        <p>客服不會向你索取完整簡訊驗證碼。</p>
+      </aside>
+    </section>
   );
 }

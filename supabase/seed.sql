@@ -1,0 +1,3 @@
+-- Intentionally empty. The production-oriented baseline seeds only the
+-- fail-closed feature switch rows in its migration. It never creates a course,
+-- person, order, enrollment, completion, certificate, or demonstration data.

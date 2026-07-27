@@ -1,9 +1,8 @@
 {
   "crons": [
-    { "path": "/api/cron/live-reminders", "schedule": "0 0 * * *" },
     {
-      "path": "/api/cron/enterprise-operations",
-      "schedule": "15 0 * * *"
+      "path": "/api/workers/wake",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

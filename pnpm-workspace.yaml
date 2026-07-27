@@ -1,5 +1,12 @@
 allowBuilds:
-  "@zoom/meetingsdk": true
+  "@zoom/meetingsdk": false
   esbuild: true
   sharp: true
   unrs-resolver: true
+overrides:
+  brace-expansion: 5.0.8
+  postcss: 8.5.23
+  sharp: 0.35.0
+  uuid: 11.1.1
+patchedDependencies:
+  minimatch@3.1.5: patches/minimatch@3.1.5.patch

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -6,35 +8,43 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   ),
   title: {
-    default: "歲悅學苑｜照顧專業，也可以學得很簡單",
+    default: "歲悅學苑｜長照積分課程",
     template: "%s｜歲悅學苑",
   },
   description:
-    "歲悅學苑封閉試營運：一個帳號完成購課、看影片、學習紀錄、測驗與完課證明。",
+    "手機就能完成的長照積分課程：錄播、同步直播與混合課程，學習進度與出席證據清楚可查。",
   openGraph: {
-    title: "歲悅學苑",
-    description: "照顧專業，也可以學得很簡單。",
     type: "website",
     locale: "zh_TW",
+    siteName: "歲悅學苑",
+    title: "歲悅學苑｜長照積分課程",
+    description: "手機就能完成的錄播、同步直播與混合型長照積分課程。",
     images: [
       {
-        url: "/og.png",
+        url: "/suiyue-academy-og.png",
         width: 1200,
         height: 630,
-        alt: "歲悅學苑：照顧專業，也可以學得很簡單",
+        alt: "歲悅學苑行動學習平台",
       },
     ],
   },
-  twitter: { card: "summary_large_image", images: ["/og.png"] },
-  icons: { icon: "/suiyue-milk.png", apple: "/suiyue-milk.png" },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/suiyue-academy-og.png"],
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="zh-Hant">
-      <body>{children}</body>
+    <html lang="zh-Hant-TW">
+      <body>
+        <SiteHeader />
+        <main>{children}</main>
+        <SiteFooter />
+      </body>
     </html>
   );
 }

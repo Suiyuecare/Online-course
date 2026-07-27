@@ -1,0 +1,53 @@
+name: Verify clean rebuild
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "codex/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Enable pinned package manager
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run deterministic application proof
+        run: pnpm verify
+
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+      - name: Apply migrations to a fresh local database
+        run: supabase db start
+      - name: Prove the migration chain is repeatable
+        run: supabase db reset
+      - name: Lint the resulting database
+        run: supabase db lint --local --level error
+      - name: Require and run database integration tests
+        shell: bash
+        run: |
+          test -n "$(find supabase/tests -type f -name '*.sql' -print -quit)"
+          supabase test db

@@ -236,3 +236,43 @@ VERDICT: APPROVED
 ### 主代理的回應
 
 採納非阻斷文字修正：主持人 console 明確 allowlist 固定版本 Zoom Meeting SDK 與必要 Zoom origins；禁止的是 analytics 與其他不相關第三方 scripts。計畫已通過審查，不需第 5 輪。
+
+## Act 3 — Build
+
+執行日期：2026-07-27
+
+### 完成內容
+
+- 依鎖定計畫完成乾淨重建，不沿用舊展示站的 ECPay、LINE、Google OAuth、訂閱或企業席次模型。
+- 建立手機 OTP、人工匯款、B2C 單堂購課、B2B 不過期點數、錄播／直播／混合課、10 分鐘在席確認、考試、積分資格、證明與 QR 驗證。
+- 建立學員、講師、機構 owner／manager／member、客服、財務、審核者、平台管理員等完整權限與雙人核准／step-up 流程。
+- 建立課程版本、影片、Zoom lease、出席、機構指派、銀行對帳、退款、積分送審、證明撤銷、客服、通知、隔離掃描與 append-only audit 的前後台流程。
+- 針對獨立深度稽核結果補強 Zoom saga／ABA 防護、混合課分段歸屬、機構直播點數生命週期、送審批次精確 booking、補正版本綁定、考試失效、證明撤銷、敏感資料遮罩與 provider TTL。
+- 手機導覽調整為 44px 以上操作目標，品牌與登入按鈕不再換行或水平溢出。
+- 依 2026-07-27 最新套件稽核結果，將 PostCSS 與 brace-expansion 升級至修補版，並以受版本控制的 minimatch 相容 patch 保留舊匯出相依鏈；重新驗證後無已知 production dependency 漏洞。
+
+### 驗證證據
+
+- `pnpm verify`：PASS
+  - Prettier、`git diff --check`、ESLint、TypeScript：PASS
+  - Vitest：31 個 test files、293 tests 全數 PASS
+  - SQL invariant proof：PASS
+  - 18 個 migrations、157 張 tables（public 144／private 13）、6 個 security-invoker views、28 個 RLS policies、511 個 functions
+  - RLS default-deny、Data API GRANT／REVOKE、append-only direct-DML revoke：PASS
+  - 密鑰掃描：342 個文字路徑 PASS
+  - 禁止舊能力掃描：PASS
+  - `pnpm audit --prod`：No known vulnerabilities
+  - Next.js production build：PASS，57 個頁面
+- `pglast`：24 個 SQL 檔案（18 migrations＋6 pgTAP）語法解析 PASS。
+- 正式版瀏覽器走查：
+  - 1440×1000 桌機與 390×844 手機首頁、課程、登入、機構、契約、證明驗證頁均無水平溢出或 console／page error。
+  - 手機可見互動控制沒有同時小於 44×44px 的項目。
+  - 未登入進入 learner、staff、support、instructor、organization workspace 均正確 307 導回 `/login`。
+  - 未設定正式 provider 時 `/api/health` 回 503 且所有 capability fail closed，不會誤開登入、付款、播放、直播或發證。
+
+### 尚未執行與外部上線閘門
+
+- 已實際嘗試 `supabase db reset --local`，但本機 Docker daemon 未啟動，因此 migration／pgTAP 的真實 PostgreSQL runtime 測試被環境阻擋；沒有把靜態 SQL proof 冒充成資料庫實跑。
+- 遠端 Supabase `eswdhynrbzrjgetnmhit` 已確認存在真實資料，本次未清空、未 migration、未變更 Auth／Storage／secret。
+- 尚未配置或驗證正式 Supabase server credentials、Twilio／Turnstile、managed KMS、Cloudflare Stream、Zoom、Resend、銀行對帳來源、法務文件與第一門正式核定課程。
+- 未 commit、未 push、未部署、未變更 Vercel 或正式網域；需通過人工 commit gate 後才進入下一步。

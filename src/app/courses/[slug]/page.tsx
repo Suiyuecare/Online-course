@@ -1,286 +1,195 @@
-import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { CoursePreviewPlayer } from "@/components/course-preview-player";
+import { RefundAllocationDisclosure } from "@/components/refund-allocation-disclosure";
 import {
-  BadgeCheck,
-  CalendarDays,
-  Check,
-  ChevronRight,
-  CirclePlay,
-  Clock3,
-  FileCheck2,
-  MonitorPlay,
-  ShieldCheck,
-  Users,
-} from "lucide-react";
-import { CourseVisual } from "@/components/course-card";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
-import { formatPrice } from "@/lib/data";
-import { getPublicCourse } from "@/lib/course-repository";
+  catalogCourse,
+  courseOutline,
+  coursePurchaseReadiness,
+} from "@/infrastructure/supabase/catalog";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
-  const course = await getPublicCourse((await params).slug);
-  return { title: course?.title ?? "課程" };
+function durationLabel(durationSeconds: number | null) {
+  if (!durationSeconds) return "時間依單元內容";
+  const minutes = Math.max(1, Math.ceil(durationSeconds / 60));
+  return `${minutes} 分鐘`;
 }
 
-export default async function CourseDetail({
+function lessonTypeLabel(type: "video" | "material" | "quiz" | "survey") {
+  return {
+    video: "影片",
+    material: "教材",
+    quiz: "測驗",
+    survey: "滿意度調查",
+  }[type];
+}
+
+export default async function CoursePage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const course = await getPublicCourse((await params).slug);
+  const { slug } = await params;
+  const course = await catalogCourse(slug);
   if (!course) notFound();
+  const [readiness, outline] = await Promise.all([
+    coursePurchaseReadiness(course.course_version_id),
+    courseOutline(course.course_version_id),
+  ]);
   return (
-    <>
-      <SiteHeader />
-      <main>
-        <section className="bg-[#3C260F] text-white">
-          <div className="page-shell py-5 text-xs font-bold text-[#CBB79F]">
-            <Link href="/courses">全部課程</Link>
-            <ChevronRight className="mx-1 inline size-3" />
-            {course.category}
+    <section className="page-shell shell course-detail">
+      <div>
+        <div className="course-detail-cover">
+          {course.has_cover && (
+            <Image
+              alt={`${course.title}課程封面`}
+              fill
+              priority
+              sizes="(max-width: 900px) 100vw, 65vw"
+              src={`/api/catalog/courses/${course.course_version_id}/cover`}
+              unoptimized
+            />
+          )}
+        </div>
+        <p className="eyebrow">長照積分課程</p>
+        <h1>{course.title}</h1>
+        {course.accreditation_status === "applying" && (
+          <div className="warning-panel">
+            <strong>積分申請中、尚未核定，不保證取得點數</strong>
+            <p>核准前不會開放正式內容、直播入場或核發積分證明。</p>
           </div>
-          <div className="page-shell grid gap-10 pb-14 pt-5 lg:grid-cols-[1fr_420px] lg:items-center lg:pb-16">
-            <div>
-              <div className="flex flex-wrap gap-2">
-                <span className="rounded-full bg-[#F5C060]/15 px-3 py-1.5 text-xs font-black text-[#FDE8BC]">
-                  {course.accredited
-                    ? `正式長照積分 ${course.accreditationPoints ?? course.credits} 點`
-                    : "非長照積分課程"}
-                </span>
-                <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-black">
-                  {course.delivery === "live" ? "網站內同步直播" : "錄播課程"}
-                </span>
-              </div>
-              <h1 className="mt-5 max-w-3xl text-3xl font-black leading-tight tracking-[-.04em] sm:text-5xl">
-                {course.title}
-              </h1>
-              <p className="mt-5 max-w-2xl text-lg leading-8 text-[#E8D9C7]">
-                {course.subtitle}
-              </p>
-              <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm font-bold text-[#D6C3AD]">
-                <span className="inline-flex items-center gap-1.5">
-                  <Clock3 className="size-5" />
-                  {course.duration}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <MonitorPlay className="size-5" />
-                  {course.lessons}{" "}
-                  {course.delivery === "live" ? "個場次" : "個單元"}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <BadgeCheck className="size-5" />
-                  測驗 {course.passScore ?? 80} 分及格
-                </span>
-              </div>
-              <div className="mt-7 flex items-center gap-3">
-                <div className="grid size-12 place-items-center rounded-full bg-[#B45309] font-black">
-                  歲
-                </div>
-                <div>
-                  <p className="font-black">{course.instructor}</p>
-                  <p className="text-sm text-[#BDA78F]">
-                    {course.instructorRole}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-white text-[#302318] shadow-2xl">
-              <CourseVisual course={course} compact />
-              <div className="p-6">
-                <p className="rounded-xl bg-[#FFF8ED] p-3 text-sm font-black text-[#694115]">
-                  一次付清・
-                  {course.delivery === "live"
-                    ? "權限只適用購買的指定場次・不提供回放"
-                    : "購買後永久觀看"}
-                  {course.accredited ? "・須完成積分身分驗證" : ""}
-                </p>
-                <div className="mt-4 flex items-end gap-3">
-                  <p className="text-3xl font-black">
-                    {formatPrice(course.price)}
-                  </p>
-                  <p className="pb-1 text-sm text-slate-500">單堂售價</p>
-                </div>
-                {course.delivery === "live" ? (
-                  <a
-                    className="button-primary button-large mt-5 w-full"
-                    href="#live-sessions"
-                  >
-                    選擇直播場次
-                  </a>
-                ) : (
-                  <Link
-                    className="button-primary button-large mt-5 w-full"
-                    href={`/checkout/${course.slug}`}
-                  >
-                    登入並前往付款
-                  </Link>
-                )}
-                <Link
-                  className="button-secondary mt-3 w-full"
-                  href="/login?next=/dashboard"
-                >
-                  <CirclePlay className="size-5" />
-                  已購買？前往我的學習
-                </Link>
-                <div className="mt-5 grid grid-cols-2 gap-3 border-t border-[#F0E7DB] pt-5 text-xs font-bold text-slate-500">
-                  <span className="inline-flex items-center gap-1.5">
-                    <ShieldCheck className="size-4 text-[#B45309]" />
-                    伺服器確認付款
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <FileCheck2 className="size-4 text-[#B45309]" />
-                    人工退款審核
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="page-shell grid gap-12 py-14 lg:grid-cols-[1fr_330px] lg:py-20">
+        )}
+        <p className="lead">{course.summary}</p>
+        <p>{course.description}</p>
+        <div className="detail-grid">
           <div>
-            <h2 className="text-2xl font-black text-[#302318]">
-              這堂課你會學到
-            </h2>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              {course.outcomes.map((outcome) => (
-                <div
-                  key={outcome}
-                  className="flex gap-3 rounded-xl bg-[#FFF8ED] p-4 text-sm font-bold leading-6 text-[#57483A]"
-                >
-                  <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-[#B45309] text-white">
-                    <Check className="size-3" />
-                  </span>
-                  {outcome}
-                </div>
-              ))}
-            </div>
-            <h2 className="mt-12 text-2xl font-black text-[#302318]">
-              課程介紹
-            </h2>
-            <p className="mt-5 leading-8 text-[#6F5E4E]">
-              {course.description}
-            </p>
-            {course.delivery === "live" ? (
-              <div id="live-sessions">
-                <h2 className="mt-12 text-2xl font-black text-[#302318]">
-                  選擇直播場次
-                </h2>
-                <div className="mt-5 grid gap-4">
-                  {course.liveSessions
-                    ?.filter((session) => session.status === "open")
-                    .map((session) => (
-                      <article
-                        key={session.id}
-                        className="rounded-2xl border border-[#EADFCF] bg-white p-5"
-                      >
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                          <span className="grid size-12 place-items-center rounded-xl bg-[#FFF0D5] text-[#B45309]">
-                            <CalendarDays />
-                          </span>
-                          <div className="flex-1">
-                            <h3 className="font-black text-[#302318]">
-                              {session.title}
-                            </h3>
-                            <p className="mt-2 text-sm font-bold text-slate-500">
-                              {formatLiveDate(session.startsAt, session.endsAt)}
-                              ・{session.instructorName}
-                            </p>
-                            <p className="mt-2 text-xs font-bold text-slate-500">
-                              <Users className="mr-1 inline size-4" />
-                              剩餘{" "}
-                              {Math.max(
-                                0,
-                                session.capacity - session.sold,
-                              )} / {session.capacity} 席
-                            </p>
-                          </div>
-                          <Link
-                            className="button-primary min-h-11"
-                            href={`/checkout/${course.slug}?session=${session.id}`}
-                          >
-                            選擇此場
-                          </Link>
-                        </div>
-                      </article>
-                    ))}
-                  {!course.liveSessions?.some(
-                    (session) => session.status === "open",
-                  ) && (
-                    <p className="rounded-xl bg-amber-50 p-4 text-sm font-bold text-amber-900">
-                      目前沒有開放販售的直播場次。
-                    </p>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <>
-                <h2 className="mt-12 text-2xl font-black text-[#302318]">
-                  課程單元
-                </h2>
-                <div className="mt-5 overflow-hidden rounded-2xl border border-[#EADFCF]">
-                  {course.chapters.map((chapter, index) => (
-                    <div
-                      key={chapter.title}
-                      className="flex items-center gap-4 p-5"
-                    >
-                      <span className="grid size-9 place-items-center rounded-full bg-[#FFF0D5] text-xs font-black text-[#8A4800]">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <p className="min-w-0 flex-1 font-bold">
-                        {chapter.title}
-                      </p>
-                      <span className="text-xs font-bold text-slate-400">
-                        {chapter.duration}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+            <span>課程形式</span>
+            <strong>
+              {course.delivery_type === "recorded"
+                ? "錄播"
+                : course.delivery_type === "live"
+                  ? "同步直播"
+                  : "錄播＋同步直播"}
+            </strong>
           </div>
-          <aside>
-            <div className="sticky top-24 rounded-2xl border border-[#F1D5A8] bg-[#FFF8ED] p-6">
-              <BadgeCheck className="size-8 text-[#B45309]" />
-              <h3 className="mt-4 text-lg font-black text-[#302318]">
-                取得{course.accredited ? "積分" : "完課"}證明的條件
-              </h3>
-              <ul className="mt-4 space-y-3 text-sm font-semibold leading-6 text-[#6F5E4E]">
-                {course.delivery === "live" ? (
-                  <>
-                    <li>・完成場次簽到與簽退</li>
-                    <li>・扣除休息後，鏡頭有效時數達 80%</li>
-                  </>
-                ) : (
-                  <>
-                    <li>・有效觀看達 {course.completionPercent ?? 90}%</li>
-                    <li>・正式環境每 15 分鐘完成在席確認</li>
-                  </>
-                )}
-                <li>・課後測驗達 {course.passScore ?? 80} 分，可補考</li>
-                <li>・完成滿意度調查</li>
-                {course.accredited && <li>・積分身分資料通過管理員驗證</li>}
-              </ul>
-              <p className="mt-5 rounded-xl bg-white p-3 text-xs leading-5 text-slate-500">
-                {course.accredited
-                  ? `核定字號：${course.accreditationNumber ?? "核定資料待確認"}。只有全部資格通過才會發正式證明。`
-                  : "本課只發歲悅學苑完課證明，不申報長照積分。"}
-              </p>
-            </div>
-          </aside>
+          <div>
+            <span>含稅價格</span>
+            <strong>NT$ {course.price_twd.toLocaleString("zh-TW")}</strong>
+          </div>
+          <div>
+            <span>長照積分</span>
+            <strong>
+              {course.accreditation_points
+                ? `${course.accreditation_points} 點`
+                : "依核定結果"}
+            </strong>
+          </div>
+        </div>
+        <section>
+          <h2>學習目標</h2>
+          <ul>
+            {course.learning_objectives.map((objective) => (
+              <li key={objective}>{objective}</li>
+            ))}
+          </ul>
         </section>
-      </main>
-      <SiteFooter />
-    </>
+        <section className="public-course-outline">
+          <h2>課程大綱</h2>
+          <p>免費試看不需要登入；其餘付費單元購課後才會開放。</p>
+          {outline.modules.length === 0 ? (
+            <p>課綱目前整理中，完成後會在這裡公布。</p>
+          ) : (
+            <ol>
+              {outline.modules.map((module) => (
+                <li key={module.id}>
+                  <h3>{module.title}</h3>
+                  <p>本章影片約 {durationLabel(module.durationSeconds)}</p>
+                  <ul>
+                    {module.lessons.map((lesson, lessonIndex) => (
+                      <li
+                        key={
+                          lesson.id ?? `${module.id}:paid-lesson:${lessonIndex}`
+                        }
+                      >
+                        <div>
+                          <strong>{lesson.title}</strong>
+                          <span>
+                            {lessonTypeLabel(lesson.type)}・
+                            {durationLabel(lesson.durationSeconds)}・
+                            {lesson.preview ? "可免費試看" : "付費單元"}
+                          </span>
+                        </div>
+                        {lesson.preview && lesson.id && (
+                          <CoursePreviewPlayer
+                            courseVersionId={course.course_version_id}
+                            lessonId={lesson.id}
+                            lessonTitle={lesson.title}
+                          />
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+        <RefundAllocationDisclosure course={course} />
+        <section>
+          <h2>講師</h2>
+          {course.instructors.map((instructor) => (
+            <article key={`${instructor.name}:${instructor.credentials}`}>
+              <h3>{instructor.name}</h3>
+              <p>{instructor.credentials}</p>
+              <p>{instructor.biography}</p>
+            </article>
+          ))}
+        </section>
+        {course.live_sessions.length > 0 && (
+          <section>
+            <h2>同步直播場次</h2>
+            <ul>
+              {course.live_sessions.map((session) => (
+                <li key={session.id}>
+                  {session.title}：
+                  {new Date(session.startsAt).toLocaleString("zh-TW", {
+                    timeZone: "Asia/Taipei",
+                  })}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {course.equipment_requirements && (
+          <section>
+            <h2>設備需求</h2>
+            <p>{course.equipment_requirements}</p>
+          </section>
+        )}
+      </div>
+      <aside className="purchase-card">
+        <h2>報名前先知道</h2>
+        <ol>
+          <li>完整契約有 72 小時審閱期。</li>
+          <li>第二次確認後才能建立匯款訂單。</li>
+          <li>提交匯款資料不等於付款完成。</li>
+          <li>實際入帳確認後才會開通。</li>
+        </ol>
+        {readiness.purchaseReady ? (
+          <Link className="button" href={`/courses/${slug}/contract`}>
+            開始契約審閱
+          </Link>
+        ) : (
+          <div className="closed-note">
+            <strong>目前暫不開放購買</strong>
+            <ul>
+              {readiness.reasons.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </aside>
+    </section>
   );
-}
-
-function formatLiveDate(start: string, end: string) {
-  return `${new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", year: "numeric", month: "numeric", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(start))}–${new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", hour: "2-digit", minute: "2-digit" }).format(new Date(end))}`;
 }
