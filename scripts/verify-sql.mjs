@@ -27,6 +27,7 @@ const expectedFiles = [
   "20260724238000_runtime_lint_commerce.sql",
   "20260724238100_runtime_lint_learning.sql",
   "20260724238200_runtime_lint_org_accreditation.sql",
+  "20260724238300_runtime_lint_course_instructor.sql",
 ];
 if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) {
   throw new Error(

@@ -11,8 +11,8 @@ const migrations = migrationFiles
   .join("\n");
 
 describe("clean migration chain", () => {
-  it("has the ten responsibility-separated migrations and eleven forward hardening migrations", () => {
-    expect(migrationFiles).toHaveLength(21);
+  it("has the ten responsibility-separated migrations and twelve forward hardening migrations", () => {
+    expect(migrationFiles).toHaveLength(22);
     expect(migrationFiles.map((file) => file.replace(/^\d+_/, ""))).toEqual([
       "reset_legacy_application.sql",
       "identity_rbac_legal.sql",
@@ -35,6 +35,7 @@ describe("clean migration chain", () => {
       "runtime_lint_commerce.sql",
       "runtime_lint_learning.sql",
       "runtime_lint_org_accreditation.sql",
+      "runtime_lint_course_instructor.sql",
     ]);
   });
 
