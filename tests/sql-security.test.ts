@@ -48,6 +48,21 @@ describe("clean migration chain", () => {
     expect(migrations).toContain("RESET_ABORTED_PROTECTED_DATA");
   });
 
+  it("drops row-type-dependent legacy routines before their tables", () => {
+    const reset = readFileSync(
+      join(migrationDirectory, "20260724011617_reset_legacy_application.sql"),
+      "utf8",
+    );
+    const routineDrop = reset.indexOf(
+      "pg_get_function_identity_arguments(routine.oid) as identity_arguments",
+    );
+    const tableDrop = reset.indexOf(
+      "select 'drop table ' || string_agg(candidate",
+    );
+    expect(routineDrop).toBeGreaterThan(-1);
+    expect(tableDrop).toBeGreaterThan(routineDrop);
+  });
+
   it("starts every feature switch disabled", () => {
     expect(migrations).toContain("enabled boolean not null default false");
     expect(migrations).not.toMatch(

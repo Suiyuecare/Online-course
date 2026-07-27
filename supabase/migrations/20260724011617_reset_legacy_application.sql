@@ -424,14 +424,8 @@ begin
     );
   end loop;
 
-  select 'drop table ' || string_agg(candidate, ', ' order by candidate)
-    into drop_statement
-  from unnest(legacy_tables) candidate
-  where to_regclass(candidate) is not null;
-  if drop_statement is not null then
-    execute drop_statement;
-  end if;
-
+  -- Composite row types are owned by their tables, so routines that accept or
+  -- return those row types must be removed before the tables themselves.
   for object_record in
     select namespace.nspname as schema_name,
       routine.proname as object_name,
@@ -452,6 +446,14 @@ begin
       object_record.identity_arguments
     );
   end loop;
+
+  select 'drop table ' || string_agg(candidate, ', ' order by candidate)
+    into drop_statement
+  from unnest(legacy_tables) candidate
+  where to_regclass(candidate) is not null;
+  if drop_statement is not null then
+    execute drop_statement;
+  end if;
 
   foreach object_name in array legacy_sequence_names
   loop
