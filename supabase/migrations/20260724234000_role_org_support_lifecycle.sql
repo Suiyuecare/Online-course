@@ -2434,7 +2434,7 @@ begin
       ) order by
         (support_case.status not in ('resolved', 'closed')) desc,
         support_case.response_due_at, support_case.last_activity_at desc,
-        support_case.id), '[]'::jsonb)
+        support_case.id)
       from public.support_cases support_case
     ), '[]'::jsonb)
   );
