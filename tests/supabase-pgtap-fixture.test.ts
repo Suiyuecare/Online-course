@@ -69,14 +69,15 @@ describe("Supabase pgTAP role matrix fixture", () => {
 });
 
 describe("quality and preview pgTAP privilege fixture", () => {
-  it("is transaction-scoped with a matching eighteen-assertion plan", () => {
+  it("is transaction-scoped with a matching thirty-assertion plan", () => {
     expect(qualityFixture.trimStart().startsWith("begin;")).toBe(true);
     expect(qualityFixture.trimEnd().endsWith("rollback;")).toBe(true);
-    expect(qualityFixture).toContain("select extensions.plan(18);");
+    expect(qualityFixture).toContain("select extensions.plan(30);");
     const assertions = (
-      qualityFixture.match(/select extensions.(?:ok|results_eq)\(/g) ?? []
+      qualityFixture.match(/select extensions.(?:ok|results_eq|lives_ok)\(/g) ??
+      []
     ).length;
-    expect(assertions).toBe(18);
+    expect(assertions).toBe(30);
   });
 
   it("checks anonymous preview, table isolation, and fresh survey step-up", () => {

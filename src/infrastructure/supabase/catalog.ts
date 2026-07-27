@@ -40,13 +40,18 @@ export type CatalogCourse = {
   }[];
 };
 
-export async function catalogCourses(): Promise<CatalogCourse[]> {
+export type CatalogCourseListing = {
+  status: "ready" | "unavailable";
+  courses: CatalogCourse[];
+};
+
+export async function catalogCourseListing(): Promise<CatalogCourseListing> {
   const config = publicConfig();
   if (
     !config.NEXT_PUBLIC_SUPABASE_URL ||
     !config.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
   ) {
-    return [];
+    return { status: "unavailable", courses: [] };
   }
   const client = createClient(
     config.NEXT_PUBLIC_SUPABASE_URL,
@@ -63,15 +68,22 @@ export async function catalogCourses(): Promise<CatalogCourse[]> {
       )
       .order("title")
       .abortSignal(controller.signal);
-    if (error) return [];
-    return ((data ?? []) as CatalogCourse[]).filter(
-      catalogRefundAllocationIsValid,
-    );
+    if (error) return { status: "unavailable", courses: [] };
+    return {
+      status: "ready",
+      courses: ((data ?? []) as CatalogCourse[]).filter(
+        catalogRefundAllocationIsValid,
+      ),
+    };
   } catch {
-    return [];
+    return { status: "unavailable", courses: [] };
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function catalogCourses(): Promise<CatalogCourse[]> {
+  return (await catalogCourseListing()).courses;
 }
 
 export function catalogRefundAllocationIsValid(course: CatalogCourse) {

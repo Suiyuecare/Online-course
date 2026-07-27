@@ -28,6 +28,7 @@ const expectedFiles = [
   "20260724238100_runtime_lint_learning.sql",
   "20260724238200_runtime_lint_org_accreditation.sql",
   "20260724238300_runtime_lint_course_instructor.sql",
+  "20260727151249_fix_public_catalog_capabilities.sql",
 ];
 if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) {
   throw new Error(
@@ -76,11 +77,78 @@ if (views !== invokerViews) {
 }
 const publicFunctionBlocks =
   sql.match(/create\s+or\s+replace\s+function\s+public\.[\s\S]*?\$\$;/gi) ?? [];
-if (publicFunctionBlocks.some((block) => /security\s+definer/i.test(block))) {
-  throw new Error("SECURITY DEFINER function found in exposed public schema");
+const publicDefinerCapabilities = new Set([
+  "public.read_public_course_outline",
+  "public.read_public_course_readiness",
+]);
+const foundPublicDefinerCapabilities = new Set();
+for (const block of publicFunctionBlocks) {
+  const functionName = block.match(
+    /function\s+(public\.[a-z0-9_]+)\s*\(/i,
+  )?.[1];
+  if (/security\s+definer/i.test(block)) {
+    if (!functionName || !publicDefinerCapabilities.has(functionName)) {
+      throw new Error(
+        `Unexpected SECURITY DEFINER function in exposed public schema: ${functionName ?? "unknown"}`,
+      );
+    }
+    const implementationName = functionName.split(".")[1];
+    if (
+      !/set\s+search_path\s*=\s*pg_catalog,\s*internal/i.test(block) ||
+      !new RegExp(
+        `as\\s+\\$\\$\\s*select\\s+internal\\.${implementationName}` +
+          `\\(p_course_version_id\\)\\s*\\$\\$;\\s*$`,
+        "i",
+      ).test(block)
+    ) {
+      throw new Error(
+        `Public catalog capability is not a fixed internal facade: ${functionName}`,
+      );
+    }
+    foundPublicDefinerCapabilities.add(functionName);
+  } else if (!/security\s+invoker/i.test(block)) {
+    throw new Error(
+      `Public wrapper function missing SECURITY INVOKER: ${functionName ?? "unknown"}`,
+    );
+  }
 }
-if (publicFunctionBlocks.some((block) => !/security\s+invoker/i.test(block))) {
-  throw new Error("Public wrapper function missing SECURITY INVOKER");
+if (
+  foundPublicDefinerCapabilities.size !== publicDefinerCapabilities.size ||
+  [...publicDefinerCapabilities].some(
+    (name) => !foundPublicDefinerCapabilities.has(name),
+  )
+) {
+  throw new Error("Public catalog capability facade set is incomplete");
+}
+const catalogCapabilityMigration = readFileSync(
+  join(directory, "20260727151249_fix_public_catalog_capabilities.sql"),
+  "utf8",
+);
+if (
+  /grant\s+(?:all|select)\b[\s\S]*?\bon\s+(?:table\s+)?public\.course_versions\b[\s\S]*?\bto\s+(?:anon|authenticated)\b/i.test(
+    catalogCapabilityMigration,
+  ) ||
+  /grant\s+usage\s+on\s+schema\s+internal\s+to\s+anon\b/i.test(
+    catalogCapabilityMigration,
+  )
+) {
+  throw new Error("Public catalog fix broadens a browser privilege");
+}
+for (const invariant of [
+  "create role suiyue_catalog_owner nologin noinherit",
+  "alter function public.read_public_course_outline(uuid)",
+  "alter function public.read_public_course_readiness(uuid)",
+  "owner to suiyue_catalog_owner",
+  "revoke create on schema public from suiyue_catalog_owner",
+  "rolbypassrls",
+  "membership.admin_option",
+  "member_role.rolname <> 'postgres'",
+]) {
+  if (!catalogCapabilityMigration.includes(invariant)) {
+    throw new Error(
+      `Missing public catalog capability invariant: ${invariant}`,
+    );
+  }
 }
 if (
   /drop\s+schema\s+(?:public|auth|storage|realtime|extensions|vault|graphql|supabase_migrations)\b/i.test(

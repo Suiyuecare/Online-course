@@ -11,8 +11,8 @@ const migrations = migrationFiles
   .join("\n");
 
 describe("clean migration chain", () => {
-  it("has the ten responsibility-separated migrations and twelve forward hardening migrations", () => {
-    expect(migrationFiles).toHaveLength(22);
+  it("has the ten responsibility-separated migrations and thirteen forward hardening migrations", () => {
+    expect(migrationFiles).toHaveLength(23);
     expect(migrationFiles.map((file) => file.replace(/^\d+_/, ""))).toEqual([
       "reset_legacy_application.sql",
       "identity_rbac_legal.sql",
@@ -36,6 +36,7 @@ describe("clean migration chain", () => {
       "runtime_lint_learning.sql",
       "runtime_lint_org_accreditation.sql",
       "runtime_lint_course_instructor.sql",
+      "fix_public_catalog_capabilities.sql",
     ]);
   });
 
@@ -135,15 +136,41 @@ describe("RLS, GRANT, and function proof", () => {
     expect(invokerCount).toBe(viewCount);
   });
 
-  it("keeps SECURITY DEFINER functions out of public schema", () => {
+  it("limits public SECURITY DEFINER functions to fixed catalog capabilities", () => {
     const publicFunctionBlocks =
       migrations.match(
         /create\s+or\s+replace\s+function\s+public\.[\s\S]*?\$\$;/gi,
       ) ?? [];
+    const allowedDefiners = new Set([
+      "public.read_public_course_outline",
+      "public.read_public_course_readiness",
+    ]);
+    const foundDefiners = new Set<string>();
     for (const block of publicFunctionBlocks) {
-      expect(block).not.toMatch(/security\s+definer/i);
-      expect(block).toMatch(/security\s+invoker/i);
+      const functionName = block.match(
+        /function\s+(public\.[a-z0-9_]+)\s*\(/i,
+      )?.[1];
+      if (/security\s+definer/i.test(block)) {
+        expect(functionName).toBeDefined();
+        if (!functionName) throw new Error("Public function name missing");
+        expect(allowedDefiners.has(functionName)).toBe(true);
+        expect(block).toMatch(
+          /set\s+search_path\s*=\s*pg_catalog,\s*internal/i,
+        );
+        expect(block).toMatch(
+          new RegExp(
+            `as\\s+\\$\\$\\s*select\\s+internal\\.` +
+              `${functionName.split(".")[1]}` +
+              `\\(p_course_version_id\\)\\s*\\$\\$;\\s*$`,
+            "i",
+          ),
+        );
+        foundDefiners.add(functionName);
+      } else {
+        expect(block).toMatch(/security\s+invoker/i);
+      }
     }
+    expect(foundDefiners).toEqual(allowedDefiners);
   });
 
   it("fixes search_path for every SECURITY DEFINER function", () => {

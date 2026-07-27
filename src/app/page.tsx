@@ -1,16 +1,28 @@
 import Image from "next/image";
 import Link from "next/link";
 import { CourseCard } from "@/components/course-card";
-import { catalogCourses } from "@/infrastructure/supabase/catalog";
+import { ShowcaseCourseCard } from "@/components/showcase-course-card";
+import { showcaseCourses } from "@/content/showcase-courses";
+import { catalogCourseListing } from "@/infrastructure/supabase/catalog";
 
 export const revalidate = 60;
 
+const homeCategories = [
+  ["記", "失智照護", "理解行為、溝通與安心陪伴"],
+  ["策", "長照政策", "服務架構、申請與資源轉介"],
+  ["食", "營養吞嚥", "進食觀察與吞嚥安全"],
+  ["動", "復能活動", "關節活動與生活化復能"],
+  ["評", "健康評估", "長者六力與異常觀察"],
+  ["淨", "感染管制", "手部衛生與機構安全"],
+] as const;
+
 export default async function Home() {
-  const courses = (await catalogCourses()).slice(0, 3);
+  const catalog = await catalogCourseListing();
+  const courses = catalog.courses.slice(0, 3);
   return (
     <>
       <section className="hero shell">
-        <div>
+        <div className="hero-copy">
           <p className="eyebrow">手機就能安心完成</p>
           <h1>
             長照進修，
@@ -34,16 +46,71 @@ export default async function Home() {
             <li>積分登錄與完課狀態分開顯示</li>
           </ul>
         </div>
-        <div className="hero-card">
+        <figure className="hero-photo">
           <Image
-            alt="歲悅學苑牛奶盒標誌"
-            height={180}
+            alt="照護工作者陪伴長者進行團體活動"
+            fill
             priority
-            src="/suiyue-milk.png"
-            width={180}
+            sizes="(max-width: 900px) 100vw, 42vw"
+            src="https://images.unsplash.com/photo-1773227060446-93239a553f1f?auto=format&fit=crop&w=1400&q=86"
           />
-          <p>字大、步驟少、狀態說清楚</p>
-          <strong>不熟悉手機，也能自己完成</strong>
+          <figcaption>
+            <span>課程、進度、測驗</span>
+            <strong>一支手機就能完成</strong>
+          </figcaption>
+          <a
+            className="photo-credit"
+            href="https://unsplash.com/photos/mH448Q_xLs4"
+            rel="noreferrer"
+            target="_blank"
+          >
+            Photo: Age Cymru / Unsplash
+          </a>
+        </figure>
+      </section>
+
+      <section className="home-proof-band" aria-label="平台學習機制">
+        <div className="shell">
+          <article>
+            <strong>10 分鐘</strong>
+            <span>錄播在席確認</span>
+          </article>
+          <article>
+            <strong>80 分</strong>
+            <span>預設測驗門檻</span>
+          </article>
+          <article>
+            <strong>3 種</strong>
+            <span>錄播、直播、混合課</span>
+          </article>
+          <article>
+            <strong>1 個中心</strong>
+            <span>查看分鐘、成績與證明</span>
+          </article>
+        </div>
+      </section>
+
+      <section className="category-section shell">
+        <div className="section-heading horizontal">
+          <div>
+            <p className="eyebrow">常見進修主題</p>
+            <h2>從每天遇到的照護情境開始</h2>
+          </div>
+          <Link className="text-link" href="/courses">
+            瀏覽全部課程
+          </Link>
+        </div>
+        <div className="category-grid">
+          {homeCategories.map(([icon, title, description]) => (
+            <Link
+              href={`/courses?category=${encodeURIComponent(title)}#course-showcase`}
+              key={title}
+            >
+              <span aria-hidden="true">{icon}</span>
+              <strong>{title}</strong>
+              <small>{description}</small>
+            </Link>
+          ))}
         </div>
       </section>
 
@@ -76,39 +143,109 @@ export default async function Home() {
         </ol>
       </section>
 
-      <section className="catalog-section shell">
-        <div className="section-heading horizontal">
-          <div>
-            <p className="eyebrow">長照積分課程</p>
-            <h2>目前開放課程</h2>
+      {courses.length > 0 && (
+        <section className="catalog-section shell official-catalog-section">
+          <div className="section-heading horizontal">
+            <div>
+              <p className="eyebrow">正式開放報名</p>
+              <h2>已完成發布檢查的課程</h2>
+            </div>
+            <Link className="text-link" href="/courses">
+              查看正式課程
+            </Link>
           </div>
-          <Link className="text-link" href="/courses">
-            查看全部
-          </Link>
-        </div>
-        {courses.length > 0 ? (
           <div className="course-grid">
             {courses.map((course) => (
               <CourseCard course={course} key={course.slug} />
             ))}
           </div>
-        ) : (
-          <div className="empty-state">
-            <h3>課程正在準備中</h3>
-            <p>正式課程要完成核定、法律、財務與供應商檢查後才會出現在這裡。</p>
+        </section>
+      )}
+
+      <section className="catalog-section shell">
+        <div className="section-heading horizontal">
+          <div>
+            <p className="eyebrow">課程視覺示範</p>
+            <h2>看看完整課程會怎麼呈現</h2>
+            <p>可進入課程頁、查看大綱並播放官方公開影片；目前不接受報名。</p>
           </div>
-        )}
+          <Link className="text-link" href="/courses">
+            查看全部
+          </Link>
+        </div>
+        <div className="course-grid">
+          {showcaseCourses.slice(0, 6).map((course) => (
+            <ShowcaseCourseCard course={course} key={course.slug} />
+          ))}
+        </div>
       </section>
 
-      <section className="organization-banner shell">
+      <section className="learning-mechanics">
+        <div className="shell">
+          <div className="section-heading">
+            <p className="eyebrow">不是只把影片放上網</p>
+            <h2>每一步都有紀錄，也知道下一步要做什麼</h2>
+          </div>
+          <div className="mechanics-grid">
+            <article>
+              <span>01</span>
+              <h3>看影片、記分鐘</h3>
+              <p>暫停、背景分頁與逾時區段不會被誤算成有效學習。</p>
+            </article>
+            <article>
+              <span>02</span>
+              <h3>10 分鐘確認在席</h3>
+              <p>提示會暫停影片；完成確認後，才繼續認列觀看區段。</p>
+            </article>
+            <article>
+              <span>03</span>
+              <h3>完成測驗與回饋</h3>
+              <p>成績、補考、滿意度與缺少項目，都在同一頁看得到。</p>
+            </article>
+            <article>
+              <span>04</span>
+              <h3>取得與查驗證明</h3>
+              <p>完課證明和積分登錄狀態分開，避免把兩件事混為一談。</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section className="organization-story shell">
         <div>
           <p className="eyebrow">機構培訓</p>
-          <h2>點數不過期，指派與成果清楚可查</h2>
-          <p>一元一點、人工匯款購點；只看機構出資的培訓紀錄。</p>
+          <h2>買點數、派課、看成果，不必再整理好多份表格</h2>
+          <p>
+            機構以一元一點購買點數，依課程扣點後指派給員工；只查看機構出資的培訓紀錄。
+          </p>
+          <ul>
+            <li>手機號碼邀請員工，不建立另一套企業帳密</li>
+            <li>錄播、直播、混合課都能統一指派</li>
+            <li>分鐘、成績、出席與證明可依部門追蹤</li>
+          </ul>
+          <Link className="button secondary" href="/organization">
+            看機構培訓方式
+          </Link>
         </div>
-        <Link className="button secondary" href="/organization">
-          進入機構專區
-        </Link>
+        <figure>
+          <Image
+            alt="兩位使用輔具的長者一起行走"
+            fill
+            sizes="(max-width: 900px) 100vw, 42vw"
+            src="https://images.unsplash.com/photo-1764407429253-bd0bdf036966?auto=format&fit=crop&w=1200&q=84"
+          />
+          <figcaption>
+            培訓資料整理好，照護團隊才有更多時間陪伴長者。
+          </figcaption>
+          <a
+            className="photo-credit"
+            href="https://unsplash.com/photos/8zc2VKw43NQ"
+            rel="noreferrer"
+            target="_blank"
+          >
+            Photo: Jenya Shportiak / Unsplash
+          </a>
+        </figure>
       </section>
     </>
   );

@@ -21,16 +21,16 @@ export const metadata: Metadata = {
     description: "手機就能完成的錄播、同步直播與混合型長照積分課程。",
     images: [
       {
-        url: "/suiyue-academy-og.png",
+        url: "/suiyue-academy-og-v2.png",
         width: 1200,
         height: 630,
-        alt: "歲悅學苑行動學習平台",
+        alt: "歲悅學苑：長照進修，每一步都清楚",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    images: ["/suiyue-academy-og.png"],
+    images: ["/suiyue-academy-og-v2.png"],
   },
   robots: { index: true, follow: true },
 };
