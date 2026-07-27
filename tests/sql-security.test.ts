@@ -56,10 +56,13 @@ describe("clean migration chain", () => {
     const routineDrop = reset.indexOf(
       "pg_get_function_identity_arguments(routine.oid) as identity_arguments",
     );
+    const policyDrop = reset.indexOf("from pg_policies legacy_policy");
     const tableDrop = reset.indexOf(
       "select 'drop table ' || string_agg(candidate",
     );
+    expect(policyDrop).toBeGreaterThan(-1);
     expect(routineDrop).toBeGreaterThan(-1);
+    expect(routineDrop).toBeGreaterThan(policyDrop);
     expect(tableDrop).toBeGreaterThan(routineDrop);
   });
 

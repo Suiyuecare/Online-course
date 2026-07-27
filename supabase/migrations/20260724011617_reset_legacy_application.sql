@@ -424,6 +424,30 @@ begin
     );
   end loop;
 
+  -- RLS policies can depend on helper routines. Remove only policies attached
+  -- to inventoried legacy tables before dropping those routines.
+  for object_record in
+    select legacy_policy.schemaname as schema_name,
+      legacy_policy.tablename as table_name,
+      legacy_policy.policyname as policy_name
+    from pg_policies legacy_policy
+    where format(
+      '%I.%I',
+      legacy_policy.schemaname,
+      legacy_policy.tablename
+    ) = any(legacy_tables)
+    order by legacy_policy.schemaname,
+      legacy_policy.tablename,
+      legacy_policy.policyname
+  loop
+    execute format(
+      'drop policy if exists %I on %I.%I',
+      object_record.policy_name,
+      object_record.schema_name,
+      object_record.table_name
+    );
+  end loop;
+
   -- Composite row types are owned by their tables, so routines that accept or
   -- return those row types must be removed before the tables themselves.
   for object_record in
