@@ -48,6 +48,15 @@ describe("clean migration chain", () => {
     expect(migrations).toContain("RESET_ABORTED_PROTECTED_DATA");
   });
 
+  it("lets the hosted migration role assign isolated object owners", () => {
+    expect(migrations).toContain(
+      "grant suiyue_audit_owner, suiyue_money_owner to postgres",
+    );
+    expect(migrations).not.toMatch(
+      /grant\s+suiyue_(?:audit|money)_owner\s+to\s+(?:anon|authenticated|service_role)/i,
+    );
+  });
+
   it("drops row-type-dependent legacy routines before their tables", () => {
     const reset = readFileSync(
       join(migrationDirectory, "20260724011617_reset_legacy_application.sql"),

@@ -16,6 +16,11 @@ begin
 end
 $roles$;
 
+-- Hosted Supabase's postgres migration role is intentionally not a superuser.
+-- Explicit membership lets migrations assign objects to the isolated no-login
+-- owners without granting those owners to any API role.
+grant suiyue_audit_owner, suiyue_money_owner to postgres;
+
 create table public.people (
   id uuid primary key default gen_random_uuid(),
   display_name text,
