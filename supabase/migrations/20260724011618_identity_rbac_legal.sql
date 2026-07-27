@@ -20,6 +20,9 @@ $roles$;
 -- Explicit membership lets migrations assign objects to the isolated no-login
 -- owners without granting those owners to any API role.
 grant suiyue_audit_owner, suiyue_money_owner to postgres;
+grant usage, create on schema public to
+  suiyue_audit_owner, suiyue_money_owner;
+grant usage, create on schema internal to suiyue_audit_owner;
 
 create table public.people (
   id uuid primary key default gen_random_uuid(),

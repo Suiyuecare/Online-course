@@ -52,6 +52,12 @@ describe("clean migration chain", () => {
     expect(migrations).toContain(
       "grant suiyue_audit_owner, suiyue_money_owner to postgres",
     );
+    expect(migrations).toContain(
+      "grant usage, create on schema public to\\n  suiyue_audit_owner, suiyue_money_owner",
+    );
+    expect(migrations).toContain(
+      "grant usage, create on schema internal to suiyue_audit_owner",
+    );
     expect(migrations).not.toMatch(
       /grant\s+suiyue_(?:audit|money)_owner\s+to\s+(?:anon|authenticated|service_role)/i,
     );
