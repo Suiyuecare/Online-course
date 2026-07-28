@@ -118,6 +118,7 @@ describe("staff workflow UI safety", () => {
     const learningPage = source(
       "src/app/learner/courses/[enrollmentId]/page.tsx",
     );
+    const courseRunner = source("src/components/learner-course-runner.tsx");
 
     expect(catalog).toContain("has_cover");
     expect(catalog).not.toContain("cover_path");
@@ -127,7 +128,8 @@ describe("staff workflow UI safety", () => {
     expect(material).toContain('"read_learner_course_material_reference"');
     expect(material).toContain("resolveActivePerson");
     expect(material).toContain("COURSE_MATERIAL_INTEGRITY_FAILED");
-    expect(learningPage).toContain("<CourseMaterialDownloadButton");
+    expect(learningPage).toContain("<LearnerCourseRunner");
+    expect(courseRunner).toContain("<CourseMaterialDownloadButton");
   });
 
   it("serves the exact approved legal text and verifies every contract hash", () => {

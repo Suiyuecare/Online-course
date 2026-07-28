@@ -3,6 +3,15 @@ import { z } from "zod";
 
 const nullableString = z.string().nullable();
 
+const learnerCompletionSchema = z.object({
+  confirmedValidSeconds: z.number().int().nonnegative().default(0),
+  requiredWatchSeconds: z.number().int().nonnegative().default(0),
+  quizPassed: z.boolean().default(false),
+  surveyCompleted: z.boolean().default(false),
+  identityVerified: z.boolean().default(false),
+  allLiveQualified: z.boolean().default(false),
+});
+
 export const learnerWorkspaceSchema = z.object({
   courseTitle: z.string(),
   deliveryType: z.enum(["recorded", "live", "hybrid"]),
@@ -80,7 +89,7 @@ export const learnerWorkspaceSchema = z.object({
         .default([]),
     }),
   ),
-  completion: z.record(z.string(), z.unknown()),
+  completion: learnerCompletionSchema,
   certificate: z
     .object({
       id: z.string().uuid(),
@@ -910,7 +919,14 @@ export async function readLearnerWorkspaceWithSafeFallback(
       materials: [],
       components: [],
       liveBookings: [],
-      completion: {},
+      completion: {
+        confirmedValidSeconds: 0,
+        requiredWatchSeconds: 0,
+        quizPassed: false,
+        surveyCompleted: false,
+        identityVerified: false,
+        allLiveQualified: false,
+      },
       certificate: null,
     },
   };

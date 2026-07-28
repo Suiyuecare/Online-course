@@ -48,6 +48,12 @@ export function ShowcaseCourseDetail({ course }: { course: ShowcaseCourse }) {
                 這門課用來展示網站版面與操作。正式師資、積分核定、教材及售價完成後才會開放。
               </p>
             </div>
+            <Link
+              className="button"
+              href={`/courses/demo/${course.slug}/classroom`}
+            >
+              進入數位教室示範
+            </Link>
             <Link className="button secondary" href="/courses">
               繼續看其他課程
             </Link>
