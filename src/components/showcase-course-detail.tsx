@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ShowcaseCourse } from "@/content/showcase-courses";
 import { YouTubeDemoPreview } from "@/components/youtube-demo-preview";
@@ -18,21 +19,36 @@ export function ShowcaseCourseDetail({ course }: { course: ShowcaseCourse }) {
           <span>{course.category}</span>
         </nav>
         <div className="showcase-course-heading">
-          <div>
-            <div className="badge-row">
-              <span className="status-badge demo">網站功能示範</span>
-              <span className="status-badge">
-                {deliveryLabels[course.deliveryType]}
-              </span>
-              <span className="status-badge">{course.category}</span>
-            </div>
-            <h1>{course.title}</h1>
-            <p className="lead">{course.summary}</p>
-            <div className="showcase-instructor-line">
-              <span aria-hidden="true">歲</span>
-              <div>
-                <strong>{course.instructor.displayName}</strong>
-                <small>{course.instructor.role}</small>
+          <div className="showcase-course-story">
+            <figure className="showcase-detail-cover">
+              <Image
+                alt={course.coverAlt}
+                fill
+                priority
+                sizes="(max-width: 900px) 100vw, 65vw"
+                src={course.coverImage}
+              />
+              <figcaption>
+                <span>{deliveryLabels[course.deliveryType]}</span>
+                <strong>{course.durationMinutes} 分鐘完整學習旅程</strong>
+              </figcaption>
+            </figure>
+            <div className="showcase-course-copy">
+              <div className="badge-row">
+                <span className="status-badge demo">網站功能示範</span>
+                <span className="status-badge">
+                  {deliveryLabels[course.deliveryType]}
+                </span>
+                <span className="status-badge">{course.category}</span>
+              </div>
+              <h1>{course.title}</h1>
+              <p className="lead">{course.summary}</p>
+              <div className="showcase-instructor-line">
+                <span aria-hidden="true">歲</span>
+                <div>
+                  <strong>{course.instructor.displayName}</strong>
+                  <small>{course.instructor.role}</small>
+                </div>
               </div>
             </div>
           </div>

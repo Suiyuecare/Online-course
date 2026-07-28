@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { CourseCard } from "@/components/course-card";
 import { ShowcaseCourseExplorer } from "@/components/showcase-course-explorer";
 import {
@@ -25,11 +26,21 @@ export default async function CoursesPage({
   return (
     <>
       <section className="course-catalog-hero">
+        <Image
+          alt="社區照顧人員向長者說明長照服務資源"
+          className="course-catalog-hero-image"
+          fill
+          loading="eager"
+          priority
+          sizes="100vw"
+          src="/images/suiyue-original/course-long-term-care-policy.jpg"
+        />
+        <div aria-hidden="true" className="course-catalog-hero-scrim" />
         <div className="shell">
-          <p className="eyebrow">歲悅學苑課程庫</p>
-          <h1>找一門今天就想學的照護課</h1>
+          <p className="eyebrow">SUIYUECARE COURSE CATALOG</p>
+          <h1>今天想學哪一堂？</h1>
           <p>
-            依主題與課程形式搜尋。下方目前為網站功能示範，正式核定與報名狀態會清楚標示。
+            從每天真的會遇到的照護情境開始，依主題與課程形式找到適合你的長照進修課。
           </p>
           <div className="catalog-hero-facts">
             <span>錄播：自己安排時間</span>

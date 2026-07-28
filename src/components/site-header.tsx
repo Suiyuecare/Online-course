@@ -5,17 +5,17 @@ export function SiteHeader() {
   return (
     <header className="site-header">
       <Link className="brand" href="/" aria-label="歲悅學苑首頁">
-        <Image alt="" height={42} priority src="/suiyue-milk.png" width={42} />
+        <Image alt="" height={50} priority src="/suiyue-milk.png" width={50} />
         <span>
-          歲悅學苑
-          <small>長照積分課程</small>
+          <strong>歲悅學苑</strong>
+          <small>SUIYUECARE ACADEMY</small>
         </span>
       </Link>
       <nav aria-label="主要選單">
-        <Link href="/courses">找課程</Link>
-        <Link href="/learner">我的課程</Link>
-        <Link href="/support">客服</Link>
-        <Link href="/instructor">講師</Link>
+        <Link href="/courses">課程總覽</Link>
+        <Link href="/learner">我的學習</Link>
+        <Link href="/organization">機構培訓</Link>
+        <Link href="/support">客服中心</Link>
         <Link className="nav-action" href="/login">
           手機登入
         </Link>

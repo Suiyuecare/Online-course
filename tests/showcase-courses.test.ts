@@ -87,11 +87,17 @@ describe("public showcase courses", () => {
     const home = source("src/app/page.tsx");
     const card = source("src/components/showcase-course-card.tsx");
     const preview = source("src/components/youtube-demo-preview.tsx");
+    const heroPath = resolve(
+      process.cwd(),
+      "public/images/suiyue-original/home-hero-learning-wide-v2.jpg",
+    );
 
     expect(config).toContain("https://www.youtube-nocookie.com");
     expect(config).not.toContain("i.ytimg.com");
     expect(config).not.toContain("images.unsplash.com");
     expect(home).not.toMatch(/unsplash|pexels|pixabay/i);
+    expect(home).toContain("home-hero-learning-wide-v2.jpg");
+    expect(existsSync(heroPath)).toBe(true);
     expect(card).toContain("course.coverImage");
     expect(preview).toContain("posterImage");
     expect(config).not.toContain("https://*.youtube.com");

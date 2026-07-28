@@ -21,44 +21,105 @@ export default async function Home() {
   const courses = catalog.courses.slice(0, 3);
   return (
     <>
-      <section className="hero shell">
-        <div className="hero-copy">
-          <p className="eyebrow">手機就能安心完成</p>
-          <h1>
-            長照進修，
-            <br />
-            每一步都清楚。
-          </h1>
-          <p className="lead">
-            從手機驗證、人工匯款、上課，到測驗、滿意度與證明，一步一步陪你完成。
-          </p>
-          <div className="button-row">
-            <Link className="button" href="/courses">
-              找長照積分課程
-            </Link>
-            <Link className="text-link" href="/learner">
-              查看我的課程
-            </Link>
+      <section className="academy-hero">
+        <Image
+          alt="歲悅照護人員陪伴長者進行認知學習活動"
+          className="academy-hero-background"
+          fill
+          priority
+          sizes="100vw"
+          src="/images/suiyue-original/home-hero-learning-wide-v2.jpg"
+        />
+        <div aria-hidden="true" className="academy-hero-scrim" />
+        <div className="academy-hero-inner shell">
+          <div className="hero-copy">
+            <p className="eyebrow">SUIYUECARE LEARNING SYSTEM</p>
+            <h1>
+              把長照進修，
+              <br />
+              變成每個人都
+              <br />
+              跟得上的日常。
+            </h1>
+            <p className="hero-slogan">學習就像買牛奶一樣簡單。</p>
+            <p className="lead">
+              從手機登入、報名、上課，到測驗與證明，把每一步說清楚，讓學員安心學、機構放心派課。
+            </p>
+            <div className="button-row">
+              <Link className="button" href="/courses">
+                開始找長照積分課程
+              </Link>
+              <Link className="text-link" href="/learner">
+                查看我的學習進度
+              </Link>
+            </div>
+            <ul className="trust-list">
+              <li>錄播每 10 分鐘確認在席</li>
+              <li>同步直播保存出席證據</li>
+              <li>分鐘、成績與證明集中查詢</li>
+            </ul>
           </div>
-          <ul className="trust-list">
-            <li>錄播每 10 分鐘確認在席</li>
-            <li>同步直播保存出席證據</li>
-            <li>積分登錄與完課狀態分開顯示</li>
-          </ul>
         </div>
-        <figure className="hero-photo">
-          <Image
-            alt="照護工作者陪伴長者進行團體活動"
-            fill
-            priority
-            sizes="(max-width: 900px) 100vw, 42vw"
-            src="/images/suiyue-original/home-hero-care-activity.jpg"
-          />
-          <figcaption>
-            <span>課程、進度、測驗</span>
-            <strong>一支手機就能完成</strong>
-          </figcaption>
-        </figure>
+      </section>
+
+      <section className="home-pathways shell" aria-labelledby="pathways-title">
+        <div className="section-heading horizontal">
+          <div>
+            <p className="eyebrow">START HERE</p>
+            <h2 id="pathways-title">先選你現在最需要的下一步。</h2>
+          </div>
+          <p>不必先研究網站，從你的身分直接開始。</p>
+        </div>
+        <div className="pathway-grid">
+          <Link href="/courses">
+            <figure>
+              <Image
+                alt="照護工作者陪伴失智長者進行記憶活動"
+                fill
+                sizes="(max-width: 760px) 100vw, 33vw"
+                src="/images/suiyue-original/course-dementia-care.jpg"
+              />
+            </figure>
+            <div>
+              <span>個人學員</span>
+              <h3>我要找一門課</h3>
+              <p>依照主題與上課形式，找到適合自己的長照進修課程。</p>
+              <strong>查看可學習課程</strong>
+            </div>
+          </Link>
+          <Link href="/organization">
+            <figure>
+              <Image
+                alt="機構主管與照護團隊一起查看培訓內容"
+                fill
+                sizes="(max-width: 760px) 100vw, 33vw"
+                src="/images/suiyue-original/organization-training-team.jpg"
+              />
+            </figure>
+            <div>
+              <span>長照機構</span>
+              <h3>我要替員工安排培訓</h3>
+              <p>購買點數、指派課程，集中查看分鐘、成績與證明。</p>
+              <strong>了解機構培訓</strong>
+            </div>
+          </Link>
+          <Link href="/learner">
+            <figure>
+              <Image
+                alt="照護團隊陪伴長者進行健康評估"
+                fill
+                sizes="(max-width: 760px) 100vw, 33vw"
+                src="/images/suiyue-original/course-icope-assessment.jpg"
+              />
+            </figure>
+            <div>
+              <span>已經開始上課</span>
+              <h3>我要繼續完成進度</h3>
+              <p>從上次的位置續播，查看還缺少哪些步驟才能完成。</p>
+              <strong>進入我的課程</strong>
+            </div>
+          </Link>
+        </div>
       </section>
 
       <section className="home-proof-band" aria-label="平台學習機制">
