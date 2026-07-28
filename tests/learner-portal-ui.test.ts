@@ -32,13 +32,13 @@ describe("logged-in learner portal", () => {
     const shell = source("src/components/learner-portal-shell.tsx");
 
     for (const label of [
-      "個人檔案",
+      "我的專業頁",
       "我的收藏",
       "結訓證明",
       "通知中心",
       "訂單紀錄",
       "我的優惠",
-      "帳號設定",
+      "帳號與個人資料",
       "客服中心",
     ]) {
       expect(shell).toContain(label);

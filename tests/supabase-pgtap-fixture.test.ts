@@ -19,6 +19,10 @@ const favoriteFixture = readFileSync(
   join(process.cwd(), "supabase", "tests", "course_favorites.test.sql"),
   "utf8",
 );
+const accountSettingsFixture = readFileSync(
+  join(process.cwd(), "supabase", "tests", "learner_account_settings.test.sql"),
+  "utf8",
+);
 
 describe("Supabase pgTAP role matrix fixture", () => {
   it("is transaction-scoped with a matching pgTAP plan", () => {
@@ -121,5 +125,37 @@ describe("course favorite pgTAP privilege fixture", () => {
       "a draft course cannot be added through the favorite RPC",
     );
     expect(favoriteFixture).toContain("does not touch another learner");
+  });
+});
+
+describe("learner account settings pgTAP privilege fixture", () => {
+  it("is transaction-scoped with a matching twenty-six-assertion plan", () => {
+    expect(accountSettingsFixture.trimStart().startsWith("begin;")).toBe(true);
+    expect(accountSettingsFixture.trimEnd().endsWith("rollback;")).toBe(true);
+    expect(accountSettingsFixture).toContain("select extensions.plan(26);");
+    const assertions = (
+      accountSettingsFixture.match(
+        /select extensions.(?:ok|results_eq|throws_ok|is)\(/g,
+      ) ?? []
+    ).length;
+    expect(assertions).toBe(26);
+  });
+
+  it("covers owner isolation, PII capability separation and anonymization", () => {
+    expect(accountSettingsFixture).toContain(
+      "a learner reads only their own account settings",
+    );
+    expect(accountSettingsFixture).toContain(
+      "authenticated learners cannot read account PII ciphertext",
+    );
+    expect(accountSettingsFixture).toContain(
+      "a stale edit cannot overwrite newer learner settings",
+    );
+    expect(accountSettingsFixture).toContain(
+      "encrypted optional profile data is purged on anonymization",
+    );
+    expect(accountSettingsFixture).toContain(
+      "an anonymized learner cannot recreate account settings",
+    );
   });
 });

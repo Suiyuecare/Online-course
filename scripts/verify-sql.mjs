@@ -31,6 +31,10 @@ const expectedFiles = [
   "20260727151249_fix_public_catalog_capabilities.sql",
   "20260728133925_professional_learner_profiles.sql",
   "20260728145659_learner_course_favorites.sql",
+  "20260728154230_learner_account_settings.sql",
+  "20260728154702_fix_request_person_id_rls_capability.sql",
+  "20260728154828_fix_audit_owner_digest_capability.sql",
+  "20260728161422_lock_learner_account_settings_server_write.sql",
 ];
 if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) {
   throw new Error(

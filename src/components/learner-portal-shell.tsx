@@ -202,7 +202,7 @@ function AccountDrawer({
                 <p>學習</p>
                 <Link href="/learner/account" onClick={closeDrawer}>
                   <LearnerPortalIcon name="account" />
-                  個人檔案
+                  我的專業頁
                 </Link>
                 <Link href="/learner/favorites" onClick={closeDrawer}>
                   <LearnerPortalIcon name="bookmark" />
@@ -228,7 +228,7 @@ function AccountDrawer({
                 <p>設定與協助</p>
                 <Link href="/learner/settings" onClick={closeDrawer}>
                   <LearnerPortalIcon name="settings" />
-                  帳號設定
+                  帳號與個人資料
                 </Link>
                 <Link href="/support" onClick={closeDrawer}>
                   <LearnerPortalIcon name="support" />
