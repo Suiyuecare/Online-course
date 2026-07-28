@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ShowcaseCourse } from "@/content/showcase-courses";
+import { ToggleShowcaseFavorite } from "@/components/learner-course-actions";
 
 const deliveryLabels = {
   recorded: "錄播",
@@ -8,7 +9,13 @@ const deliveryLabels = {
   hybrid: "錄播＋直播",
 };
 
-export function ShowcaseCourseCard({ course }: { course: ShowcaseCourse }) {
+export function ShowcaseCourseCard({
+  course,
+  learnerMode = false,
+}: {
+  course: ShowcaseCourse;
+  learnerMode?: boolean;
+}) {
   return (
     <article className="course-card showcase-course-card">
       <Link
@@ -37,7 +44,7 @@ export function ShowcaseCourseCard({ course }: { course: ShowcaseCourse }) {
         <ul className="course-facts" aria-label="課程資訊">
           <li>{course.durationMinutes} 分鐘</li>
           <li>{course.lessonCount} 個單元</li>
-          <li>{deliveryLabels[course.deliveryType]}</li>
+          <li>{course.creditType}</li>
         </ul>
         <div className="course-meta">
           <strong>
@@ -46,12 +53,15 @@ export function ShowcaseCourseCard({ course }: { course: ShowcaseCourse }) {
           </strong>
           <span>尚未開放報名</span>
         </div>
-        <Link
-          className="button secondary"
-          href={`/courses/demo/${course.slug}`}
-        >
-          看課程示範
-        </Link>
+        <div className="learner-course-card-actions">
+          <Link
+            className="button secondary"
+            href={`/courses/demo/${course.slug}`}
+          >
+            看課程示範
+          </Link>
+          {learnerMode && <ToggleShowcaseFavorite course={course} />}
+        </div>
       </div>
     </article>
   );

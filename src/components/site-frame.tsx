@@ -12,12 +12,20 @@ function isClassroomPath(pathname: string): boolean {
   );
 }
 
+function isLearnerPortalPath(pathname: string): boolean {
+  return pathname === "/learner" || pathname.startsWith("/learner/");
+}
+
 export function SiteFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const classroom = isClassroomPath(pathname);
 
   if (classroom) {
     return <main className="classroom-site-main">{children}</main>;
+  }
+
+  if (isLearnerPortalPath(pathname)) {
+    return children;
   }
 
   return (

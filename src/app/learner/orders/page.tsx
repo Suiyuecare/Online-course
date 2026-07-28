@@ -13,7 +13,7 @@ export default async function LearnerOrdersPage() {
     orders = await readOwnOrders(supabase);
   } catch {
     return (
-      <section className="page-shell shell">
+      <section className="learner-portal-page learner-portal-shell-width">
         <p className="eyebrow">我的訂單</p>
         <h1>目前無法讀取訂單</h1>
         <div className="warning-panel">
@@ -26,9 +26,15 @@ export default async function LearnerOrdersPage() {
     );
   }
   return (
-    <section className="dashboard-page shell">
-      <p className="eyebrow">付款與退款</p>
-      <h1>我的訂單</h1>
+    <section className="learner-portal-page learner-portal-shell-width">
+      <header className="learner-page-heading">
+        <div>
+          <p className="learner-kicker">付款與退款</p>
+          <h1>我的訂單</h1>
+          <p>查看匯款期限、補件、確認、取消與退款進度。</p>
+        </div>
+        {orders.length > 0 && <strong>{orders.length} 筆紀錄</strong>}
+      </header>
       {orders.length === 0 ? (
         <div className="empty-state">
           <h2>目前沒有訂單</h2>

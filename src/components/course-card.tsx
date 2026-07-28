@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { CatalogCourse } from "@/infrastructure/supabase/catalog";
+import { AddOfficialCourseToCart } from "@/components/learner-course-actions";
 
 const deliveryLabels = {
   recorded: "錄播",
@@ -8,7 +9,13 @@ const deliveryLabels = {
   hybrid: "錄播＋直播",
 };
 
-export function CourseCard({ course }: { course: CatalogCourse }) {
+export function CourseCard({
+  course,
+  learnerMode = false,
+}: {
+  course: CatalogCourse;
+  learnerMode?: boolean;
+}) {
   return (
     <article className="course-card">
       <div className="course-visual" aria-hidden="true">
@@ -41,9 +48,12 @@ export function CourseCard({ course }: { course: CatalogCourse }) {
               : "積分依核定結果"}
           </span>
         </div>
-        <Link className="button secondary" href={`/courses/${course.slug}`}>
-          查看課程
-        </Link>
+        <div className="learner-course-card-actions">
+          <Link className="button secondary" href={`/courses/${course.slug}`}>
+            查看課程
+          </Link>
+          {learnerMode && <AddOfficialCourseToCart course={course} />}
+        </div>
       </div>
     </article>
   );

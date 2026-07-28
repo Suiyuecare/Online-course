@@ -2,20 +2,27 @@
 
 import { useState } from "react";
 import type { ShowcaseCourse } from "@/content/showcase-courses";
-import { showcaseCategories } from "@/content/showcase-courses";
+import {
+  showcaseCategories,
+  showcaseCreditTypes,
+} from "@/content/showcase-courses";
 import { ShowcaseCourseCard } from "@/components/showcase-course-card";
 
 export function ShowcaseCourseExplorer({
   courses,
   initialCategory = "全部課程",
+  learnerMode = false,
 }: {
   courses: ShowcaseCourse[];
   initialCategory?: (typeof showcaseCategories)[number];
+  learnerMode?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] =
     useState<(typeof showcaseCategories)[number]>(initialCategory);
   const [deliveryType, setDeliveryType] = useState("all");
+  const [creditType, setCreditType] =
+    useState<(typeof showcaseCreditTypes)[number]>("全部積分屬性");
 
   const normalizedQuery = query.trim().toLocaleLowerCase("zh-Hant-TW");
   const visibleCourses = courses.filter((course) => {
@@ -28,12 +35,16 @@ export function ShowcaseCourseExplorer({
       category === "全部課程" || course.category === category;
     const matchesDelivery =
       deliveryType === "all" || course.deliveryType === deliveryType;
-    return matchesQuery && matchesCategory && matchesDelivery;
+    const matchesCreditType =
+      creditType === "全部積分屬性" || course.creditType === creditType;
+    return (
+      matchesQuery && matchesCategory && matchesDelivery && matchesCreditType
+    );
   });
 
   return (
     <div className="course-explorer">
-      <div className="course-filter-panel">
+      <div className="course-filter-panel" id="course-search">
         <label>
           搜尋課程
           <input
@@ -42,6 +53,23 @@ export function ShowcaseCourseExplorer({
             type="search"
             value={query}
           />
+        </label>
+        <label>
+          積分屬性
+          <select
+            onChange={(event) =>
+              setCreditType(
+                event.target.value as (typeof showcaseCreditTypes)[number],
+              )
+            }
+            value={creditType}
+          >
+            {showcaseCreditTypes.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
         </label>
         <label>
           課程形式
@@ -80,7 +108,11 @@ export function ShowcaseCourseExplorer({
       {visibleCourses.length ? (
         <div className="course-grid">
           {visibleCourses.map((course) => (
-            <ShowcaseCourseCard course={course} key={course.slug} />
+            <ShowcaseCourseCard
+              course={course}
+              key={course.slug}
+              learnerMode={learnerMode}
+            />
           ))}
         </div>
       ) : (
