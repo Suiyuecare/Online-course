@@ -60,4 +60,26 @@ describe("digital classroom course runner", () => {
     expect(runner).toContain("不保存進度");
     expect(page).toContain("<ShowcaseCourseRunner");
   });
+
+  it("shares the current finance-system palette and navigation treatment", () => {
+    const styles = source("src/app/globals.css");
+
+    for (const token of [
+      "--orange: #f08a24",
+      "--orange-dark: #c86112",
+      "--page: #f7f3ec",
+      "--cream: #fffaf2",
+      "--cream-deep: #f7ecd8",
+      "--ink: #3d210d",
+      "--muted: #836f60",
+      "--line: #ead3b3",
+      "--navy: #1f2430",
+      "--navy-deep: #171b24",
+    ]) {
+      expect(styles).toContain(token);
+    }
+    expect(styles).toContain(".course-runner-task-rail {");
+    expect(styles).toContain("var(--navy) 0%");
+    expect(styles).toContain("var(--navy-deep) 100%");
+  });
 });

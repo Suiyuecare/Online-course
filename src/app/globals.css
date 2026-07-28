@@ -1,16 +1,22 @@
 :root {
-  --orange: #ea880c;
-  --orange-dark: #9a4700;
-  --orange-deep: #713500;
-  --cream: #fff8ed;
-  --cream-deep: #f8ead5;
-  --ink: #30251d;
-  --muted: #6f6258;
-  --line: #e6d4bd;
+  /* Shared Suiyue system palette — aligned with the finance platform. */
+  --orange: #f08a24;
+  --orange-dark: #c86112;
+  --orange-deep: #9a4700;
+  --page: #f7f3ec;
+  --cream: #fffaf2;
+  --cream-deep: #f7ecd8;
+  --surface-soft: #f8f1e7;
+  --ink: #3d210d;
+  --muted: #836f60;
+  --line: #ead3b3;
   --white: #ffffff;
   --success: #176b4a;
   --warning: #8a3e00;
-  --shadow: 0 16px 45px rgb(82 47 15 / 10%);
+  --navy: #1f2430;
+  --navy-deep: #171b24;
+  --navy-line: #2d3f55;
+  --shadow: 0 22px 70px rgb(83 43 11 / 10%);
   --radius: 24px;
   --font-sans:
     "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
@@ -21,7 +27,7 @@
 }
 
 html {
-  background: var(--cream);
+  background: var(--page);
   color: var(--ink);
   scroll-behavior: smooth;
 }
@@ -55,8 +61,8 @@ a {
 
 .site-header {
   align-items: center;
-  background: rgb(255 248 237 / 94%);
-  border-bottom: 1px solid rgb(230 212 189 / 70%);
+  background: rgb(255 250 242 / 94%);
+  border-bottom: 1px solid rgb(234 211 179 / 76%);
   display: flex;
   justify-content: space-between;
   min-height: 76px;
@@ -2681,10 +2687,10 @@ dd {
 }
 
 .course-runner {
-  --runner-border: #e4ded6;
-  --runner-muted: #736d66;
-  background: #f4f1ed;
-  color: #2f2a25;
+  --runner-border: #ead3b3;
+  --runner-muted: #836f60;
+  background: var(--page);
+  color: var(--ink);
   display: flex;
   flex-direction: column;
   height: 100dvh;
@@ -2772,7 +2778,7 @@ dd {
 
 .course-runner-progress-track,
 .quiz-progress-track {
-  background: #eee8e1;
+  background: #f0dfcd;
   border-radius: 999px;
   height: 8px;
   overflow: hidden;
@@ -2780,7 +2786,7 @@ dd {
 
 .course-runner-progress-track > span,
 .quiz-progress-track > span {
-  background: linear-gradient(90deg, var(--orange), #f5af3f);
+  background: linear-gradient(90deg, var(--orange-dark), var(--orange));
   border-radius: inherit;
   display: block;
   height: 100%;
@@ -2824,8 +2830,8 @@ dd {
 
 .course-runner-demo-notice {
   align-items: center;
-  background: #fff2d9;
-  border-bottom: 1px solid #f0c67f;
+  background: #fff2dc;
+  border-bottom: 1px solid #f0c987;
   display: flex;
   font-size: 13px;
   gap: 12px;
@@ -2849,8 +2855,8 @@ dd {
 
 .course-runner-mobile-nav button {
   align-items: center;
-  background: #fff8ed;
-  border: 1px solid #edd7b9;
+  background: var(--cream);
+  border: 1px solid var(--line);
   border-radius: 11px;
   color: var(--orange-deep);
   display: flex;
@@ -2879,7 +2885,9 @@ dd {
 }
 
 .course-runner-task-rail {
-  border-right: 1px solid var(--runner-border);
+  background: linear-gradient(180deg, var(--navy) 0%, var(--navy-deep) 100%);
+  border-right: 1px solid var(--navy-line);
+  color: #fff;
   padding: 22px 16px;
 }
 
@@ -2919,6 +2927,15 @@ dd {
   min-width: 44px;
 }
 
+.course-runner-task-rail .course-runner-panel-heading span {
+  color: #aab3c2;
+}
+
+.course-runner-task-rail .course-runner-panel-heading strong,
+.course-runner-task-rail .course-runner-panel-heading > button {
+  color: #fff;
+}
+
 .course-runner-task-rail > ol,
 .course-runner-curriculum ol {
   display: grid;
@@ -2933,7 +2950,7 @@ dd {
   background: transparent;
   border: 1px solid transparent;
   border-radius: 14px;
-  color: inherit;
+  color: #b8c1cf;
   display: grid;
   gap: 9px;
   grid-template-columns: 28px minmax(0, 1fr);
@@ -2944,15 +2961,21 @@ dd {
 
 .course-runner-task-rail li > button:hover,
 .course-runner-task-rail li > button[aria-current="step"] {
-  background: #fff7e9;
-  border-color: #efcf9f;
+  background: linear-gradient(
+    90deg,
+    rgb(240 138 36 / 28%),
+    rgb(240 138 36 / 8%)
+  );
+  border-color: rgb(240 138 36 / 20%);
+  color: #fff;
+  box-shadow: inset 3px 0 0 var(--orange);
 }
 
 .course-runner-task-rail li > button > span:first-child {
   align-items: center;
-  background: #eee9e3;
+  background: rgb(255 255 255 / 9%);
   border-radius: 50%;
-  color: #6f6962;
+  color: #b8c1cf;
   display: flex;
   font-size: 13px;
   font-style: normal;
@@ -2963,8 +2986,8 @@ dd {
 }
 
 .course-runner-task-rail li > button.task-complete > span:first-child {
-  background: #e2f3eb;
-  color: #176b4a;
+  background: rgb(255 255 255 / 14%);
+  color: #9dd9bf;
 }
 
 .course-runner-task-rail li > button.task-current > span:first-child {
@@ -2988,12 +3011,12 @@ dd {
 }
 
 .course-runner-task-rail li small {
-  color: var(--runner-muted);
+  color: #aab3c2;
   font-size: 11px;
 }
 
 .course-runner-task-rail li em {
-  color: var(--runner-muted);
+  color: #7c8798;
   font-size: 10px;
   font-style: normal;
   font-weight: 800;
@@ -3001,7 +3024,8 @@ dd {
 }
 
 .course-runner-help {
-  background: #f7f4f0;
+  background: rgb(255 255 255 / 6%);
+  border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 15px;
   display: grid;
   font-size: 12px;
@@ -3011,12 +3035,12 @@ dd {
 }
 
 .course-runner-help p {
-  color: var(--runner-muted);
+  color: #aab3c2;
   margin: 0;
 }
 
 .course-runner-help a {
-  color: var(--orange-dark);
+  color: #f6b35d;
   font-weight: 900;
 }
 
@@ -3063,8 +3087,8 @@ dd {
 
 .course-runner-curriculum li > button:hover:not(:disabled),
 .course-runner-curriculum li > button[aria-current="page"] {
-  background: #fff7e9;
-  border-color: #efcf9f;
+  background: var(--cream);
+  border-color: #f0c987;
 }
 
 .course-runner-curriculum li > button:disabled {
@@ -3074,7 +3098,7 @@ dd {
 
 .activity-kind {
   align-items: center;
-  background: #eee9e3;
+  background: var(--surface-soft);
   border-radius: 9px;
   color: #6d655e;
   display: flex;
@@ -3086,8 +3110,8 @@ dd {
 }
 
 .activity-kind.kind-video {
-  background: #fff0d5;
-  color: #9a4700;
+  background: #fff0d6;
+  color: var(--orange-dark);
 }
 
 .activity-kind.kind-quiz {
@@ -3125,8 +3149,8 @@ dd {
 
 .course-runner-content {
   background:
-    radial-gradient(circle at 88% 8%, rgb(234 136 12 / 8%), transparent 24%),
-    #f5f2ee;
+    radial-gradient(circle at 88% 8%, rgb(240 138 36 / 9%), transparent 24%),
+    var(--page);
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
@@ -3194,7 +3218,7 @@ dd {
 }
 
 .course-runner-footer > button:hover:not(:disabled) {
-  background: #fff8ed;
+  background: var(--cream);
 }
 
 .course-runner-footer > button:disabled {
@@ -3242,7 +3266,7 @@ dd {
 }
 
 .course-runner-scrim {
-  background: rgb(28 24 21 / 48%);
+  background: rgb(23 27 36 / 58%);
   border: 0;
   display: none;
   inset: 0;
