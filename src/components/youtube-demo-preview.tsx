@@ -2,16 +2,19 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { youtubeThumbnail } from "@/content/showcase-courses";
 
 export function YouTubeDemoPreview({
   youtubeId,
   title,
   publisher,
+  posterImage,
+  posterAlt,
 }: {
   youtubeId: string;
   title: string;
   publisher: string;
+  posterImage: string;
+  posterAlt: string;
 }) {
   const [loaded, setLoaded] = useState(false);
 
@@ -29,11 +32,11 @@ export function YouTubeDemoPreview({
         ) : (
           <>
             <Image
-              alt={`${title}影片預覽`}
+              alt={posterAlt}
               fill
               priority
               sizes="(max-width: 900px) 100vw, 65vw"
-              src={youtubeThumbnail(youtubeId)}
+              src={posterImage}
             />
             <button onClick={() => setLoaded(true)} type="button">
               <span aria-hidden="true">▶</span>

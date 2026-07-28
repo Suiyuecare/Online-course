@@ -64,6 +64,8 @@ export function ShowcaseCourseDetail({ course }: { course: ShowcaseCourse }) {
       <section className="showcase-course-content shell">
         <div>
           <YouTubeDemoPreview
+            posterAlt={course.coverAlt}
+            posterImage={course.coverImage}
             publisher={course.youtubePublisher}
             title={course.youtubeTitle}
             youtubeId={course.youtubeId}

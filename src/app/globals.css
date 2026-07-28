@@ -1536,15 +1536,6 @@ dd {
   font-size: clamp(25px, 3vw, 38px);
 }
 
-.photo-credit {
-  bottom: 12px;
-  color: rgb(255 255 255 / 82%);
-  font-size: 11px;
-  position: absolute;
-  right: 14px;
-  z-index: 3;
-}
-
 .home-proof-band {
   background: var(--ink);
   color: var(--white);

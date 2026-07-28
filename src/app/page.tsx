@@ -52,20 +52,12 @@ export default async function Home() {
             fill
             priority
             sizes="(max-width: 900px) 100vw, 42vw"
-            src="https://images.unsplash.com/photo-1773227060446-93239a553f1f?auto=format&fit=crop&w=1400&q=86"
+            src="/images/suiyue-original/home-hero-care-activity.jpg"
           />
           <figcaption>
             <span>課程、進度、測驗</span>
             <strong>一支手機就能完成</strong>
           </figcaption>
-          <a
-            className="photo-credit"
-            href="https://unsplash.com/photos/mH448Q_xLs4"
-            rel="noreferrer"
-            target="_blank"
-          >
-            Photo: Age Cymru / Unsplash
-          </a>
         </figure>
       </section>
 
@@ -229,22 +221,14 @@ export default async function Home() {
         </div>
         <figure>
           <Image
-            alt="兩位使用輔具的長者一起行走"
+            alt="長照機構主管與照護團隊一起查看線上培訓進度"
             fill
             sizes="(max-width: 900px) 100vw, 42vw"
-            src="https://images.unsplash.com/photo-1764407429253-bd0bdf036966?auto=format&fit=crop&w=1200&q=84"
+            src="/images/suiyue-original/organization-training-team.jpg"
           />
           <figcaption>
             培訓資料整理好，照護團隊才有更多時間陪伴長者。
           </figcaption>
-          <a
-            className="photo-credit"
-            href="https://unsplash.com/photos/8zc2VKw43NQ"
-            rel="noreferrer"
-            target="_blank"
-          >
-            Photo: Jenya Shportiak / Unsplash
-          </a>
         </figure>
       </section>
     </>

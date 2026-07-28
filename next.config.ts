@@ -59,20 +59,6 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "i.ytimg.com",
-        pathname: "/vi/**",
-      },
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-        pathname: "/**",
-      },
-    ],
-  },
   poweredByHeader: false,
   reactStrictMode: true,
   serverExternalPackages: ["exceljs"],

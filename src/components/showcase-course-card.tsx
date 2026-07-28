@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ShowcaseCourse } from "@/content/showcase-courses";
-import { youtubeThumbnail } from "@/content/showcase-courses";
 
 const deliveryLabels = {
   recorded: "錄播",
@@ -18,10 +17,10 @@ export function ShowcaseCourseCard({ course }: { course: ShowcaseCourse }) {
         href={`/courses/demo/${course.slug}`}
       >
         <Image
-          alt={`${course.title}的官方公開影片預覽畫面`}
+          alt={course.coverAlt}
           fill
           sizes="(max-width: 760px) 100vw, (max-width: 1100px) 50vw, 33vw"
-          src={youtubeThumbnail(course.youtubeId)}
+          src={course.coverImage}
         />
         <span className="showcase-label">網站功能示範</span>
         <div>

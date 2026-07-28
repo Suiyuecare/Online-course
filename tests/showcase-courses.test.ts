@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -34,9 +34,21 @@ describe("public showcase courses", () => {
     expect(new Set(showcaseCourses.map((course) => course.youtubeId))).toEqual(
       verifiedEmbeddableVideos,
     );
+    expect(
+      new Set(showcaseCourses.map((course) => course.coverImage)).size,
+    ).toBe(8);
 
     for (const course of showcaseCourses) {
       expect(course.youtubeId).toMatch(/^[A-Za-z0-9_-]{11}$/);
+      expect(course.coverImage).toMatch(
+        /^\/images\/suiyue-original\/course-[a-z-]+\.jpg$/,
+      );
+      expect(
+        existsSync(
+          resolve(process.cwd(), "public", course.coverImage.slice(1)),
+        ),
+      ).toBe(true);
+      expect(course.coverAlt.length).toBeGreaterThan(12);
       expect(course.learningObjectives.length).toBeGreaterThanOrEqual(3);
       expect(course.audience.length).toBeGreaterThanOrEqual(3);
       expect(
@@ -70,11 +82,18 @@ describe("public showcase courses", () => {
     expect(formalRoute).not.toContain("showcaseCourse");
   });
 
-  it("allows only the exact showcase media hosts", () => {
+  it("keeps showcase imagery self-hosted and stock-library free", () => {
     const config = source("next.config.ts");
+    const home = source("src/app/page.tsx");
+    const card = source("src/components/showcase-course-card.tsx");
+    const preview = source("src/components/youtube-demo-preview.tsx");
+
     expect(config).toContain("https://www.youtube-nocookie.com");
-    expect(config).toContain('hostname: "i.ytimg.com"');
-    expect(config).toContain('hostname: "images.unsplash.com"');
+    expect(config).not.toContain("i.ytimg.com");
+    expect(config).not.toContain("images.unsplash.com");
+    expect(home).not.toMatch(/unsplash|pexels|pixabay/i);
+    expect(card).toContain("course.coverImage");
+    expect(preview).toContain("posterImage");
     expect(config).not.toContain("https://*.youtube.com");
   });
 

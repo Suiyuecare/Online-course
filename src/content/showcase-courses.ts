@@ -10,6 +10,8 @@ export type ShowcaseCourse = {
   lessonCount: number;
   displayPriceTwd: number;
   accreditationLabel: string;
+  coverImage: string;
+  coverAlt: string;
   youtubeId: string;
   youtubeTitle: string;
   youtubePublisher: string;
@@ -49,6 +51,8 @@ export const showcaseCourses: ShowcaseCourse[] = [
     lessonCount: 7,
     displayPriceTwd: 680,
     accreditationLabel: "積分資格待正式核定",
+    coverImage: "/images/suiyue-original/course-dementia-care.jpg",
+    coverAlt: "照護工作者陪伴失智長者進行記憶卡活動",
     youtubeId: "qimRv1gJblQ",
     youtubeTitle: "失智的第一堂課：愛的陪伴，失智的溫柔處方",
     youtubePublisher: "中華民國衛生福利部",
@@ -88,6 +92,8 @@ export const showcaseCourses: ShowcaseCourse[] = [
     lessonCount: 6,
     displayPriceTwd: 520,
     accreditationLabel: "積分資格待正式核定",
+    coverImage: "/images/suiyue-original/course-family-support.jpg",
+    coverAlt: "照顧協調員與家庭討論長照支持安排",
     youtubeId: "vGoGa-IZNJg",
     youtubeTitle: "有您真好，讓照顧不必孤軍奮戰",
     youtubePublisher: "中華民國衛生福利部",
@@ -127,6 +133,8 @@ export const showcaseCourses: ShowcaseCourse[] = [
     lessonCount: 6,
     displayPriceTwd: 480,
     accreditationLabel: "積分資格待正式核定",
+    coverImage: "/images/suiyue-original/course-long-term-care-policy.jpg",
+    coverAlt: "社區照顧人員向長者說明長照服務資源",
     youtubeId: "nL3fz7w42b8",
     youtubeTitle: "【長照政策簡介影片】中文簡版",
     youtubePublisher: "中華民國衛生福利部",
@@ -166,6 +174,8 @@ export const showcaseCourses: ShowcaseCourse[] = [
     lessonCount: 7,
     displayPriceTwd: 720,
     accreditationLabel: "積分資格待正式核定",
+    coverImage: "/images/suiyue-original/course-community-day-care.jpg",
+    coverAlt: "長者與孩子在日照中心一起完成共融活動",
     youtubeId: "G_3NbxHjhY0",
     youtubeTitle: "校舍活化轉日照：老幼共融新樂園",
     youtubePublisher: "中華民國衛生福利部",
@@ -205,6 +215,8 @@ export const showcaseCourses: ShowcaseCourse[] = [
     lessonCount: 8,
     displayPriceTwd: 920,
     accreditationLabel: "積分資格待正式核定",
+    coverImage: "/images/suiyue-original/course-swallowing-safety.jpg",
+    coverAlt: "專業人員示範高齡進食與吞嚥安全協助",
     youtubeId: "siMWhAyQ5Co",
     youtubeTitle: "吞嚥復健系列 1－認識吞嚥障礙",
     youtubePublisher: "臺大醫院 NTU Hospital",
@@ -244,6 +256,8 @@ export const showcaseCourses: ShowcaseCourse[] = [
     lessonCount: 7,
     displayPriceTwd: 590,
     accreditationLabel: "積分資格待正式核定",
+    coverImage: "/images/suiyue-original/course-stroke-rehab.jpg",
+    coverAlt: "治療人員陪伴中風長者進行居家復能活動",
     youtubeId: "uOhzqAkW7SI",
     youtubeTitle: "中風後痙攣照護：居家復健運動",
     youtubePublisher: "臺大醫院 NTU Hospital",
@@ -283,6 +297,8 @@ export const showcaseCourses: ShowcaseCourse[] = [
     lessonCount: 5,
     displayPriceTwd: 880,
     accreditationLabel: "積分資格待正式核定",
+    coverImage: "/images/suiyue-original/course-icope-assessment.jpg",
+    coverAlt: "照護團隊陪伴長者進行起身與健康評估",
     youtubeId: "A4rVWXvP2j4",
     youtubeTitle: "什麼是長者健康整合式評估（ICOPE）",
     youtubePublisher: "國民健康署健康九九",
@@ -322,6 +338,8 @@ export const showcaseCourses: ShowcaseCourse[] = [
     lessonCount: 8,
     displayPriceTwd: 760,
     accreditationLabel: "積分資格待正式核定",
+    coverImage: "/images/suiyue-original/course-infection-control.jpg",
+    coverAlt: "長照工作人員一起練習正確手部衛生步驟",
     youtubeId: "Awg6uDbbFvI",
     youtubeTitle: "長期照護機構因應 COVID-19 手部衛生實務介紹",
     youtubePublisher: "衛生福利部疾病管制署",
@@ -354,8 +372,4 @@ export const showcaseCourses: ShowcaseCourse[] = [
 
 export function showcaseCourse(slug: string) {
   return showcaseCourses.find((course) => course.slug === slug) ?? null;
-}
-
-export function youtubeThumbnail(youtubeId: string) {
-  return `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`;
 }
