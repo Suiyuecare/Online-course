@@ -361,12 +361,17 @@ function PortalChrome({
 export function LearnerPortalShell({
   children,
   identity,
+  initialFavoriteSlugs,
 }: {
   children: ReactNode;
   identity: LearnerIdentity;
+  initialFavoriteSlugs: string[];
 }) {
   return (
-    <LearnerPortalProvider accountId={identity.accountId}>
+    <LearnerPortalProvider
+      accountId={identity.accountId}
+      initialFavoriteSlugs={initialFavoriteSlugs}
+    >
       <PortalChrome identity={identity}>{children}</PortalChrome>
     </LearnerPortalProvider>
   );

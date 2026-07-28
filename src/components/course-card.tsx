@@ -1,7 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { CatalogCourse } from "@/infrastructure/supabase/catalog";
-import { AddOfficialCourseToCart } from "@/components/learner-course-actions";
+import {
+  AddOfficialCourseToCart,
+  ToggleOfficialCourseFavorite,
+} from "@/components/learner-course-actions";
 
 const deliveryLabels = {
   recorded: "錄播",
@@ -52,7 +55,12 @@ export function CourseCard({
           <Link className="button secondary" href={`/courses/${course.slug}`}>
             查看課程
           </Link>
-          {learnerMode && <AddOfficialCourseToCart course={course} />}
+          {learnerMode && (
+            <>
+              <ToggleOfficialCourseFavorite course={course} />
+              <AddOfficialCourseToCart course={course} />
+            </>
+          )}
         </div>
       </div>
     </article>

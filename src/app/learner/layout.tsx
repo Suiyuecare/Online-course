@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import { readOwnCourseFavorites } from "@/application/course-favorites";
 import { LearnerPortalShell } from "@/components/learner-portal-shell";
 import { requireUser } from "@/infrastructure/supabase/server";
 
@@ -20,10 +21,13 @@ export default async function LearnerLayout({
   const { supabase, user } = await requireUser().catch(() =>
     redirect("/login"),
   );
-  const { data: professionalProfile } = await supabase
-    .from("professional_profiles")
-    .select("public_name,avatar_upload_id,updated_at")
-    .maybeSingle();
+  const [{ data: professionalProfile }, favorites] = await Promise.all([
+    supabase
+      .from("professional_profiles")
+      .select("public_name,avatar_upload_id,updated_at")
+      .maybeSingle(),
+    readOwnCourseFavorites(supabase).catch(() => []),
+  ]);
   const metadataName =
     typeof user.user_metadata.display_name === "string"
       ? user.user_metadata.display_name.trim()
@@ -45,6 +49,7 @@ export default async function LearnerLayout({
             )}`
           : null,
       }}
+      initialFavoriteSlugs={favorites.map((favorite) => favorite.slug)}
     >
       {children}
     </LearnerPortalShell>

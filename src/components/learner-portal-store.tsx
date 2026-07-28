@@ -19,21 +19,21 @@ export type LearnerCartItem = {
 
 type LearnerPortalState = {
   cart: LearnerCartItem[];
-  favoriteSlugs: string[];
 };
 
 type LearnerPortalContextValue = LearnerPortalState & {
+  favoriteSlugs: string[];
+  favoritePendingSlugs: string[];
   hydrated: boolean;
   addCartItem: (item: LearnerCartItem) => void;
   removeCartItem: (courseVersionId: string) => void;
-  toggleFavorite: (slug: string) => void;
+  toggleFavorite: (slug: string) => Promise<void>;
   isFavorite: (slug: string) => boolean;
   announcement: string;
 };
 
 const emptyState: LearnerPortalState = {
   cart: [],
-  favoriteSlugs: [],
 };
 
 const LearnerPortalContext = createContext<LearnerPortalContextValue | null>(
@@ -78,17 +78,7 @@ function parseState(value: string | null): LearnerPortalState {
           );
         })
       : [];
-    const favoriteSlugs = Array.isArray(candidate.favoriteSlugs)
-      ? Array.from(
-          new Set(
-            candidate.favoriteSlugs.filter(
-              (slug): slug is string =>
-                typeof slug === "string" && slugPattern.test(slug),
-            ),
-          ),
-        )
-      : [];
-    return { cart, favoriteSlugs };
+    return { cart };
   } catch {
     return emptyState;
   }
@@ -97,12 +87,22 @@ function parseState(value: string | null): LearnerPortalState {
 export function LearnerPortalProvider({
   accountId,
   children,
+  initialFavoriteSlugs,
 }: {
   accountId: string;
   children: ReactNode;
+  initialFavoriteSlugs: string[];
 }) {
   const storageKey = `suiyue:learner-portal:${accountId}:v1`;
   const [state, setState] = useState<LearnerPortalState>(emptyState);
+  const [favoriteSlugs, setFavoriteSlugs] = useState(() =>
+    Array.from(
+      new Set(initialFavoriteSlugs.filter((slug) => slugPattern.test(slug))),
+    ),
+  );
+  const [favoritePendingSlugs, setFavoritePendingSlugs] = useState<string[]>(
+    [],
+  );
   const [hydrated, setHydrated] = useState(false);
   const [announcement, setAnnouncement] = useState("");
 
@@ -128,6 +128,8 @@ export function LearnerPortalProvider({
 
   const value: LearnerPortalContextValue = {
     ...state,
+    favoriteSlugs,
+    favoritePendingSlugs,
     hydrated,
     announcement,
     addCartItem(item) {
@@ -154,18 +156,52 @@ export function LearnerPortalProvider({
       });
       if (removed) setAnnouncement(`已從購物車移除 ${removed.title}。`);
     },
-    toggleFavorite(slug) {
-      const exists = state.favoriteSlugs.includes(slug);
-      save({
-        ...state,
-        favoriteSlugs: exists
-          ? state.favoriteSlugs.filter((item) => item !== slug)
-          : [...state.favoriteSlugs, slug],
-      });
-      setAnnouncement(exists ? "已取消收藏。" : "已加入我的收藏。");
+    async toggleFavorite(slug) {
+      if (!slugPattern.test(slug) || favoritePendingSlugs.includes(slug)) {
+        return;
+      }
+      const existed = favoriteSlugs.includes(slug);
+      const favorited = !existed;
+      setFavoritePendingSlugs((current) => [...current, slug]);
+      setFavoriteSlugs((current) =>
+        favorited
+          ? Array.from(new Set([...current, slug]))
+          : current.filter((item) => item !== slug),
+      );
+      setAnnouncement(favorited ? "正在加入收藏…" : "正在取消收藏…");
+      try {
+        const response = await fetch("/api/favorites", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "idempotency-key": crypto.randomUUID(),
+          },
+          body: JSON.stringify({ slug, favorited }),
+        });
+        const result = await response.json().catch(() => null);
+        if (
+          !response.ok ||
+          result?.data?.favorited !== favorited ||
+          result?.data?.slug !== slug
+        ) {
+          throw new Error(result?.error ?? "COURSE_FAVORITE_REJECTED");
+        }
+        setAnnouncement(favorited ? "已加入我的收藏。" : "已取消收藏。");
+      } catch {
+        setFavoriteSlugs((current) =>
+          existed
+            ? Array.from(new Set([...current, slug]))
+            : current.filter((item) => item !== slug),
+        );
+        setAnnouncement("收藏沒有更新，請稍後再試。");
+      } finally {
+        setFavoritePendingSlugs((current) =>
+          current.filter((item) => item !== slug),
+        );
+      }
     },
     isFavorite(slug) {
-      return state.favoriteSlugs.includes(slug);
+      return favoriteSlugs.includes(slug);
     },
   };
 

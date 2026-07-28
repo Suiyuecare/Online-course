@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ShowcaseCourse } from "@/content/showcase-courses";
-import { ToggleShowcaseFavorite } from "@/components/learner-course-actions";
 
 const deliveryLabels = {
   recorded: "錄播",
@@ -60,7 +59,9 @@ export function ShowcaseCourseCard({
           >
             看課程示範
           </Link>
-          {learnerMode && <ToggleShowcaseFavorite course={course} />}
+          {learnerMode && (
+            <span className="showcase-save-note">正式開放後可收藏</span>
+          )}
         </div>
       </div>
     </article>

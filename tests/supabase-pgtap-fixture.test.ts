@@ -15,6 +15,10 @@ const qualityFixture = readFileSync(
   ),
   "utf8",
 );
+const favoriteFixture = readFileSync(
+  join(process.cwd(), "supabase", "tests", "course_favorites.test.sql"),
+  "utf8",
+);
 
 describe("Supabase pgTAP role matrix fixture", () => {
   it("is transaction-scoped with a matching pgTAP plan", () => {
@@ -93,5 +97,29 @@ describe("quality and preview pgTAP privilege fixture", () => {
     expect(qualityFixture).toContain(
       "'public.read_survey_investigation(uuid,text)'",
     );
+  });
+});
+
+describe("course favorite pgTAP privilege fixture", () => {
+  it("is transaction-scoped with a matching ten-assertion plan", () => {
+    expect(favoriteFixture.trimStart().startsWith("begin;")).toBe(true);
+    expect(favoriteFixture.trimEnd().endsWith("rollback;")).toBe(true);
+    expect(favoriteFixture).toContain("select extensions.plan(10);");
+    const assertions = (
+      favoriteFixture.match(
+        /select extensions.(?:ok|results_eq|throws_ok|is)\(/g,
+      ) ?? []
+    ).length;
+    expect(assertions).toBe(10);
+  });
+
+  it("proves owner isolation, narrow privileges, and draft rejection", () => {
+    expect(favoriteFixture).toContain(
+      "a learner reads only their own favorite",
+    );
+    expect(favoriteFixture).toContain(
+      "a draft course cannot be added through the favorite RPC",
+    );
+    expect(favoriteFixture).toContain("does not touch another learner");
   });
 });
