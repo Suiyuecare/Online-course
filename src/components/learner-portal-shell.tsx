@@ -17,6 +17,7 @@ type LearnerIdentity = {
   displayName: string;
   maskedPhone: string;
   phoneVerified: boolean;
+  avatarUrl: string | null;
 };
 
 function isClassroomPath(pathname: string) {
@@ -114,7 +115,19 @@ function AccountDrawer({
             帳號
           </>
         ) : (
-          <span aria-hidden="true">{identity.displayName.slice(0, 1)}</span>
+          <span aria-hidden="true">
+            {identity.avatarUrl ? (
+              <Image
+                alt=""
+                fill
+                sizes="40px"
+                src={identity.avatarUrl}
+                unoptimized
+              />
+            ) : (
+              identity.displayName.slice(0, 1)
+            )}
+          </span>
         )}
       </button>
       {open &&
@@ -152,7 +165,17 @@ function AccountDrawer({
                 onClick={closeDrawer}
               >
                 <span className="learner-account-avatar" aria-hidden="true">
-                  {identity.displayName.slice(0, 1)}
+                  {identity.avatarUrl ? (
+                    <Image
+                      alt=""
+                      fill
+                      sizes="64px"
+                      src={identity.avatarUrl}
+                      unoptimized
+                    />
+                  ) : (
+                    identity.displayName.slice(0, 1)
+                  )}
                 </span>
                 <span>
                   <strong>{identity.displayName}</strong>

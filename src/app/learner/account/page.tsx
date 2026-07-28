@@ -1,36 +1,42 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import {
+  buildOwnProfessionalProfilePageData,
+  emptyProfessionalProfile,
+  readOwnProfessionalProfile,
+} from "@/application/professional-profile";
 import { readLearnerCenterRows } from "@/application/learner-center";
+import { readInstructorDashboard } from "@/application/workspace";
 import { LearnerPortalIcon } from "@/components/learner-portal-icon";
+import { ProfessionalProfileEditor } from "@/components/professional-profile-editor";
 import { requireUser } from "@/infrastructure/supabase/server";
-
-function maskedPhone(phone: string | undefined) {
-  if (!phone) return "尚未提供";
-  const local = phone.replace(/^\+886/, "0");
-  return /^09\d{8}$/.test(local)
-    ? `${local.slice(0, 4)} *** ${local.slice(-3)}`
-    : "已驗證手機";
-}
 
 export default async function LearnerAccountPage() {
   const { supabase, user } = await requireUser().catch(() =>
     redirect("/login"),
   );
-  const rows = await readLearnerCenterRows(supabase).catch(() => []);
-  const { count: unreadCount } = await supabase
-    .from("notifications")
-    .select("id", { count: "exact", head: true })
-    .is("read_at", null);
   const metadataName =
     typeof user.user_metadata.display_name === "string"
       ? user.user_metadata.display_name.trim()
       : "";
-  const displayName = metadataName || "歲悅學員";
-  const completedCount = rows.filter((row) =>
-    ["completed", "submitted", "credited"].includes(row.enrollment_status),
-  ).length;
-  const certificateCount = rows.filter((row) => row.certificate_id).length;
-
+  const fallbackName = metadataName || "歲悅學員";
+  const [rows, profile, instructorDashboard, unreadResult] = await Promise.all([
+    readLearnerCenterRows(supabase).catch(() => []),
+    readOwnProfessionalProfile(supabase, fallbackName).catch(() =>
+      emptyProfessionalProfile(fallbackName),
+    ),
+    readInstructorDashboard(supabase).catch(() => null),
+    supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .is("read_at", null),
+  ]);
+  const data = buildOwnProfessionalProfilePageData({
+    profile,
+    learnerRows: rows,
+    instructorDashboard,
+  });
+  const unreadCount = unreadResult.count ?? 0;
   const shortcuts = [
     {
       href: "/learner/favorites",
@@ -42,7 +48,7 @@ export default async function LearnerAccountPage() {
       href: "/learner/certificates",
       icon: "certificate" as const,
       title: "結訓證明",
-      detail: `${certificateCount} 份可查看`,
+      detail: `${data.certificateCount} 份可查看`,
     },
     {
       href: "/learner/orders",
@@ -71,57 +77,46 @@ export default async function LearnerAccountPage() {
   ];
 
   return (
-    <section className="learner-portal-page learner-portal-shell-width">
-      <header className="learner-page-heading">
-        <div>
-          <p className="learner-kicker">帳號</p>
-          <h1>{displayName}，你好</h1>
-          <p>個人購課、課程紀錄與證明都集中在這裡。</p>
-        </div>
-      </header>
-      <div className="learner-account-page-grid">
-        <article className="learner-profile-card">
-          <div className="learner-profile-avatar" aria-hidden="true">
-            {displayName.slice(0, 1)}
-          </div>
+    <div className="learner-professional-profile-page">
+      <div className="learner-portal-shell-width">
+        <header className="learner-page-heading professional">
           <div>
-            <span>個人檔案</span>
-            <h2>{displayName}</h2>
-            <p>{maskedPhone(user.phone)}</p>
+            <p className="learner-kicker">個人檔案</p>
+            <h1>你的長照專業個人頁</h1>
+            <p>
+              整理專長與學習成果，自行決定哪些內容可以被分享；正式身分資料仍維持私密。
+            </p>
           </div>
-          <dl>
+        </header>
+
+        <ProfessionalProfileEditor initialData={data} />
+
+        <section
+          aria-labelledby="account-tools-title"
+          className="learner-account-tools"
+        >
+          <div className="learner-section-heading">
             <div>
-              <dt>登入手機</dt>
-              <dd>{user.phone_confirmed_at ? "已驗證" : "待確認"}</dd>
+              <p className="learner-kicker">帳號與學習工具</p>
+              <h2 id="account-tools-title">其他常用功能</h2>
             </div>
-            <div>
-              <dt>已購／獲派課程</dt>
-              <dd>{rows.length} 門</dd>
-            </div>
-            <div>
-              <dt>已完成課程</dt>
-              <dd>{completedCount} 門</dd>
-            </div>
-          </dl>
-          <p className="learner-profile-note">
-            正式積分課的姓名、長照字號與身分資料會在報名後以加密流程另外確認，不會顯示在一般個人檔案。
-          </p>
-        </article>
-        <div className="learner-account-shortcuts">
-          {shortcuts.map((item) => (
-            <Link href={item.href} key={item.href}>
-              <span aria-hidden="true">
-                <LearnerPortalIcon name={item.icon} />
-              </span>
-              <span>
-                <strong>{item.title}</strong>
-                <small>{item.detail}</small>
-              </span>
-              <LearnerPortalIcon name="chevron" size={20} />
-            </Link>
-          ))}
-        </div>
+          </div>
+          <div className="learner-account-shortcuts">
+            {shortcuts.map((item) => (
+              <Link href={item.href} key={item.href}>
+                <span aria-hidden="true">
+                  <LearnerPortalIcon name={item.icon} />
+                </span>
+                <span>
+                  <strong>{item.title}</strong>
+                  <small>{item.detail}</small>
+                </span>
+                <LearnerPortalIcon name="chevron" size={20} />
+              </Link>
+            ))}
+          </div>
+        </section>
       </div>
-    </section>
+    </div>
   );
 }

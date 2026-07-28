@@ -71,6 +71,7 @@ export async function GET(request: Request) {
         "zoom_registrant_reconcile",
         "zoom_orphan_cleanup",
         "quarantine_scan",
+        "profile_media_purge",
       ]
     : null;
   const excludedJobTypes =
@@ -390,6 +391,10 @@ async function processJob(
   }
   if (job.job_type === "quarantine_scan") {
     await scanQuarantineUpload(z.uuid().parse(job.payload.uploadId));
+    return;
+  }
+  if (job.job_type === "profile_media_purge") {
+    await purgeProfileMedia(z.uuid().parse(job.payload.uploadId));
     return;
   }
   if (job.job_type === "live_attendance_settle") {
@@ -798,6 +803,9 @@ async function scanQuarantineUpload(uploadId: string) {
       safe: result.safe,
       reason: result.reason,
       sanitizedByteSize: result.sanitizedBytes?.byteLength ?? null,
+      sanitizedSha256: result.sanitizedBytes
+        ? createHash("sha256").update(result.sanitizedBytes).digest("hex")
+        : null,
     },
   });
   if (finishError) {
@@ -805,6 +813,50 @@ async function scanQuarantineUpload(uploadId: string) {
       await service.storage.from("safe-uploads").remove([promotedPath]);
     }
     throw new Error("QUARANTINE_SCAN_FINALIZE_FAILED");
+  }
+}
+
+async function purgeProfileMedia(uploadId: string) {
+  const service = serviceSupabase();
+  const { data, error } = await service.rpc("claim_profile_media_purge", {
+    p_upload_id: uploadId,
+  });
+  const context = z
+    .discriminatedUnion("claimed", [
+      z.object({ claimed: z.literal(false) }),
+      z.object({
+        claimed: z.literal(true),
+        quarantineObjectPath: z.string().min(1),
+        promotedObjectPath: z.string().min(1).nullable(),
+      }),
+    ])
+    .safeParse(data);
+  if (error || !context.success) {
+    throw new Error("PROFILE_MEDIA_PURGE_CONTEXT_INVALID");
+  }
+  if (!context.data.claimed) return;
+
+  const { error: quarantineError } = await service.storage
+    .from("quarantine")
+    .remove([context.data.quarantineObjectPath]);
+  if (quarantineError) {
+    throw new Error("PROFILE_MEDIA_QUARANTINE_PURGE_FAILED");
+  }
+  if (context.data.promotedObjectPath) {
+    const { error: promotedError } = await service.storage
+      .from("safe-uploads")
+      .remove([context.data.promotedObjectPath]);
+    if (promotedError) {
+      throw new Error("PROFILE_MEDIA_SAFE_PURGE_FAILED");
+    }
+  }
+
+  const { data: finalized, error: finalizeError } = await service.rpc(
+    "finalize_profile_media_purge",
+    { p_upload_id: uploadId },
+  );
+  if (finalizeError || finalized !== true) {
+    throw new Error("PROFILE_MEDIA_PURGE_FINALIZE_FAILED");
   }
 }
 

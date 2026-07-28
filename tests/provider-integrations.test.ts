@@ -102,12 +102,13 @@ describe("Cloudflare signed playback lifetime and refresh", () => {
       "video-one",
       360,
     );
+    const after = Math.floor(Date.now() / 1000);
     const payload = JSON.parse(
       Buffer.from(token.split(".")[1]!, "base64url").toString("utf8"),
     ) as { sub: string; exp: number };
     expect(payload.sub).toBe("video-one");
-    expect(payload.exp - before).toBeGreaterThanOrEqual(1259);
-    expect(payload.exp - before).toBeLessThanOrEqual(1260);
+    expect(payload.exp).toBeGreaterThanOrEqual(before + 1260);
+    expect(payload.exp).toBeLessThanOrEqual(after + 1260);
   });
 
   it("rechecks the active lease and full authorization on refresh", () => {

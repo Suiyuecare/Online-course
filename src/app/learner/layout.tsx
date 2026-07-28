@@ -17,7 +17,13 @@ export default async function LearnerLayout({
 }: {
   children: ReactNode;
 }) {
-  const { user } = await requireUser().catch(() => redirect("/login"));
+  const { supabase, user } = await requireUser().catch(() =>
+    redirect("/login"),
+  );
+  const { data: professionalProfile } = await supabase
+    .from("professional_profiles")
+    .select("public_name,avatar_upload_id,updated_at")
+    .maybeSingle();
   const metadataName =
     typeof user.user_metadata.display_name === "string"
       ? user.user_metadata.display_name.trim()
@@ -29,9 +35,15 @@ export default async function LearnerLayout({
     <LearnerPortalShell
       identity={{
         accountId: user.id,
-        displayName: metadataName || "歲悅學員",
+        displayName:
+          professionalProfile?.public_name || metadataName || "歲悅學員",
         maskedPhone: maskPhone(user.phone),
         phoneVerified: Boolean(user.phone_confirmed_at),
+        avatarUrl: professionalProfile?.avatar_upload_id
+          ? `/api/profile/media/avatar?v=${encodeURIComponent(
+              professionalProfile.updated_at,
+            )}`
+          : null,
       }}
     >
       {children}
