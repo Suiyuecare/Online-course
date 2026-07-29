@@ -86,6 +86,8 @@ const required = [
   "grant select (entitlement_id)",
   "grant select (hold_expires_at)",
   "grant select (live_booking_id, quarantined_at)",
+  "revoke all on function public.ingest_provider_event(",
+  "'canReadThread', coalesce(support_case.assigned_to = actor, false)",
 ];
 for (const invariant of required) {
   if (!sql.includes(invariant))
