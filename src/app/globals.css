@@ -267,7 +267,9 @@ h3 {
 .text-link:focus-visible,
 input:focus-visible,
 .staff-grid a:focus-visible {
-  box-shadow: 0 0 0 3px var(--white), 0 0 0 6px var(--focus-ring);
+  box-shadow:
+    0 0 0 3px var(--white),
+    0 0 0 6px var(--focus-ring);
   outline: 0;
 }
 
@@ -1596,11 +1598,7 @@ dd {
 .hero-photo::after,
 .organization-story figure::after,
 .showcase-course-visual::after {
-  background: linear-gradient(
-    180deg,
-    transparent 35%,
-    var(--media-scrim) 100%
-  );
+  background: linear-gradient(180deg, transparent 35%, var(--media-scrim) 100%);
   content: "";
   inset: 0;
   pointer-events: none;
@@ -4375,7 +4373,12 @@ dd {
 .learner-coupon-hero {
   background:
     radial-gradient(circle at 82% 18%, rgb(255 255 255 / 70%), transparent 28%),
-    linear-gradient(112deg, #fff8ee 0%, var(--orange-wash) 58%, var(--orange-soft));
+    linear-gradient(
+      112deg,
+      #fff8ee 0%,
+      var(--orange-wash) 58%,
+      var(--orange-soft)
+    );
   border-bottom: 1px solid var(--line-strong);
   color: var(--ink);
   overflow: hidden;
@@ -5442,11 +5445,7 @@ dd {
 
 .home-proof-band {
   background:
-    radial-gradient(
-      circle at 14% 8%,
-      rgb(255 255 255 / 72%),
-      transparent 27%
-    ),
+    radial-gradient(circle at 14% 8%, rgb(255 255 255 / 72%), transparent 27%),
     linear-gradient(
       110deg,
       #fff8ee 0%,
@@ -5562,11 +5561,7 @@ dd {
 }
 
 .showcase-course-visual::after {
-  background: linear-gradient(
-    180deg,
-    transparent 40%,
-    var(--media-scrim) 100%
-  );
+  background: linear-gradient(180deg, transparent 40%, var(--media-scrim) 100%);
 }
 
 .showcase-label {
@@ -5638,17 +5633,8 @@ dd {
 
 .organization-story > div {
   background:
-    radial-gradient(
-      circle at 10% 8%,
-      rgb(255 255 255 / 68%),
-      transparent 29%
-    ),
-    linear-gradient(
-      135deg,
-      #fff3e2 0%,
-      #f9dfbb 58%,
-      var(--orange-soft) 100%
-    );
+    radial-gradient(circle at 10% 8%, rgb(255 255 255 / 68%), transparent 29%),
+    linear-gradient(135deg, #fff3e2 0%, #f9dfbb 58%, var(--orange-soft) 100%);
   padding: clamp(42px, 5vw, 72px);
 }
 
@@ -5682,11 +5668,7 @@ dd {
 }
 
 .organization-story figure::after {
-  background: linear-gradient(
-    180deg,
-    transparent 48%,
-    var(--media-scrim) 100%
-  );
+  background: linear-gradient(180deg, transparent 48%, var(--media-scrim) 100%);
 }
 
 .course-catalog-hero {
@@ -5785,11 +5767,7 @@ dd {
 }
 
 .showcase-detail-cover::after {
-  background: linear-gradient(
-    180deg,
-    transparent 48%,
-    var(--media-scrim) 100%
-  );
+  background: linear-gradient(180deg, transparent 48%, var(--media-scrim) 100%);
   content: "";
   inset: 0;
   position: absolute;
@@ -8421,12 +8399,7 @@ dd {
   align-items: center;
   background:
     radial-gradient(circle at 90% 15%, rgb(255 255 255 / 68%), transparent 26%),
-    linear-gradient(
-      135deg,
-      #fff8ee,
-      var(--orange-wash) 62%,
-      var(--orange-soft)
-    );
+    linear-gradient(135deg, #fff8ee, var(--orange-wash) 62%, var(--orange-soft));
   border-radius: 24px;
   display: grid;
   gap: 18px;

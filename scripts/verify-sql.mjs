@@ -39,6 +39,7 @@ const expectedFiles = [
   "20260728165303_learner_order_history_indexes.sql",
   "20260729013748_order_history_safety_fixes.sql",
   "20260729013749_b2c_coupon_wallet.sql",
+  "20260729165136_fix_learner_dashboard_and_org_rls_capabilities.sql",
 ];
 if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) {
   throw new Error(
@@ -80,6 +81,11 @@ const required = [
   "internal.create_b2c_order_with_coupon",
   "COUPON_NOT_AVAILABLE",
   "coupon_reservation_released_before_late_payment",
+  "own_attendance_summaries_read",
+  "grant execute on function internal.has_organization_role(uuid, text[])",
+  "grant select (entitlement_id)",
+  "grant select (hold_expires_at)",
+  "grant select (live_booking_id, quarantined_at)",
 ];
 for (const invariant of required) {
   if (!sql.includes(invariant))

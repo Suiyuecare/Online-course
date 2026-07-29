@@ -468,6 +468,44 @@ select extensions.throws_ok(
   'an ordinary person cannot be bound to an active instructor profile'
 );
 
+-- Preserve setup identifiers in transaction-local test settings before
+-- switching to the browser role. The following assertions must not require
+-- direct authenticated access to identity or staff authority tables.
+select set_config(
+  'test.role_org.member_person_id',
+  (
+    select person_id::text from public.auth_identities
+    where auth_user_id = '91000000-0000-4000-8000-000000000003'
+  ),
+  true
+);
+select set_config(
+  'test.role_org.manager_person_id',
+  (
+    select person_id::text from public.auth_identities
+    where auth_user_id = '91000000-0000-4000-8000-000000000002'
+  ),
+  true
+);
+select set_config(
+  'test.role_org.instructor_staff_role_id',
+  (
+    select id::text from public.staff_roles
+    where role = 'instructor' and active
+    limit 1
+  ),
+  true
+);
+select set_config(
+  'test.role_org.support_staff_role_id',
+  (
+    select id::text from public.staff_roles
+    where role = 'support' and active
+    limit 1
+  ),
+  true
+);
+
 select set_config(
   'request.jwt.claims',
   jsonb_build_object(
@@ -488,10 +526,7 @@ select extensions.throws_ok(
   $$
     select public.manage_organization_member(
       '92000000-0000-4000-8000-000000000001',
-      (
-        select person_id from public.auth_identities
-        where auth_user_id = '91000000-0000-4000-8000-000000000003'
-      ),
+      current_setting('test.role_org.member_person_id')::uuid,
       'finance', true, '', '', '培訓管理員不得晉升財務角色',
       '93000000-0000-4000-8000-000000000001'
     )
@@ -522,11 +557,7 @@ select extensions.lives_ok(
   $$
     select public.bind_course_instructor(
       '94000000-0000-4000-8000-000000000004',
-      (
-        select id from public.staff_roles
-        where role = 'instructor' and active
-        limit 1
-      ),
+      current_setting('test.role_org.instructor_staff_role_id')::uuid,
       'AB', '0123456789|ABCDEFGHIJ', 'CRED5',
       '93000000-0000-4000-8000-000000000006'
     )
@@ -537,11 +568,7 @@ select extensions.throws_ok(
   $$
     select public.bind_course_instructor(
       '94000000-0000-4000-8000-000000000004',
-      (
-        select id from public.staff_roles
-        where role = 'instructor' and active
-        limit 1
-      ),
+      current_setting('test.role_org.instructor_staff_role_id')::uuid,
       'AB|0123456789', 'ABCDEFGHIJ', 'CRED5',
       '93000000-0000-4000-8000-000000000006'
     )
@@ -579,16 +606,15 @@ select extensions.lives_ok(
   $$
     select public.manage_organization_member(
       '92000000-0000-4000-8000-000000000001',
-      (
-        select person_id from public.auth_identities
-        where auth_user_id = '91000000-0000-4000-8000-000000000003'
-      ),
+      current_setting('test.role_org.member_person_id')::uuid,
       'member', false, '', '', '完成機構出資課程後辦理離職',
       '93000000-0000-4000-8000-000000000005'
     )
   $$,
   'completed funded assignment no longer blocks member offboarding'
 );
+
+reset role;
 select extensions.is(
   (
     select count(*)::integer
@@ -598,14 +624,13 @@ select extensions.is(
   1,
   'offboarding freezes only the authoritative funded completion outcome'
 );
+set local role authenticated;
+
 select extensions.throws_ok(
   $$
     select public.manage_organization_member(
       '92000000-0000-4000-8000-000000000001',
-      (
-        select person_id from public.auth_identities
-        where auth_user_id = '91000000-0000-4000-8000-000000000003'
-      ),
+      current_setting('test.role_org.member_person_id')::uuid,
       'member', false, '', '變造部門', '完成機構出資課程後辦理離職',
       '93000000-0000-4000-8000-000000000005'
     )
@@ -698,10 +723,7 @@ select extensions.lives_ok(
   $$
     select public.manage_organization_member(
       '92000000-0000-4000-8000-000000000001',
-      (
-        select person_id from public.auth_identities
-        where auth_user_id = '91000000-0000-4000-8000-000000000002'
-      ),
+      current_setting('test.role_org.manager_person_id')::uuid,
       'training_manager', false, '', '',
       '組織角色生命週期離職測試',
       '93000000-0000-4000-8000-000000000004'
@@ -806,13 +828,12 @@ select extensions.ok(
 select extensions.lives_ok(
   $$
     select public.act_on_support_case(
-      (select id from public.support_cases limit 1),
-      'assign',
       (
-        select id from public.staff_roles
-        where role = 'support' and active
-        limit 1
-      ),
+        public.read_support_queue()
+          -> 'cases' -> 0 ->> 'caseId'
+      )::uuid,
+      'assign',
+      current_setting('test.role_org.support_staff_role_id')::uuid,
       null, null, null, '客服自領測試案件',
       '93000000-0000-4000-8000-000000000003'
     )
@@ -835,13 +856,12 @@ select extensions.is(
 select extensions.throws_ok(
   $$
     select public.act_on_support_case(
-      (select id from public.support_cases limit 1),
-      'assign',
       (
-        select id from public.staff_roles
-        where role = 'support' and active
-        limit 1
-      ),
+        public.read_support_queue()
+          -> 'cases' -> 0 ->> 'caseId'
+      )::uuid,
+      'assign',
+      current_setting('test.role_org.support_staff_role_id')::uuid,
       null, null, null, '同鍵改寫客服處理原因',
       '93000000-0000-4000-8000-000000000003'
     )
