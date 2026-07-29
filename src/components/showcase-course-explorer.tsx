@@ -8,38 +8,74 @@ import {
 } from "@/content/showcase-courses";
 import { ShowcaseCourseCard } from "@/components/showcase-course-card";
 
+type ShowcaseExplorerFilters = {
+  query: string;
+  category: (typeof showcaseCategories)[number];
+  deliveryType: "all" | ShowcaseCourse["deliveryType"];
+  creditType: (typeof showcaseCreditTypes)[number];
+};
+
+function normalizeSearchValue(value: string) {
+  return value.normalize("NFKC").toLocaleLowerCase("zh-Hant-TW");
+}
+
+export function filterShowcaseCourses(
+  courses: ShowcaseCourse[],
+  filters: ShowcaseExplorerFilters,
+) {
+  const normalizedQuery = normalizeSearchValue(filters.query.trim());
+  return courses.filter((course) => {
+    const searchableText = [
+      course.title,
+      course.summary,
+      course.category,
+      course.creditType,
+      course.instructor.displayName,
+      course.instructor.role,
+      ...course.audience,
+      ...course.learningObjectives,
+    ].join(" ");
+    const matchesQuery =
+      !normalizedQuery ||
+      normalizeSearchValue(searchableText).includes(normalizedQuery);
+    const matchesCategory =
+      filters.category === "全部課程" || course.category === filters.category;
+    const matchesDelivery =
+      filters.deliveryType === "all" ||
+      course.deliveryType === filters.deliveryType;
+    const matchesCreditType =
+      filters.creditType === "全部積分屬性" ||
+      course.creditType === filters.creditType;
+    return (
+      matchesQuery && matchesCategory && matchesDelivery && matchesCreditType
+    );
+  });
+}
+
 export function ShowcaseCourseExplorer({
   courses,
   initialCategory = "全部課程",
+  initialQuery = "",
   learnerMode = false,
 }: {
   courses: ShowcaseCourse[];
   initialCategory?: (typeof showcaseCategories)[number];
+  initialQuery?: string;
   learnerMode?: boolean;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery.slice(0, 100));
   const [category, setCategory] =
     useState<(typeof showcaseCategories)[number]>(initialCategory);
-  const [deliveryType, setDeliveryType] = useState("all");
+  const [deliveryType, setDeliveryType] =
+    useState<ShowcaseExplorerFilters["deliveryType"]>("all");
   const [creditType, setCreditType] =
     useState<(typeof showcaseCreditTypes)[number]>("全部積分屬性");
 
-  const normalizedQuery = query.trim().toLocaleLowerCase("zh-Hant-TW");
-  const visibleCourses = courses.filter((course) => {
-    const matchesQuery =
-      !normalizedQuery ||
-      `${course.title} ${course.summary} ${course.category}`
-        .toLocaleLowerCase("zh-Hant-TW")
-        .includes(normalizedQuery);
-    const matchesCategory =
-      category === "全部課程" || course.category === category;
-    const matchesDelivery =
-      deliveryType === "all" || course.deliveryType === deliveryType;
-    const matchesCreditType =
-      creditType === "全部積分屬性" || course.creditType === creditType;
-    return (
-      matchesQuery && matchesCategory && matchesDelivery && matchesCreditType
-    );
+  const visibleCourses = filterShowcaseCourses(courses, {
+    query,
+    category,
+    deliveryType,
+    creditType,
   });
 
   return (
@@ -50,6 +86,7 @@ export function ShowcaseCourseExplorer({
           <input
             onChange={(event) => setQuery(event.target.value)}
             placeholder="輸入失智、長照、吞嚥…"
+            maxLength={100}
             type="search"
             value={query}
           />
@@ -74,7 +111,11 @@ export function ShowcaseCourseExplorer({
         <label>
           課程形式
           <select
-            onChange={(event) => setDeliveryType(event.target.value)}
+            onChange={(event) =>
+              setDeliveryType(
+                event.target.value as ShowcaseExplorerFilters["deliveryType"],
+              )
+            }
             value={deliveryType}
           >
             <option value="all">全部形式</option>
@@ -119,6 +160,18 @@ export function ShowcaseCourseExplorer({
         <div className="empty-state">
           <h2>沒有符合條件的課程</h2>
           <p>可以清除關鍵字，或改選其他主題與課程形式。</p>
+          <button
+            className="button secondary"
+            onClick={() => {
+              setQuery("");
+              setCategory("全部課程");
+              setDeliveryType("all");
+              setCreditType("全部積分屬性");
+            }}
+            type="button"
+          >
+            清除所有篩選
+          </button>
         </div>
       )}
     </div>

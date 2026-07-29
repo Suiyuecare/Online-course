@@ -10,19 +10,49 @@ import { catalogCourseListing } from "@/infrastructure/supabase/catalog";
 
 export const metadata: Metadata = { title: "找課程" };
 
+function firstSearchValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function normalizeSearchValue(value: string) {
+  return value.normalize("NFKC").toLocaleLowerCase("zh-Hant-TW");
+}
+
 export default async function CoursesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string | string[] }>;
+  searchParams: Promise<{
+    category?: string | string[];
+    q?: string | string[];
+  }>;
 }) {
-  const requestedCategory = (await searchParams).category;
-  const initialCategory =
-    typeof requestedCategory === "string" &&
-    showcaseCategories.some((category) => category === requestedCategory)
-      ? (requestedCategory as (typeof showcaseCategories)[number])
-      : "全部課程";
+  const resolvedSearchParams = await searchParams;
+  const requestedCategory = firstSearchValue(resolvedSearchParams.category);
+  const initialQuery = (firstSearchValue(resolvedSearchParams.q) ?? "")
+    .trim()
+    .slice(0, 100);
+  const initialCategory = showcaseCategories.some(
+    (category) => category === requestedCategory,
+  )
+    ? (requestedCategory as (typeof showcaseCategories)[number])
+    : "全部課程";
   const catalog = await catalogCourseListing();
-  const courses = catalog.courses;
+  const normalizedQuery = normalizeSearchValue(initialQuery);
+  const courses = catalog.courses.filter((course) => {
+    if (!normalizedQuery) return true;
+    return normalizeSearchValue(
+      [
+        course.title,
+        course.summary,
+        course.description,
+        ...course.learning_objectives,
+        ...course.instructors.flatMap((instructor) => [
+          instructor.name,
+          instructor.credentials,
+        ]),
+      ].join(" "),
+    ).includes(normalizedQuery);
+  });
   return (
     <>
       <section className="course-catalog-hero">
@@ -56,20 +86,33 @@ export default async function CoursesPage({
             <p>請稍後重新整理；下方仍可查看網站功能與公開影片示範。</p>
           </div>
         )}
-        {courses.length > 0 && (
+        {catalog.courses.length > 0 && (
           <div className="official-course-list">
             <div className="section-heading horizontal">
               <div>
                 <p className="eyebrow">正式開放課程</p>
-                <h2>已完成發布與販售檢查</h2>
+                <h2>
+                  {initialQuery
+                    ? `「${initialQuery}」的正式課程`
+                    : "已完成發布與販售檢查"}
+                </h2>
               </div>
-              <span>{courses.length} 門可報名</span>
+              <span>
+                {courses.length} 門{initialQuery ? "符合搜尋" : "可報名"}
+              </span>
             </div>
-            <div className="course-grid">
-              {courses.map((course) => (
-                <CourseCard course={course} key={course.slug} />
-              ))}
-            </div>
+            {courses.length > 0 ? (
+              <div className="course-grid">
+                {courses.map((course) => (
+                  <CourseCard course={course} key={course.slug} />
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <h3>正式課程目前沒有符合這個關鍵字</h3>
+                <p>你仍可查看下方內容示範，或清除關鍵字重新搜尋。</p>
+              </div>
+            )}
           </div>
         )}
         <div
@@ -85,7 +128,8 @@ export default async function CoursesPage({
         <ShowcaseCourseExplorer
           courses={showcaseCourses}
           initialCategory={initialCategory}
-          key={initialCategory}
+          initialQuery={initialQuery}
+          key={`${initialCategory}:${initialQuery}`}
         />
       </section>
     </>

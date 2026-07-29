@@ -28,6 +28,24 @@ describe("logged-in learner portal", () => {
     expect(frame).toContain("isLearnerPortalPath");
   });
 
+  it("adds semantic course discovery to the logged-in header", () => {
+    const shell = source("src/components/learner-portal-shell.tsx");
+    const styles = source("src/app/globals.css");
+
+    expect(shell).toContain("learnerCourseTaxonomy");
+    expect(shell).toContain('<details className="learner-explore-menu">');
+    expect(shell).toContain('action="/learner/catalog#course-search"');
+    expect(shell).toContain('method="get"');
+    expect(shell).toContain('name="q"');
+    expect(shell).toContain('type="search"');
+    expect(shell).toContain("encodeURIComponent(category.title)");
+    expect(shell).toContain(
+      'className="learner-icon-button learner-search-button"',
+    );
+    expect(styles).toContain(".learner-header-course-search");
+    expect(styles).toContain(".learner-header-actions .learner-search-button");
+  });
+
   it("keeps the account drawer professional and accessible", () => {
     const shell = source("src/components/learner-portal-shell.tsx");
 

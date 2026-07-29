@@ -2,6 +2,10 @@ import { randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import {
+  accreditationPersonnelCategoryCodeSchema,
+  officialAccreditationPersonnelCategoryLabel,
+} from "@/domain/accreditation-personnel";
+import {
   blindIndex,
   decryptWithDataKey,
   encryptWithDataKey,
@@ -25,23 +29,25 @@ const bundleSchema = z.object({
   status: z.string().optional(),
 });
 
-export const accreditationIdentitySchema = z.object({
-  enrollmentId: z.uuid(),
-  realName: z.string().trim().min(2).max(80),
-  nationalId: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .regex(/^[A-Z0-9]{8,20}$/),
-  birthDate: z.iso.date(),
-  careWorkerId: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .regex(/^[A-Z0-9-]{4,40}$/),
-  personnelCategory: z.string().trim().min(1).max(80),
-  serviceUnit: z.string().trim().min(1).max(200),
-});
+export const accreditationIdentitySchema = z
+  .object({
+    enrollmentId: z.uuid(),
+    realName: z.string().trim().min(2).max(80),
+    nationalId: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9]{8,20}$/),
+    birthDate: z.iso.date(),
+    careWorkerId: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9-]{4,40}$/),
+    personnelCategoryCode: accreditationPersonnelCategoryCodeSchema,
+    serviceUnit: z.string().trim().min(1).max(200),
+  })
+  .strict();
 
 export type AccreditationIdentityInput = z.infer<
   typeof accreditationIdentitySchema
@@ -120,7 +126,9 @@ export async function storeAccreditationIdentity(input: {
       nationalId: input.profile.nationalId,
       birthDate: input.profile.birthDate,
       careWorkerId: input.profile.careWorkerId,
-      personnelCategory: input.profile.personnelCategory,
+      personnelCategory: officialAccreditationPersonnelCategoryLabel(
+        input.profile.personnelCategoryCode,
+      ),
       phone: input.phone,
       serviceUnit: input.profile.serviceUnit,
       schemaVersion: 1,

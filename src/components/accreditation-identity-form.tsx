@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { accreditationPersonnelCategoryGroups } from "@/domain/accreditation-personnel";
 
 export function AccreditationIdentityForm({
   enrollmentId,
@@ -28,7 +29,7 @@ export function AccreditationIdentityForm({
             nationalId: form.get("nationalId"),
             birthDate: form.get("birthDate"),
             careWorkerId: form.get("careWorkerId"),
-            personnelCategory: form.get("personnelCategory"),
+            personnelCategoryCode: form.get("personnelCategoryCode"),
             serviceUnit: form.get("serviceUnit"),
           }),
         })
@@ -76,7 +77,20 @@ export function AccreditationIdentityForm({
       </label>
       <label>
         人員類別
-        <input name="personnelCategory" maxLength={80} required />
+        <select name="personnelCategoryCode" defaultValue="" required>
+          <option value="" disabled>
+            請選擇認證證明文件上的人員類別
+          </option>
+          {accreditationPersonnelCategoryGroups.map((group) => (
+            <optgroup key={group.code} label={group.label}>
+              {group.categories.map((category) => (
+                <option key={category.code} value={category.code}>
+                  {category.label}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
       </label>
       <label>
         服務單位

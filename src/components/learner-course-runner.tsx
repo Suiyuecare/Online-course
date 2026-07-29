@@ -13,6 +13,7 @@ import {
   type CourseRunnerTaskNavigation,
 } from "@/components/course-runner-frame";
 import { CourseMaterialDownloadButton } from "@/components/course-material-download-button";
+import { LearnerCountdown } from "@/components/learner-countdown";
 import { LiveBookingCard } from "@/components/live-booking-card";
 import { QuizInvalidationStatus } from "@/components/quiz-invalidation-status";
 import { QuizActivity } from "@/components/quiz-activity";
@@ -71,6 +72,14 @@ function requiredMinutes(seconds: number): number {
   return Math.ceil(Math.max(0, seconds) / 60);
 }
 
+function formatTaipei(value: string) {
+  return new Intl.DateTimeFormat("zh-TW", {
+    dateStyle: "long",
+    timeStyle: "short",
+    timeZone: "Asia/Taipei",
+  }).format(new Date(value));
+}
+
 function resolveActivityId(
   requestedActivityId: string | undefined,
   lessons: LessonActivity[],
@@ -123,6 +132,8 @@ export function LearnerCourseRunner({
   const hasVideo = lessons.some((lesson) => lesson.type === "video");
   const hasLive =
     workspace.deliveryType !== "recorded" || workspace.liveBookings.length > 0;
+  const releasePending =
+    !workspace.contentAvailable && Boolean(workspace.contentAvailableAt);
   const allowedSpecialActivities = useMemo(
     () =>
       new Set([
@@ -236,7 +247,11 @@ export function LearnerCourseRunner({
     {
       id: "quiz",
       title: "課後測驗",
-      detail: workspace.completion.quizPassed ? "已達 80 分" : "80 分及格",
+      detail: workspace.completion.quizPassed
+        ? "已達 80 分"
+        : releasePending
+          ? "開課後開放"
+          : "80 分及格",
       completed: workspace.completion.quizPassed,
       activityId: quizLesson?.id ?? specialActivity.quiz,
       attention: false,
@@ -244,7 +259,11 @@ export function LearnerCourseRunner({
     {
       id: "survey",
       title: "滿意度調查",
-      detail: workspace.completion.surveyCompleted ? "已完成" : "尚未填寫",
+      detail: workspace.completion.surveyCompleted
+        ? "已完成"
+        : releasePending
+          ? "開課後開放"
+          : "尚未填寫",
       completed: workspace.completion.surveyCompleted,
       activityId: surveyLesson?.id ?? specialActivity.survey,
       attention: false,
@@ -321,6 +340,14 @@ export function LearnerCourseRunner({
           material.lessonId === activeLesson.id || material.lessonId === null,
       )
     : workspace.materials;
+  const releaseBlockedActivity =
+    releasePending && workspace.contentAvailableAt ? (
+      <div className="course-runner-empty">
+        <strong>這項活動會在課程開放後啟用</strong>
+        <p>開放時間：{formatTaipei(workspace.contentAvailableAt)}</p>
+        <LearnerCountdown startsAt={workspace.contentAvailableAt} />
+      </div>
+    ) : null;
 
   let content;
   if (activeLesson?.type === "video") {
@@ -403,11 +430,15 @@ export function LearnerCourseRunner({
           eyebrow={activeLesson.moduleTitle}
           title={activeLesson.title}
         />
-        <QuizActivity
-          enrollmentId={enrollmentId}
-          initiallyPassed={workspace.completion.quizPassed}
-        />
-        <QuizInvalidationStatus enrollmentId={enrollmentId} />
+        {releaseBlockedActivity ?? (
+          <>
+            <QuizActivity
+              enrollmentId={enrollmentId}
+              initiallyPassed={workspace.completion.quizPassed}
+            />
+            <QuizInvalidationStatus enrollmentId={enrollmentId} />
+          </>
+        )}
       </>
     );
   } else if (activeLesson?.type === "survey") {
@@ -418,10 +449,12 @@ export function LearnerCourseRunner({
           eyebrow={activeLesson.moduleTitle}
           title={activeLesson.title}
         />
-        <SurveyActivity
-          enrollmentId={enrollmentId}
-          initiallyCompleted={workspace.completion.surveyCompleted}
-        />
+        {releaseBlockedActivity ?? (
+          <SurveyActivity
+            enrollmentId={enrollmentId}
+            initiallyCompleted={workspace.completion.surveyCompleted}
+          />
+        )}
       </>
     );
   } else if (activeActivityId === specialActivity.identity) {
@@ -468,11 +501,15 @@ export function LearnerCourseRunner({
           eyebrow="完課任務"
           title="課後測驗"
         />
-        <QuizActivity
-          enrollmentId={enrollmentId}
-          initiallyPassed={workspace.completion.quizPassed}
-        />
-        <QuizInvalidationStatus enrollmentId={enrollmentId} />
+        {releaseBlockedActivity ?? (
+          <>
+            <QuizActivity
+              enrollmentId={enrollmentId}
+              initiallyPassed={workspace.completion.quizPassed}
+            />
+            <QuizInvalidationStatus enrollmentId={enrollmentId} />
+          </>
+        )}
       </>
     );
   } else if (activeActivityId === specialActivity.survey) {
@@ -483,10 +520,12 @@ export function LearnerCourseRunner({
           eyebrow="完課任務"
           title="滿意度調查"
         />
-        <SurveyActivity
-          enrollmentId={enrollmentId}
-          initiallyCompleted={workspace.completion.surveyCompleted}
-        />
+        {releaseBlockedActivity ?? (
+          <SurveyActivity
+            enrollmentId={enrollmentId}
+            initiallyCompleted={workspace.completion.surveyCompleted}
+          />
+        )}
       </>
     );
   } else {
@@ -563,6 +602,18 @@ export function LearnerCourseRunner({
       {!projectionReady && (
         <div className="course-runner-inline-warning" role="alert">
           部分完成狀態暫時無法同步；影片仍會依你的個人權限安全驗證。
+        </div>
+      )}
+      {releasePending && workspace.contentAvailableAt && (
+        <div className="course-runner-release-notice" role="status">
+          <div>
+            <strong>這門課已購買，內容尚未開放</strong>
+            <p>
+              預定於 {formatTaipei(workspace.contentAvailableAt)}
+              開放；倒數結束後重新整理即可開始上課。
+            </p>
+          </div>
+          <LearnerCountdown startsAt={workspace.contentAvailableAt} />
         </div>
       )}
       {content}

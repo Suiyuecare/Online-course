@@ -16,6 +16,8 @@ export const learnerWorkspaceSchema = z.object({
   courseTitle: z.string(),
   deliveryType: z.enum(["recorded", "live", "hybrid"]),
   enrollmentStatus: z.string(),
+  contentAvailableAt: nullableString.default(null),
+  contentAvailable: z.boolean().default(true),
   accreditationStatus: z.string().nullable(),
   identity: z
     .object({
@@ -1023,6 +1025,8 @@ export async function readLearnerWorkspace(
           ),
         }),
       ),
+      contentAvailableAt: z.string().nullable(),
+      contentAvailable: z.boolean(),
     })
     .safeParse(gateData);
   if (!gates.success) throw new Error("LEARNER_RUNTIME_GATES_INVALID");
@@ -1037,6 +1041,8 @@ export async function readLearnerWorkspace(
   );
   return {
     ...parsed.data,
+    contentAvailableAt: gates.data.contentAvailableAt,
+    contentAvailable: gates.data.contentAvailable,
     components: parsed.data.components.map((component) => ({
       ...component,
       ...(componentGates.get(component.id) ?? {
@@ -1091,7 +1097,9 @@ export async function readLearnerWorkspaceWithSafeFallback(
   const [{ data: access }, { data: enrollment }] = await Promise.all([
     client
       .from("learner_course_access")
-      .select("course_title,delivery_type,enrollment_status")
+      .select(
+        "course_title,delivery_type,enrollment_status,content_available_at",
+      )
       .eq("enrollment_id", enrollmentId)
       .maybeSingle(),
     client
@@ -1101,6 +1109,9 @@ export async function readLearnerWorkspaceWithSafeFallback(
       .maybeSingle(),
   ]);
   if (!access || !enrollment) return null;
+  const contentAvailable =
+    !access.content_available_at ||
+    Date.parse(access.content_available_at) <= Date.now();
   const { data: moduleRows, error: moduleError } = await client
     .from("modules")
     .select("id,title,sort_order")
@@ -1145,9 +1156,10 @@ export async function readLearnerWorkspaceWithSafeFallback(
       componentId: null,
       completed: false,
       resumeSeconds: 0,
-      locked: access.delivery_type === "hybrid",
-      lockReason:
-        access.delivery_type === "hybrid"
+      locked: access.delivery_type === "hybrid" || !contentAvailable,
+      lockReason: !contentAvailable
+        ? "課程尚未開放，請依開課倒數時間再回來"
+        : access.delivery_type === "hybrid"
           ? "先修條件暫時無法確認，為保護積分紀錄已鎖定"
           : null,
     });
@@ -1159,6 +1171,8 @@ export async function readLearnerWorkspaceWithSafeFallback(
       courseTitle: access.course_title,
       deliveryType: access.delivery_type,
       enrollmentStatus: enrollment.status,
+      contentAvailableAt: access.content_available_at,
+      contentAvailable,
       accreditationStatus: null,
       identity: null,
       modules: (moduleRows ?? []).map((module) => ({

@@ -44,6 +44,7 @@ const expectedFiles = [
   "20260729181801_question_draft_batch_import.sql",
   "20260730031000_organization_lifecycle_controls.sql",
   "20260730033000_staff_directory_video_backup_workspace.sql",
+  "20260730043000_course_content_release_gates.sql",
 ];
 if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) {
   throw new Error(
@@ -105,6 +106,10 @@ const required = [
   "internal.read_staff_role_candidates",
   "read_video_master_backup_worklist",
   "masterBackupVerified",
+  "COURSE_CONTENT_RELEASE_REQUIRED",
+  "COURSE_CONTENT_NOT_AVAILABLE",
+  "internal.assert_enrollment_content_available",
+  "contentAvailableAt",
 ];
 for (const invariant of required) {
   if (!sql.includes(invariant))

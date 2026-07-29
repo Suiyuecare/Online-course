@@ -8,6 +8,10 @@ import { LearnerCountdown } from "@/components/learner-countdown";
 import { LearnerPortalIcon } from "@/components/learner-portal-icon";
 import { ShowcaseCourseCard } from "@/components/showcase-course-card";
 import { showcaseCourses } from "@/content/showcase-courses";
+import {
+  isLearnerContentWaiting,
+  learnerUpcomingEvents,
+} from "@/domain/learner-upcoming";
 import { presentStatus } from "@/domain/presentation";
 import { requireUser } from "@/infrastructure/supabase/server";
 
@@ -65,13 +69,7 @@ export default async function LearnerDashboard({
     user.user_metadata.display_name.trim()
       ? user.user_metadata.display_name.trim()
       : "歲悅學員";
-  const upcoming = rows
-    .filter((row) => row.next_live_starts_at)
-    .sort(
-      (a, b) =>
-        Date.parse(a.next_live_starts_at ?? "") -
-        Date.parse(b.next_live_starts_at ?? ""),
-    );
+  const upcoming = learnerUpcomingEvents(rows);
   const activeRows = rows.filter((row) =>
     ["active", "needs_correction"].includes(row.enrollment_status),
   );
@@ -197,28 +195,34 @@ export default async function LearnerDashboard({
             </div>
           ) : upcoming.length > 0 ? (
             <div className="learner-upcoming-grid">
-              {upcoming.slice(0, 3).map((row) => (
-                <article key={row.enrollment_id}>
+              {upcoming.slice(0, 3).map((event) => (
+                <article
+                  key={`${event.row.enrollment_id}-${event.kind}-${event.startsAt}`}
+                >
                   <div className="learner-upcoming-cover">
                     <Image
                       alt=""
                       fill
                       sizes="(max-width: 760px) 100vw, 40vw"
-                      src={courseImage(row)}
-                      unoptimized={row.has_cover}
+                      src={courseImage(event.row)}
+                      unoptimized={event.row.has_cover}
                     />
                   </div>
                   <div>
-                    <span>{deliveryLabels[row.delivery_type]}</span>
-                    <h3>{row.course_title}</h3>
-                    <time dateTime={row.next_live_starts_at ?? undefined}>
-                      {formatTaipei(row.next_live_starts_at ?? "")}
+                    <span>
+                      {event.kind === "content_release"
+                        ? "錄播內容開放"
+                        : "直播開始"}
+                    </span>
+                    <h3>{event.row.course_title}</h3>
+                    <time dateTime={event.startsAt}>
+                      {formatTaipei(event.startsAt)}
                     </time>
-                    <LearnerCountdown
-                      startsAt={row.next_live_starts_at ?? ""}
-                    />
-                    <Link href={`/learner/courses/${row.enrollment_id}`}>
-                      查看上課準備
+                    <LearnerCountdown startsAt={event.startsAt} />
+                    <Link href={`/learner/courses/${event.row.enrollment_id}`}>
+                      {event.kind === "content_release"
+                        ? "查看開課資訊"
+                        : "查看上課準備"}
                     </Link>
                   </div>
                 </article>
@@ -230,8 +234,8 @@ export default async function LearnerDashboard({
                 <LearnerPortalIcon name="book" size={30} />
               </span>
               <div>
-                <strong>目前沒有等待開課的直播場次</strong>
-                <p>已購買的預錄課會立即出現在下方「我的課程」，可直接開始。</p>
+                <strong>目前沒有等待開放的課程或直播場次</strong>
+                <p>已經開放的課程會出現在下方「我的課程」，可直接開始。</p>
               </div>
               <Link href="#my-learning-list">查看我的課程</Link>
             </div>
@@ -277,6 +281,9 @@ export default async function LearnerDashboard({
           ) : (
             <div className="learner-course-list">
               {rows.map((row) => {
+                const waitingForRelease = isLearnerContentWaiting(
+                  row.content_available_at,
+                );
                 const status = presentStatus(
                   "enrollment",
                   row.enrollment_status,
@@ -316,6 +323,14 @@ export default async function LearnerDashboard({
                             </time>
                           </p>
                         )}
+                        {waitingForRelease && row.content_available_at && (
+                          <p className="learner-course-deadline">
+                            錄播開放時間：
+                            <time dateTime={row.content_available_at}>
+                              {formatTaipei(row.content_available_at)}
+                            </time>
+                          </p>
+                        )}
                       </div>
                       <div className="learner-progress-copy">
                         <span>有效觀看</span>
@@ -336,10 +351,16 @@ export default async function LearnerDashboard({
                       </div>
                       <div className="learner-course-list-actions">
                         <Link
-                          className="button"
+                          className={
+                            waitingForRelease ? "button secondary" : "button"
+                          }
                           href={`/learner/courses/${row.enrollment_id}`}
                         >
-                          {progress > 0 ? "繼續上課" : "開始上課"}
+                          {waitingForRelease
+                            ? "查看開課倒數"
+                            : progress > 0
+                              ? "繼續上課"
+                              : "開始上課"}
                         </Link>
                         {row.certificate_id && (
                           <Link href="/learner/certificates">查看證明</Link>

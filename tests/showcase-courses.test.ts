@@ -5,6 +5,7 @@ import {
   showcaseCategories,
   showcaseCourses,
 } from "@/content/showcase-courses";
+import { filterShowcaseCourses } from "@/components/showcase-course-explorer";
 
 function source(path: string) {
   return readFileSync(resolve(process.cwd(), path), "utf8");
@@ -111,5 +112,27 @@ describe("public showcase courses", () => {
     expect(explorer).toContain("initialCategory");
     expect(explorer).toContain('aria-live="polite"');
     expect(explorer).toContain('role="status"');
+  });
+
+  it("carries public header GET searches into the catalog results", () => {
+    const header = source("src/components/site-header.tsx");
+    const catalog = source("src/app/courses/page.tsx");
+
+    expect(header).toContain("learnerCourseTaxonomy");
+    expect(header).toContain('<details className="site-explore-menu">');
+    expect(header).toContain('action="/courses"');
+    expect(header).toContain('method="get"');
+    expect(header).toContain('name="q"');
+    expect(catalog).toContain("resolvedSearchParams.q");
+    expect(catalog).toContain("initialQuery={initialQuery}");
+
+    const results = filterShowcaseCourses(showcaseCourses, {
+      query: "吞嚥",
+      category: "全部課程",
+      deliveryType: "all",
+      creditType: "全部積分屬性",
+    });
+    expect(results).toHaveLength(1);
+    expect(results[0]?.title).toContain("吞嚥");
   });
 });

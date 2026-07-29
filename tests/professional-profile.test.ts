@@ -114,6 +114,7 @@ describe("professional learner profile", () => {
       completed_at: "2026-07-28T00:00:00.000Z",
       has_cover: false,
       completion_due_at: null,
+      content_available_at: null,
     };
     const rows: LearnerCenterRow[] = [
       {

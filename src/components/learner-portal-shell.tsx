@@ -11,6 +11,7 @@ import {
   useLearnerPortal,
 } from "@/components/learner-portal-store";
 import { SignOutButton } from "@/components/sign-out-button";
+import { learnerCourseTaxonomy } from "@/content/showcase-courses";
 
 type LearnerIdentity = {
   accountId: string;
@@ -300,19 +301,77 @@ function PortalChrome({
               <small>我的學習中心</small>
             </span>
           </Link>
-          <nav aria-label="學員主要選單" className="learner-desktop-nav">
-            {navItems.map((item) => (
-              <Link
-                aria-current={
-                  isCurrent(pathname, item.href) ? "page" : undefined
-                }
-                href={item.href}
-                key={item.href}
+          <div className="learner-header-discovery">
+            <details className="learner-explore-menu">
+              <summary>
+                探索課程
+                <LearnerPortalIcon name="chevron" size={16} />
+              </summary>
+              <div className="learner-explore-panel">
+                <div className="learner-explore-panel-heading">
+                  <span>
+                    <strong>依照護需求探索</strong>
+                    <small>選擇想加強的課程主題</small>
+                  </span>
+                  <Link href="/learner/catalog#course-search">查看全部</Link>
+                </div>
+                <div className="learner-explore-list">
+                  {learnerCourseTaxonomy.map((category, index) => (
+                    <Link
+                      href={`/learner/catalog?category=${encodeURIComponent(category.title)}#course-search`}
+                      key={category.title}
+                    >
+                      <span aria-hidden="true">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span>
+                        <strong>{category.title}</strong>
+                        <small>{category.description}</small>
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </details>
+            <form
+              action="/learner/catalog#course-search"
+              aria-label="搜尋歲悅學苑課程"
+              className="learner-header-course-search"
+              method="get"
+              role="search"
+            >
+              <label
+                className="visually-hidden"
+                htmlFor="learner-header-course-query"
               >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+                搜尋課程
+              </label>
+              <LearnerPortalIcon name="search" size={20} />
+              <input
+                autoComplete="off"
+                enterKeyHint="search"
+                id="learner-header-course-query"
+                maxLength={100}
+                name="q"
+                placeholder="搜尋課程、主題或講師"
+                type="search"
+              />
+              <button type="submit">搜尋</button>
+            </form>
+            <nav aria-label="學員主要選單" className="learner-desktop-nav">
+              {navItems.map((item) => (
+                <Link
+                  aria-current={
+                    isCurrent(pathname, item.href) ? "page" : undefined
+                  }
+                  href={item.href}
+                  key={item.href}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
           <div className="learner-header-actions">
             <Link
               aria-label="搜尋課程"
