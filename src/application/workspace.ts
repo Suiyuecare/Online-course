@@ -114,6 +114,255 @@ export const ownOrderSchema = z.object({
 
 export type OwnOrderSummary = z.infer<typeof ownOrderSchema>;
 
+export const learnerOrderHistoryCategorySchema = z.enum([
+  "all",
+  "action_required",
+  "reviewing",
+  "completed",
+  "closed_refund",
+]);
+
+export type LearnerOrderHistoryCategory = z.infer<
+  typeof learnerOrderHistoryCategorySchema
+>;
+
+const learnerOrderHistoryItemSchema = z
+  .object({
+    courseVersionId: z.string().uuid(),
+    courseSlug: z.string().min(1),
+    courseTitle: z.string().min(1),
+    deliveryType: z.enum(["recorded", "live", "hybrid"]),
+    amountTwd: z.number().int().nonnegative(),
+    hasCover: z.boolean(),
+    enrollmentId: z.string().uuid().nullable(),
+    enrollmentStatus: z.string().nullable(),
+    entitlementStatus: z.string().nullable(),
+  })
+  .strict();
+
+const learnerOrderRefundCaseSchema = z
+  .object({
+    refundCaseId: z.string().uuid(),
+    status: z.enum([
+      "submitted",
+      "reviewing",
+      "approved",
+      "rejected",
+      "disbursing",
+      "partially_disbursed",
+      "completed",
+      "failed",
+    ]),
+    requestedAmountTwd: z.number().int().nonnegative(),
+    disbursedAmountTwd: z.number().int().nonnegative(),
+    submittedAt: z.string(),
+    decidedAt: z.string().nullable(),
+    completedAt: z.string().nullable(),
+  })
+  .strict();
+
+const learnerOrderHistoryOrderSchema = z
+  .object({
+    orderId: z.string().uuid(),
+    orderNumber: z.string().min(1),
+    status: z.string(),
+    effectiveStatus: z.string(),
+    displayCategory: learnerOrderHistoryCategorySchema.exclude(["all"]),
+    paymentMethod: z.literal("manual_bank_transfer"),
+    subtotalTwd: z.number().int().positive(),
+    discountTwd: z.number().int().nonnegative(),
+    amountDueTwd: z.number().int().nonnegative(),
+    amountPaidTwd: z.number().int().nonnegative(),
+    transferDueAt: z.string(),
+    paidAt: z.string().nullable(),
+    createdAt: z.string(),
+    items: z.array(learnerOrderHistoryItemSchema).min(1),
+    refundCases: z.array(learnerOrderRefundCaseSchema),
+    coupon: z
+      .object({
+        title: z.string().min(1),
+        status: z.enum(["reserved", "redeemed", "released"]),
+        discountTwd: z.number().int().positive(),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+
+export const learnerOrderHistorySchema = z
+  .object({
+    orders: z.array(learnerOrderHistoryOrderSchema),
+    counts: z
+      .object({
+        all: z.number().int().nonnegative(),
+        actionRequired: z.number().int().nonnegative(),
+        reviewing: z.number().int().nonnegative(),
+        completed: z.number().int().nonnegative(),
+        closedRefund: z.number().int().nonnegative(),
+      })
+      .strict(),
+    hasMore: z.boolean(),
+    nextCursor: z
+      .object({
+        createdAt: z.string(),
+        orderId: z.string().uuid(),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+
+export type LearnerOrderHistory = z.infer<typeof learnerOrderHistorySchema>;
+export type LearnerOrderHistoryOrder = z.infer<
+  typeof learnerOrderHistoryOrderSchema
+>;
+
+export const learnerCouponCategorySchema = z.enum([
+  "available",
+  "reserved",
+  "used",
+  "expired",
+]);
+
+export type LearnerCouponCategory = z.infer<typeof learnerCouponCategorySchema>;
+
+const couponBenefitKindSchema = z.enum(["percent_off", "fixed_twd"]);
+
+const couponCourseSchema = z
+  .object({
+    courseVersionId: z.string().uuid(),
+    title: z.string().min(1),
+    slug: z.string().min(1),
+  })
+  .strict();
+
+const learnerCouponSchema = z
+  .object({
+    claimId: z.string().uuid(),
+    campaignId: z.string().uuid(),
+    title: z.string().min(1),
+    description: z.string().min(1),
+    benefitKind: couponBenefitKindSchema,
+    percentOffBps: z.number().int().positive().nullable(),
+    fixedDiscountTwd: z.number().int().positive().nullable(),
+    maxDiscountTwd: z.number().int().positive().nullable(),
+    minimumSubtotalTwd: z.number().int().nonnegative(),
+    validFrom: z.string(),
+    validUntil: z.string(),
+    scopeType: z.enum(["all_b2c", "specific_course_versions"]),
+    codeHint: z.string().nullable(),
+    status: learnerCouponCategorySchema,
+    claimedAt: z.string(),
+    reservation: z
+      .object({
+        orderId: z.string().uuid(),
+        orderNumber: z.string().min(1),
+        discountTwd: z.number().int().positive(),
+        amountDueTwd: z.number().int().positive(),
+        transferDueAt: z.string(),
+        redeemedAt: z.string().nullable(),
+      })
+      .strict()
+      .nullable(),
+    applicableCourses: z.array(couponCourseSchema),
+  })
+  .strict();
+
+export const learnerCouponWalletSchema = z
+  .object({
+    coupons: z.array(learnerCouponSchema),
+    counts: z
+      .object({
+        available: z.number().int().nonnegative(),
+        reserved: z.number().int().nonnegative(),
+        used: z.number().int().nonnegative(),
+        expired: z.number().int().nonnegative(),
+      })
+      .strict(),
+    hasMore: z.boolean(),
+    nextCursor: z
+      .object({
+        claimedAt: z.string(),
+        claimId: z.string().uuid(),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+
+export type LearnerCouponWallet = z.infer<typeof learnerCouponWalletSchema>;
+export type LearnerCoupon = z.infer<typeof learnerCouponSchema>;
+
+export const checkoutCouponOptionSchema = z
+  .object({
+    eligible: z.literal(true),
+    reason: z.null(),
+    claimId: z.string().uuid(),
+    campaignId: z.string().uuid(),
+    title: z.string().min(1),
+    benefitKind: couponBenefitKindSchema,
+    percentOffBps: z.number().int().positive().nullable(),
+    fixedDiscountTwd: z.number().int().positive().nullable(),
+    minimumSubtotalTwd: z.number().int().nonnegative(),
+    validUntil: z.string(),
+    listPriceTwd: z.number().int().positive(),
+    discountTwd: z.number().int().positive(),
+    amountDueTwd: z.number().int().positive(),
+  })
+  .strict();
+
+export type CheckoutCouponOption = z.infer<typeof checkoutCouponOptionSchema>;
+
+const couponAdminCampaignSchema = z
+  .object({
+    campaignId: z.string().uuid(),
+    title: z.string().min(1),
+    description: z.string().min(1),
+    status: z.enum(["draft", "active", "paused", "ended"]),
+    benefitKind: couponBenefitKindSchema,
+    percentOffBps: z.number().int().positive().nullable(),
+    fixedDiscountTwd: z.number().int().positive().nullable(),
+    maxDiscountTwd: z.number().int().positive().nullable(),
+    minimumSubtotalTwd: z.number().int().nonnegative(),
+    validFrom: z.string(),
+    validUntil: z.string(),
+    totalClaimLimit: z.number().int().positive(),
+    totalRedemptionLimit: z.number().int().positive(),
+    scopeType: z.enum(["all_b2c", "specific_course_versions"]),
+    codeHint: z.string().min(4),
+    createdAt: z.string(),
+    createdByMe: z.boolean(),
+    claimCount: z.number().int().nonnegative(),
+    reservedCount: z.number().int().nonnegative(),
+    redeemedCount: z.number().int().nonnegative(),
+    courses: z.array(
+      z
+        .object({
+          courseVersionId: z.string().uuid(),
+          title: z.string().min(1),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export const couponAdminWorkspaceSchema = z
+  .object({
+    campaigns: z.array(couponAdminCampaignSchema),
+    courseOptions: z.array(
+      z
+        .object({
+          courseVersionId: z.string().uuid(),
+          title: z.string().min(1),
+          status: z.enum(["published", "sale_stopped"]),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export type CouponAdminWorkspace = z.infer<typeof couponAdminWorkspaceSchema>;
+
 export const organizationApplicationSchema = z.object({
   organizationId: z.string().uuid(),
   organizationName: z.string(),
@@ -943,6 +1192,108 @@ export async function readOwnOrders(
   if (error) throw new Error(`ORDER_LIST_UNAVAILABLE:${error.message}`);
   const parsed = z.array(ownOrderSchema).safeParse(data);
   if (!parsed.success) throw new Error("ORDER_LIST_INVALID");
+  return parsed.data;
+}
+
+export async function readOwnOrderHistory(
+  client: SupabaseClient,
+  input: {
+    category?: LearnerOrderHistoryCategory;
+    limit?: number;
+    before?: { createdAt: string; orderId: string } | null;
+  } = {},
+): Promise<LearnerOrderHistory> {
+  const category = learnerOrderHistoryCategorySchema.parse(
+    input.category ?? "all",
+  );
+  const limit = z
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .parse(input.limit ?? 20);
+  const before = input.before
+    ? z
+        .object({
+          createdAt: z.string(),
+          orderId: z.string().uuid(),
+        })
+        .strict()
+        .parse(input.before)
+    : null;
+  const { data, error } = await client.rpc("read_own_order_history", {
+    p_category: category,
+    p_limit: limit,
+    p_before_created_at: before?.createdAt ?? null,
+    p_before_order_id: before?.orderId ?? null,
+  });
+  if (error) throw new Error(`ORDER_HISTORY_UNAVAILABLE:${error.message}`);
+  const parsed = learnerOrderHistorySchema.safeParse(data);
+  if (!parsed.success) throw new Error("ORDER_HISTORY_INVALID");
+  return parsed.data;
+}
+
+export async function readMyCoupons(
+  client: SupabaseClient,
+  input: {
+    category?: LearnerCouponCategory;
+    limit?: number;
+    before?: { claimedAt: string; claimId: string } | null;
+  } = {},
+): Promise<LearnerCouponWallet> {
+  const category = learnerCouponCategorySchema.parse(
+    input.category ?? "available",
+  );
+  const limit = z
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .parse(input.limit ?? 12);
+  const before = input.before
+    ? z
+        .object({
+          claimedAt: z.string(),
+          claimId: z.string().uuid(),
+        })
+        .strict()
+        .parse(input.before)
+    : null;
+  const { data, error } = await client.rpc("read_my_coupons", {
+    p_category: category,
+    p_limit: limit,
+    p_before_claimed_at: before?.claimedAt ?? null,
+    p_before_claim_id: before?.claimId ?? null,
+  });
+  if (error) throw new Error(`COUPON_WALLET_UNAVAILABLE:${error.message}`);
+  const parsed = learnerCouponWalletSchema.safeParse(data);
+  if (!parsed.success) throw new Error("COUPON_WALLET_INVALID");
+  return parsed.data;
+}
+
+export async function readCheckoutCouponOptions(
+  client: SupabaseClient,
+  courseVersionId: string,
+): Promise<CheckoutCouponOption[]> {
+  const id = z.string().uuid().parse(courseVersionId);
+  const { data, error } = await client.rpc("read_checkout_coupon_options", {
+    p_course_version_id: id,
+  });
+  if (error) throw new Error(`COUPON_OPTIONS_UNAVAILABLE:${error.message}`);
+  const parsed = z.array(checkoutCouponOptionSchema).safeParse(data);
+  if (!parsed.success) throw new Error("COUPON_OPTIONS_INVALID");
+  return parsed.data;
+}
+
+export async function readCouponAdminWorkspace(
+  client: SupabaseClient,
+): Promise<CouponAdminWorkspace> {
+  const { data, error } = await client.rpc("read_coupon_admin_workspace");
+  if (error) {
+    throw new Error(`COUPON_ADMIN_WORKSPACE_UNAVAILABLE:${error.message}`);
+  }
+  const parsed = couponAdminWorkspaceSchema.safeParse(data);
+  if (!parsed.success) throw new Error("COUPON_ADMIN_WORKSPACE_INVALID");
   return parsed.data;
 }
 

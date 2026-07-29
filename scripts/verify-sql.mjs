@@ -35,6 +35,10 @@ const expectedFiles = [
   "20260728154702_fix_request_person_id_rls_capability.sql",
   "20260728154828_fix_audit_owner_digest_capability.sql",
   "20260728161422_lock_learner_account_settings_server_write.sql",
+  "20260728163345_learner_order_history.sql",
+  "20260728165303_learner_order_history_indexes.sql",
+  "20260729013748_order_history_safety_fixes.sql",
+  "20260729013749_b2c_coupon_wallet.sql",
 ];
 if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) {
   throw new Error(
@@ -71,6 +75,11 @@ const required = [
   "STREAM_UPLOAD_INTENT_REPLAY_MISMATCH",
   "internal.refresh_recorded_playback",
   "internal.lease_due_jobs_filtered",
+  "orders_coupon_amounts_check",
+  "coupon_one_active_use_per_claim",
+  "internal.create_b2c_order_with_coupon",
+  "COUPON_NOT_AVAILABLE",
+  "coupon_reservation_released_before_late_payment",
 ];
 for (const invariant of required) {
   if (!sql.includes(invariant))

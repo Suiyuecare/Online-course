@@ -6,7 +6,10 @@ import {
   readOwnProfessionalProfile,
 } from "@/application/professional-profile";
 import { readLearnerCenterRows } from "@/application/learner-center";
-import { readInstructorDashboard } from "@/application/workspace";
+import {
+  readInstructorDashboard,
+  readMyCoupons,
+} from "@/application/workspace";
 import { LearnerPortalIcon } from "@/components/learner-portal-icon";
 import { ProfessionalProfileEditor } from "@/components/professional-profile-editor";
 import { requireUser } from "@/infrastructure/supabase/server";
@@ -20,17 +23,21 @@ export default async function LearnerAccountPage() {
       ? user.user_metadata.display_name.trim()
       : "";
   const fallbackName = metadataName || "歲悅學員";
-  const [rows, profile, instructorDashboard, unreadResult] = await Promise.all([
-    readLearnerCenterRows(supabase).catch(() => []),
-    readOwnProfessionalProfile(supabase, fallbackName).catch(() =>
-      emptyProfessionalProfile(fallbackName),
-    ),
-    readInstructorDashboard(supabase).catch(() => null),
-    supabase
-      .from("notifications")
-      .select("id", { count: "exact", head: true })
-      .is("read_at", null),
-  ]);
+  const [rows, profile, instructorDashboard, unreadResult, coupons] =
+    await Promise.all([
+      readLearnerCenterRows(supabase).catch(() => []),
+      readOwnProfessionalProfile(supabase, fallbackName).catch(() =>
+        emptyProfessionalProfile(fallbackName),
+      ),
+      readInstructorDashboard(supabase).catch(() => null),
+      supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .is("read_at", null),
+      readMyCoupons(supabase, { category: "available", limit: 1 }).catch(
+        () => null,
+      ),
+    ]);
   const data = buildOwnProfessionalProfilePageData({
     profile,
     learnerRows: rows,
@@ -55,6 +62,14 @@ export default async function LearnerAccountPage() {
       icon: "order" as const,
       title: "訂單紀錄",
       detail: "匯款、付款與退款狀態",
+    },
+    {
+      href: "/learner/discounts",
+      icon: "discount" as const,
+      title: "我的折扣券",
+      detail: coupons?.counts.available
+        ? `${coupons.counts.available} 張可使用`
+        : "輸入折扣碼或查看紀錄",
     },
     {
       href: "/learner/notifications",

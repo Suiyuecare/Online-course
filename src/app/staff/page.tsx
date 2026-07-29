@@ -36,6 +36,13 @@ const queues = [
     roles: ["finance"],
   },
   {
+    title: "折扣券與活動",
+    href: "/staff/coupons",
+    queue: "coupons",
+    roles: ["platform_admin", "finance"],
+    exactRole: true,
+  },
+  {
     title: "直播與出席",
     href: "/staff/live",
     queue: "live",
@@ -68,10 +75,16 @@ export default async function StaffHome() {
     await Promise.all(
       queues.map(async (queue) => {
         if ("exactRole" in queue && queue.exactRole) {
-          const { data } = await supabase.rpc("authorize_exact_staff_role", {
-            p_required_role: queue.roles[0],
-          });
-          return data === true ? queue : null;
+          const authorizations = await Promise.all(
+            queue.roles.map((role) =>
+              supabase.rpc("authorize_exact_staff_role", {
+                p_required_role: role,
+              }),
+            ),
+          );
+          return authorizations.some(({ data }) => data === true)
+            ? queue
+            : null;
         }
         const authorizations = await Promise.all(
           queue.roles.map((role) =>

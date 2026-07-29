@@ -79,6 +79,14 @@ export default function LearnerCartPage() {
           <aside className="learner-cart-summary">
             <span>課程小計</span>
             <strong>NT$ {total.toLocaleString("zh-TW")}</strong>
+            <div className="learner-cart-coupon-note">
+              <LearnerPortalIcon name="discount" size={22} />
+              <div>
+                <strong>有折扣券嗎？</strong>
+                <p>每門課成立一筆訂單，可在契約流程最後一步選用一張。</p>
+              </div>
+              <Link href="/learner/discounts">查看折扣券</Link>
+            </div>
             <p>目前採匯款購課，每門課需個別確認條款、積分狀態與直播場次。</p>
             <Link className="button" href={`/courses/${cart[0].slug}`}>
               從第一門開始確認

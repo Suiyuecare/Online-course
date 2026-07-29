@@ -1,10 +1,13 @@
 export type LearnerPortalIconName =
   | "account"
+  | "alert"
   | "book"
   | "bookmark"
   | "cart"
   | "certificate"
+  | "check"
   | "chevron"
+  | "clock"
   | "discount"
   | "edit"
   | "eye"
@@ -13,6 +16,7 @@ export type LearnerPortalIconName =
   | "notification"
   | "order"
   | "plus"
+  | "refund"
   | "search"
   | "share"
   | "settings"
@@ -51,6 +55,23 @@ export function LearnerPortalIcon({
             stroke="currentColor"
             strokeLinecap="round"
             strokeWidth="1.8"
+          />
+        </svg>
+      );
+    case "alert":
+      return (
+        <svg {...common}>
+          <path
+            d="M12 3 2.8 19h18.4L12 3Z"
+            stroke="currentColor"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+          <path
+            d="M12 8v5M12 16.5h.01"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="2.2"
           />
         </svg>
       );
@@ -114,6 +135,25 @@ export function LearnerPortalIcon({
           />
         </svg>
       );
+    case "check":
+      return (
+        <svg {...common}>
+          <circle
+            cx="12"
+            cy="12"
+            r="9"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          />
+          <path
+            d="m7.8 12.2 2.7 2.7 5.8-6"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+        </svg>
+      );
     case "chevron":
       return (
         <svg {...common}>
@@ -123,6 +163,25 @@ export function LearnerPortalIcon({
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth="2"
+          />
+        </svg>
+      );
+    case "clock":
+      return (
+        <svg {...common}>
+          <circle
+            cx="12"
+            cy="12"
+            r="9"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          />
+          <path
+            d="M12 7v5l3.4 2"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
           />
         </svg>
       );
@@ -245,6 +304,25 @@ export function LearnerPortalIcon({
             stroke="currentColor"
             strokeLinecap="round"
             strokeWidth="2"
+          />
+        </svg>
+      );
+    case "refund":
+      return (
+        <svg {...common}>
+          <path
+            d="M7.5 7H18a3 3 0 0 1 3 3v5a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-4"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+          <path
+            d="m8 3-4 4 4 4M4 7h9M12.5 11v4M10.5 13h4"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
           />
         </svg>
       );

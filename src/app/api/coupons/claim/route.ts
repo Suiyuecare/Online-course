@@ -8,18 +8,20 @@ import { PlatformApplication } from "@/application/platform";
 import { requireUser } from "@/infrastructure/supabase/server";
 
 const schema = z.object({
-  courseVersionId: z.uuid(),
-  legalAcceptanceId: z.uuid(),
-  liveSelections: z.record(z.string(), z.uuid()).default({}),
-  couponClaimId: z.uuid().nullable().default(null),
+  code: z
+    .string()
+    .trim()
+    .min(4)
+    .max(32)
+    .regex(/^[A-Za-z0-9-]+$/),
 });
 
 export async function POST(request: Request) {
   return mutation(request, async () => {
     const { supabase } = await requireUser();
     const input = await readJson(request, schema);
-    return new PlatformApplication(supabase).createOrder({
-      ...input,
+    return new PlatformApplication(supabase).claimCoupon({
+      code: input.code,
       idempotencyKey: requireIdempotencyKey(request),
     });
   });

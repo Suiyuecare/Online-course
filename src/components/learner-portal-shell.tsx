@@ -40,9 +40,11 @@ function CartBadge() {
 }
 
 function AccountDrawer({
+  availableCouponCount,
   identity,
   mobile = false,
 }: {
+  availableCouponCount: number;
   identity: Omit<LearnerIdentity, "accountId">;
   mobile?: boolean;
 }) {
@@ -223,7 +225,10 @@ function AccountDrawer({
                 </Link>
                 <Link href="/learner/discounts" onClick={closeDrawer}>
                   <LearnerPortalIcon name="discount" />
-                  我的優惠
+                  我的折扣券
+                  {availableCouponCount > 0 && (
+                    <small>{availableCouponCount} 張可用</small>
+                  )}
                 </Link>
                 <p>設定與協助</p>
                 <Link href="/learner/settings" onClick={closeDrawer}>
@@ -247,9 +252,11 @@ function AccountDrawer({
 }
 
 function PortalChrome({
+  availableCouponCount,
   children,
   identity,
 }: {
+  availableCouponCount: number;
   children: ReactNode;
   identity: LearnerIdentity;
 }) {
@@ -325,7 +332,10 @@ function PortalChrome({
               <LearnerPortalIcon name="cart" />
               <CartBadge />
             </Link>
-            <AccountDrawer identity={identity} />
+            <AccountDrawer
+              availableCouponCount={availableCouponCount}
+              identity={identity}
+            />
           </div>
         </div>
       </header>
@@ -352,17 +362,23 @@ function PortalChrome({
             {item.label}
           </Link>
         ))}
-        <AccountDrawer identity={identity} mobile />
+        <AccountDrawer
+          availableCouponCount={availableCouponCount}
+          identity={identity}
+          mobile
+        />
       </nav>
     </div>
   );
 }
 
 export function LearnerPortalShell({
+  availableCouponCount,
   children,
   identity,
   initialFavoriteSlugs,
 }: {
+  availableCouponCount: number;
   children: ReactNode;
   identity: LearnerIdentity;
   initialFavoriteSlugs: string[];
@@ -372,7 +388,12 @@ export function LearnerPortalShell({
       accountId={identity.accountId}
       initialFavoriteSlugs={initialFavoriteSlugs}
     >
-      <PortalChrome identity={identity}>{children}</PortalChrome>
+      <PortalChrome
+        availableCouponCount={availableCouponCount}
+        identity={identity}
+      >
+        {children}
+      </PortalChrome>
     </LearnerPortalProvider>
   );
 }

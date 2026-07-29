@@ -61,20 +61,25 @@ describe("digital classroom course runner", () => {
     expect(page).toContain("<ShowcaseCourseRunner");
   });
 
-  it("shares the current finance-system palette and navigation treatment", () => {
+  it("shares the current Suiyue orange palette and navigation treatment", () => {
     const styles = source("src/app/globals.css");
 
     for (const token of [
-      "--orange: #f08a24",
-      "--orange-dark: #c86112",
-      "--page: #f7f3ec",
-      "--cream: #fffaf2",
-      "--cream-deep: #f7ecd8",
-      "--ink: #3d210d",
-      "--muted: #836f60",
-      "--line: #ead3b3",
-      "--navy: #1f2430",
-      "--navy-deep: #171b24",
+      "--orange: #ea880c",
+      "--orange-dark: #b45309",
+      "--orange-soft: #f2c78e",
+      "--orange-wash: #fff0dc",
+      "--terracotta: #96501c",
+      "--page: #fff9f2",
+      "--cream: #fffdf8",
+      "--cream-deep: #ffe7c2",
+      "--ink: #2f2a26",
+      "--muted: #6e6259",
+      "--line: #f1cfa8",
+      "--classroom-rail: #433a33",
+      "--classroom-rail-deep: #2f2925",
+      "--navy: var(--classroom-rail)",
+      "--navy-deep: var(--classroom-rail-deep)",
     ]) {
       expect(styles).toContain(token);
     }

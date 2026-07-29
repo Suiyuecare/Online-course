@@ -63,6 +63,13 @@ export async function GET(request: Request) {
   if (heartbeatStartError) {
     degradedReasons.push("worker_heartbeat_start_failed");
   }
+  const { error: couponReleaseError } = await service.rpc(
+    "release_due_coupon_reservations",
+    { p_limit: 500 },
+  );
+  if (couponReleaseError) {
+    degradedReasons.push("coupon_reservation_release_failed");
+  }
   const allDisabled = config.EMERGENCY_DISABLE_ALL === "true";
   const emergencyAllowedJobTypes = allDisabled
     ? [

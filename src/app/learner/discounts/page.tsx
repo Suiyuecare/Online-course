@@ -1,26 +1,74 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { z } from "zod";
+import {
+  learnerCouponCategorySchema,
+  readMyCoupons,
+} from "@/application/workspace";
+import { LearnerCouponWalletView } from "@/components/learner-coupon-wallet";
 import { LearnerPortalIcon } from "@/components/learner-portal-icon";
+import { requireUser } from "@/infrastructure/supabase/server";
 
-export default function LearnerDiscountsPage() {
-  return (
-    <section className="learner-portal-page learner-portal-shell-width learner-narrow-page">
-      <header className="learner-page-heading">
-        <div>
-          <p className="learner-kicker">我的優惠</p>
-          <h1>優惠與購課方案</h1>
-          <p>可使用的折扣會在結帳前清楚顯示，不會自動改變積分資格。</p>
-        </div>
-      </header>
-      <div className="learner-friendly-empty">
+export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "我的折扣券" };
+
+function single(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function LearnerDiscountsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const query = await searchParams;
+  const parsedCategory = learnerCouponCategorySchema.safeParse(
+    single(query.category) ?? "available",
+  );
+  const category = parsedCategory.success ? parsedCategory.data : "available";
+  const beforeAt = single(query.beforeAt);
+  const beforeId = single(query.beforeId);
+  const validBefore =
+    beforeAt &&
+    Number.isFinite(Date.parse(beforeAt)) &&
+    beforeId &&
+    z.uuid().safeParse(beforeId).success
+      ? { claimedAt: beforeAt, claimId: beforeId }
+      : null;
+  const { supabase } = await requireUser().catch(() => redirect("/login"));
+  const wallet = await readMyCoupons(supabase, {
+    category,
+    limit: 12,
+    before: validBefore,
+  }).catch(() => null);
+
+  if (!wallet) {
+    return (
+      <section className="learner-order-unavailable learner-portal-shell-width">
         <span aria-hidden="true">
           <LearnerPortalIcon name="discount" size={40} />
         </span>
-        <h2>目前沒有可用優惠</h2>
-        <p>歲悅目前不建立個人點數或回饋金，避免和長照繼續教育積分混淆。</p>
-        <Link className="button" href="/learner/catalog">
-          查看課程
-        </Link>
-      </div>
-    </section>
+        <p className="learner-kicker">我的折扣券</p>
+        <h1>目前無法安全讀取折扣券</h1>
+        <p>系統不會用示範資料代替。請稍後重新讀取，已領取的券不會消失。</p>
+        <div>
+          <Link className="button" href="/learner/discounts">
+            重新讀取
+          </Link>
+          <Link className="button secondary" href="/support">
+            聯絡客服
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <LearnerCouponWalletView
+      activeCategory={category}
+      paginated={Boolean(validBefore)}
+      wallet={wallet}
+    />
   );
 }

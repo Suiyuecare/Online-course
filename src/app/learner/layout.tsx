@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { readOwnCourseFavorites } from "@/application/course-favorites";
+import { readMyCoupons } from "@/application/workspace";
 import { LearnerPortalShell } from "@/components/learner-portal-shell";
 import { requireUser } from "@/infrastructure/supabase/server";
 
@@ -21,13 +22,18 @@ export default async function LearnerLayout({
   const { supabase, user } = await requireUser().catch(() =>
     redirect("/login"),
   );
-  const [{ data: professionalProfile }, favorites] = await Promise.all([
-    supabase
-      .from("professional_profiles")
-      .select("public_name,avatar_upload_id,updated_at")
-      .maybeSingle(),
-    readOwnCourseFavorites(supabase).catch(() => []),
-  ]);
+  const [{ data: professionalProfile }, favorites, coupons] = await Promise.all(
+    [
+      supabase
+        .from("professional_profiles")
+        .select("public_name,avatar_upload_id,updated_at")
+        .maybeSingle(),
+      readOwnCourseFavorites(supabase).catch(() => []),
+      readMyCoupons(supabase, { category: "available", limit: 1 }).catch(
+        () => null,
+      ),
+    ],
+  );
   const metadataName =
     typeof user.user_metadata.display_name === "string"
       ? user.user_metadata.display_name.trim()
@@ -49,6 +55,7 @@ export default async function LearnerLayout({
             )}`
           : null,
       }}
+      availableCouponCount={coupons?.counts.available ?? 0}
       initialFavoriteSlugs={favorites.map((favorite) => favorite.slug)}
     >
       {children}
