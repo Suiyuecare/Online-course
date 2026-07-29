@@ -108,6 +108,15 @@ export function OrganizationRecords({
               <p>
                 {assignment.memberLabel}・{assignment.points} 點
               </p>
+              {assignment.completionDueAt && (
+                <p>
+                  完成期限：
+                  {new Date(assignment.completionDueAt).toLocaleString(
+                    "zh-TW",
+                    { timeZone: "Asia/Taipei" },
+                  )}
+                </p>
+              )}
             </article>
           ))}
           {details.liveBookings.map((booking) => (

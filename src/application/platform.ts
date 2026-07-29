@@ -2,6 +2,24 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 type RpcResult<T> = { data: T | null; error: { message: string } | null };
 
+export type OrganizationBatchAssignmentResult = {
+  requestedCount: number;
+  succeededCount: number;
+  failedCount: number;
+  reservedPoints: number;
+  courseVersionId: string;
+  liveSessionId: string | null;
+  completionDueAt: string | null;
+  results: {
+    memberPersonId: string;
+    status: "assigned" | "failed";
+    assignmentId: string | null;
+    liveBookingId: string | null;
+    reservedPoints: number;
+    errorCode: string | null;
+  }[];
+};
+
 async function rpc<T>(
   client: SupabaseClient,
   name: string,
@@ -178,6 +196,28 @@ export class PlatformApplication {
         p_organization_id: input.organizationId,
         p_member_person_id: input.memberPersonId,
         p_course_version_id: input.courseVersionId,
+        p_idempotency_key: input.idempotencyKey,
+      },
+    );
+  }
+
+  batchAssignOrganizationCourse(input: {
+    organizationId: string;
+    memberPersonIds: string[];
+    courseVersionId: string;
+    liveSessionId: string | null;
+    completionDueAt: string | null;
+    idempotencyKey: string;
+  }) {
+    return rpc<OrganizationBatchAssignmentResult>(
+      this.client,
+      "batch_assign_organization_course",
+      {
+        p_organization_id: input.organizationId,
+        p_member_person_ids: input.memberPersonIds,
+        p_course_version_id: input.courseVersionId,
+        p_live_session_id: input.liveSessionId,
+        p_completion_due_at: input.completionDueAt,
         p_idempotency_key: input.idempotencyKey,
       },
     );

@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
-import { CourseCard } from "@/components/course-card";
+import Link from "next/link";
+import {
+  catalogFilterQuery,
+  parseCatalogFilters,
+  type CatalogSearchParams,
+} from "@/application/catalog-filtering";
+import { OfficialCourseExplorer } from "@/components/official-course-explorer";
 import { ShowcaseCourseExplorer } from "@/components/showcase-course-explorer";
 import {
   learnerCourseTaxonomy,
@@ -13,14 +19,16 @@ export const metadata: Metadata = { title: "課程總覽" };
 export default async function LearnerCatalogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string | string[] }>;
+  searchParams: Promise<CatalogSearchParams>;
 }) {
-  const requestedCategory = (await searchParams).category;
+  const resolvedSearchParams = await searchParams;
+  const requestedCategory = resolvedSearchParams.category;
   const initialCategory =
     typeof requestedCategory === "string" &&
     showcaseCategories.some((category) => category === requestedCategory)
       ? (requestedCategory as (typeof showcaseCategories)[number])
       : "全部課程";
+  const filters = parseCatalogFilters(resolvedSearchParams);
   const catalog = await catalogCourseListing();
 
   return (
@@ -55,18 +63,21 @@ export default async function LearnerCatalogPage({
             <span>依衛福部訓練資源與現行課程綱要整理</span>
           </div>
           <div className="learner-taxonomy-grid">
-            {learnerCourseTaxonomy.map((category, index) => (
-              <a
-                href={`/learner/catalog?category=${encodeURIComponent(category.title)}#course-search`}
-                key={category.title}
-              >
-                <span aria-hidden="true">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <strong>{category.title}</strong>
-                <p>{category.description}</p>
-              </a>
-            ))}
+            {learnerCourseTaxonomy.map((category, index) => {
+              const query = catalogFilterQuery(filters, category.title);
+              return (
+                <Link
+                  href={`/learner/catalog?${query}#course-search`}
+                  key={category.title}
+                >
+                  <span aria-hidden="true">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <strong>{category.title}</strong>
+                  <p>{category.description}</p>
+                </Link>
+              );
+            })}
           </div>
         </section>
 
@@ -77,8 +88,8 @@ export default async function LearnerCatalogPage({
           </div>
         )}
 
-        {catalog.courses.length > 0 && (
-          <section className="learner-official-courses">
+        {catalog.status === "ready" && (
+          <section className="learner-official-courses" id="official-courses">
             <div className="learner-section-heading">
               <div>
                 <p className="learner-kicker">正式開放</p>
@@ -86,11 +97,13 @@ export default async function LearnerCatalogPage({
               </div>
               <span>{catalog.courses.length} 門</span>
             </div>
-            <div className="course-grid">
-              {catalog.courses.map((course) => (
-                <CourseCard course={course} key={course.slug} learnerMode />
-              ))}
-            </div>
+            <OfficialCourseExplorer
+              courses={catalog.courses}
+              filters={filters}
+              showcaseCategory={
+                initialCategory === "全部課程" ? undefined : initialCategory
+              }
+            />
           </section>
         )}
 

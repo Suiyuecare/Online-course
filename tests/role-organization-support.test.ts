@@ -69,7 +69,7 @@ describe("organization profile and offboarding", () => {
     expect(memberRoute).toContain('"manage_organization_member"');
     expect(panel).toContain("至少保留一位負責人");
     expect(panel).toContain("之後不再顯示該人新的個人學習活動");
-    expect(workspace).toContain('"read_organization_workspace_v2"');
+    expect(workspace).toContain('"read_organization_workspace_v3"');
   });
 
   it("derives funded completion from the authoritative enrollment only", () => {
@@ -180,6 +180,19 @@ describe("organization profile and offboarding", () => {
 });
 
 describe("support boundary", () => {
+  it("keeps login recovery public while authenticated threads remain isolated", () => {
+    const supportPage = source("src/app/support/page.tsx");
+    const loginPage = source("src/app/login/page.tsx");
+
+    expect(supportPage).toContain("function PublicSupportPage");
+    expect(supportPage).toContain("if (!session)");
+    expect(supportPage).not.toContain('redirect("/login")');
+    expect(supportPage).toContain("歲悅客服不會向你索取完整簡訊驗證碼");
+    expect(supportPage).toContain("02-6604-5432");
+    expect(loginPage).toContain('href="/support"');
+    expect(loginPage).toContain("不必先登入");
+  });
+
   it("keeps messages and case events append-only behind exact support role RPCs", () => {
     for (const invariant of [
       "support_case_messages_append_only",

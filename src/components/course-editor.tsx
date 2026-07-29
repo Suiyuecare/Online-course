@@ -1,13 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import type {
   InstructorBindingOption,
   PlatformPrerequisiteOptions,
 } from "@/application/workspace";
+import { CourseDraftLearnerPreview } from "@/components/course-draft-learner-preview";
 import { CourseLifecyclePanel } from "@/components/course-lifecycle-panel";
 import { CourseDraftStructureManager } from "@/components/course-draft-structure-manager";
 import { CourseDraftMetadataEditor } from "@/components/course-draft-metadata-editor";
+import { QuestionCsvImporter } from "@/components/question-csv-importer";
 import { presentErrorCode } from "@/domain/presentation";
 
 type CourseDraft = PlatformPrerequisiteOptions["courseDrafts"][number];
@@ -105,16 +108,19 @@ export function CourseEditor({
   options,
   selectedDraft,
   instructorOptions,
+  previewMode = false,
 }: {
   options: PlatformPrerequisiteOptions;
   selectedDraft: CourseDraft | null;
   instructorOptions: InstructorBindingOption[];
+  previewMode?: boolean;
 }) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [deliveryType, setDeliveryType] = useState<
     "recorded" | "live" | "hybrid"
   >("recorded");
+  const learnerPreviewOpen = Boolean(selectedDraft && previewMode);
   const [existingCourseId, setExistingCourseId] = useState("");
   const [moduleId, setModuleId] = useState(selectedDraft?.modules[0]?.id ?? "");
   const firstInstructor = instructorOptions[0] ?? null;
@@ -191,10 +197,32 @@ export function CourseEditor({
             ))}
           </select>
         </label>
+        {selectedDraft && (
+          <div className="course-editor-preview-actions">
+            <Link
+              className={previewMode ? "button secondary" : "button"}
+              href={
+                previewMode
+                  ? `/staff/courses/editor?draft=${encodeURIComponent(selectedDraft.id)}`
+                  : `/staff/courses/editor?draft=${encodeURIComponent(
+                      selectedDraft.id,
+                    )}&preview=1#learner-preview`
+              }
+            >
+              {previewMode ? "返回編輯模式" : "用學員視角預覽"}
+            </Link>
+            <p>預覽不會建立訂單、觀看分鐘、測驗作答或完課紀錄。</p>
+          </div>
+        )}
       </section>
-      <CourseLifecyclePanel versions={options.courseLifecycleVersions} />
+      {selectedDraft && previewMode && (
+        <CourseDraftLearnerPreview draft={selectedDraft} />
+      )}
+      {!learnerPreviewOpen && (
+        <CourseLifecyclePanel versions={options.courseLifecycleVersions} />
+      )}
 
-      {!prerequisitesReady && (
+      {!learnerPreviewOpen && !prerequisitesReady && (
         <div className="warning-panel">
           <strong>法律或保存先決資料尚未齊全</strong>
           <p>
@@ -553,7 +581,7 @@ export function CourseEditor({
         </form>
       )}
 
-      {selectedDraft && (
+      {selectedDraft && !learnerPreviewOpen && (
         <>
           <DraftOutline draft={selectedDraft} />
           <CourseDraftMetadataEditor draft={selectedDraft} options={options} />
@@ -723,6 +751,8 @@ export function CourseEditor({
               新增單元
             </button>
           </form>
+
+          <QuestionCsvImporter courseVersionId={selectedDraft.id} />
 
           <form
             className="single-step-form"

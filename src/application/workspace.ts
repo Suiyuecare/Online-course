@@ -436,6 +436,7 @@ export const organizationWorkspaceDetailsSchema = z.object({
       liveComponentId: z.string().uuid().nullable(),
       status: z.string(),
       points: z.number().int().nonnegative(),
+      completionDueAt: z.string().nullable(),
       canRelease: z.boolean(),
       eligibleLiveSessions: z.array(organizationLiveSessionSchema),
     }),
@@ -1310,7 +1311,7 @@ export async function readOrganizationWorkspaceDetails(
   client: SupabaseClient,
   organizationId: string,
 ): Promise<OrganizationWorkspaceDetails> {
-  const { data, error } = await client.rpc("read_organization_workspace_v2", {
+  const { data, error } = await client.rpc("read_organization_workspace_v3", {
     p_organization_id: organizationId,
   });
   if (error) throw new Error("ORGANIZATION_WORKSPACE_UNAVAILABLE");

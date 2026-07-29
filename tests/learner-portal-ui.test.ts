@@ -87,6 +87,14 @@ describe("logged-in learner portal", () => {
     expect(dashboard).toContain("Asia/Taipei");
     expect(dashboard).toContain("readLearnerCenterRows");
     expect(dashboard).toContain("readOwnOrders");
+    expect(dashboard).toContain("部分學習資料暫時無法讀取");
+    expect(dashboard).toContain(
+      "/api/catalog/courses/${encodeURIComponent(row.course_version_id)}/cover",
+    );
+    expect(dashboard).toContain("unoptimized={row.has_cover}");
+    expect(source("src/app/learner/certificates/page.tsx")).toContain(
+      "系統不會把連線問題顯示成「沒有證明」",
+    );
   });
 
   it("keeps cart non-authoritative and moves favorites to account storage", () => {

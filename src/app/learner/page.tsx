@@ -27,10 +27,17 @@ function formatTaipei(value: string) {
   }).format(new Date(value));
 }
 
-function courseImage(title: string) {
+function courseImage(row: {
+  course_title: string;
+  course_version_id: string;
+  has_cover: boolean;
+}) {
+  if (row.has_cover) {
+    return `/api/catalog/courses/${encodeURIComponent(row.course_version_id)}/cover`;
+  }
   return (
-    showcaseCourses.find((course) => course.title === title)?.coverImage ??
-    "/images/suiyue-original/course-dementia-care.jpg"
+    showcaseCourses.find((course) => course.title === row.course_title)
+      ?.coverImage ?? "/images/suiyue-original/course-dementia-care.jpg"
   );
 }
 
@@ -43,10 +50,16 @@ export default async function LearnerDashboard({
   const { supabase, user } = await requireUser().catch(() =>
     redirect("/login"),
   );
-  const [rows, orders] = await Promise.all([
-    readLearnerCenterRows(supabase).catch(() => []),
-    readOwnOrders(supabase, { limit: 4 }).catch(() => []),
+  const [learningState, orderState] = await Promise.all([
+    readLearnerCenterRows(supabase)
+      .then((data) => ({ available: true as const, data }))
+      .catch(() => ({ available: false as const, data: [] })),
+    readOwnOrders(supabase, { limit: 4 })
+      .then((data) => ({ available: true as const, data }))
+      .catch(() => ({ available: false as const, data: [] })),
   ]);
+  const rows = learningState.data;
+  const orders = orderState.data;
   const name =
     typeof user.user_metadata.display_name === "string" &&
     user.user_metadata.display_name.trim()
@@ -103,6 +116,23 @@ export default async function LearnerDashboard({
           </div>
         )}
 
+        {(!learningState.available || !orderState.available) && (
+          <div className="warning-panel" role="alert">
+            <strong>部分學習資料暫時無法讀取</strong>
+            <p>
+              系統不會把連線問題顯示成「沒有課程」。請重新整理；若持續發生，客服可以協助確認，既有購課與完課紀錄不會因此被刪除。
+            </p>
+            <div className="page-actions">
+              <Link className="button secondary" href="/learner">
+                重新讀取
+              </Link>
+              <Link className="button secondary" href="/support">
+                聯絡客服
+              </Link>
+            </div>
+          </div>
+        )}
+
         <section aria-labelledby="learning-overview-title">
           <div className="learner-section-heading">
             <div>
@@ -115,28 +145,32 @@ export default async function LearnerDashboard({
               <span aria-hidden="true">
                 <LearnerPortalIcon name="book" />
               </span>
-              <strong>{activeRows.length}</strong>
+              <strong>
+                {learningState.available ? activeRows.length : "—"}
+              </strong>
               <p>學習中課程</p>
             </article>
             <article>
               <span aria-hidden="true">
                 <LearnerPortalIcon name="home" />
               </span>
-              <strong>{upcoming.length}</strong>
+              <strong>{learningState.available ? upcoming.length : "—"}</strong>
               <p>即將開始</p>
             </article>
             <article>
               <span aria-hidden="true">
                 <LearnerPortalIcon name="certificate" />
               </span>
-              <strong>{certificateRows.length}</strong>
+              <strong>
+                {learningState.available ? certificateRows.length : "—"}
+              </strong>
               <p>結訓證明</p>
             </article>
             <article>
               <span aria-hidden="true">
                 <LearnerPortalIcon name="order" />
               </span>
-              <strong>{orders.length}</strong>
+              <strong>{orderState.available ? orders.length : "—"}</strong>
               <p>近期訂單</p>
             </article>
           </div>
@@ -150,7 +184,18 @@ export default async function LearnerDashboard({
             </div>
             <span>時間皆為台灣時間</span>
           </div>
-          {upcoming.length > 0 ? (
+          {!learningState.available ? (
+            <div className="learner-available-now">
+              <span aria-hidden="true">
+                <LearnerPortalIcon name="support" size={30} />
+              </span>
+              <div>
+                <strong>目前無法確認下一堂課時間</strong>
+                <p>重新讀取成功前，系統不會把直播場次誤顯示為不存在。</p>
+              </div>
+              <Link href="/learner">重新讀取</Link>
+            </div>
+          ) : upcoming.length > 0 ? (
             <div className="learner-upcoming-grid">
               {upcoming.slice(0, 3).map((row) => (
                 <article key={row.enrollment_id}>
@@ -159,7 +204,8 @@ export default async function LearnerDashboard({
                       alt=""
                       fill
                       sizes="(max-width: 760px) 100vw, 40vw"
-                      src={courseImage(row.course_title)}
+                      src={courseImage(row)}
+                      unoptimized={row.has_cover}
                     />
                   </div>
                   <div>
@@ -204,7 +250,20 @@ export default async function LearnerDashboard({
               </span>
             )}
           </div>
-          {rows.length === 0 ? (
+          {!learningState.available ? (
+            <div className="learner-friendly-empty learner-dashboard-empty">
+              <span aria-hidden="true">
+                <LearnerPortalIcon name="support" size={40} />
+              </span>
+              <h2>目前無法安全讀取你的課程</h2>
+              <p>
+                這是暫時的資料服務問題，不代表課程或學習紀錄消失。請重新讀取或聯絡客服。
+              </p>
+              <Link className="button" href="/learner">
+                重新讀取
+              </Link>
+            </div>
+          ) : rows.length === 0 ? (
             <div className="learner-friendly-empty learner-dashboard-empty">
               <span aria-hidden="true">
                 <LearnerPortalIcon name="book" size={40} />
@@ -237,7 +296,8 @@ export default async function LearnerDashboard({
                         alt=""
                         fill
                         sizes="(max-width: 760px) 100vw, 240px"
-                        src={courseImage(row.course_title)}
+                        src={courseImage(row)}
+                        unoptimized={row.has_cover}
                       />
                       <span>{deliveryLabels[row.delivery_type]}</span>
                     </div>
@@ -248,6 +308,14 @@ export default async function LearnerDashboard({
                         </span>
                         <h3>{row.course_title}</h3>
                         <p>{status.nextAction ?? status.description}</p>
+                        {row.completion_due_at && (
+                          <p className="learner-course-deadline">
+                            機構完成期限：
+                            <time dateTime={row.completion_due_at}>
+                              {formatTaipei(row.completion_due_at)}
+                            </time>
+                          </p>
+                        )}
                       </div>
                       <div className="learner-progress-copy">
                         <span>有效觀看</span>

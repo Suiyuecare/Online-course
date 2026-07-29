@@ -40,6 +40,8 @@ const expectedFiles = [
   "20260729013748_order_history_safety_fixes.sql",
   "20260729013749_b2c_coupon_wallet.sql",
   "20260729165136_fix_learner_dashboard_and_org_rls_capabilities.sql",
+  "20260729175514_organization_batch_assignments_with_deadlines.sql",
+  "20260729181801_question_draft_batch_import.sql",
 ];
 if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) {
   throw new Error(
@@ -88,6 +90,11 @@ const required = [
   "grant select (live_booking_id, quarantined_at)",
   "revoke all on function public.ingest_provider_event(",
   "'canReadThread', coalesce(support_case.assigned_to = actor, false)",
+  "internal.batch_assign_organization_course",
+  "completion_due_at",
+  "read_organization_workspace_v3",
+  "internal.import_question_draft_batch",
+  "question_draft:batch_import",
 ];
 for (const invariant of required) {
   if (!sql.includes(invariant))

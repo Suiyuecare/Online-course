@@ -8,10 +8,36 @@ import { requireUser } from "@/infrastructure/supabase/server";
 
 export default async function LearnerCertificatesPage() {
   const { supabase } = await requireUser().catch(() => redirect("/login"));
-  const rows = await readLearnerCenterRows(supabase).catch(() => []);
+  const learningState = await readLearnerCenterRows(supabase)
+    .then((data) => ({ available: true as const, data }))
+    .catch(() => ({ available: false as const, data: [] }));
+  const rows = learningState.data;
   const certificates = rows.filter(
     (row) => row.certificate_id && row.certificate_status,
   );
+
+  if (!learningState.available) {
+    return (
+      <section className="learner-order-unavailable learner-portal-shell-width">
+        <span aria-hidden="true">
+          <LearnerPortalIcon name="certificate" size={40} />
+        </span>
+        <p className="learner-kicker">結訓證明</p>
+        <h1>目前無法安全讀取結訓證明</h1>
+        <p>
+          系統不會把連線問題顯示成「沒有證明」。請稍後重新讀取，已核發的成果不會因此消失。
+        </p>
+        <div>
+          <Link className="button" href="/learner/certificates">
+            重新讀取
+          </Link>
+          <Link className="button secondary" href="/support">
+            聯絡客服
+          </Link>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="learner-portal-page learner-portal-shell-width">

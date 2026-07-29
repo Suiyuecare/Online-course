@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function CourseEditorPage({
   searchParams,
 }: {
-  searchParams: Promise<{ draft?: string }>;
+  searchParams: Promise<{ draft?: string; preview?: string }>;
 }) {
   const { supabase } = await requireUser().catch(() => redirect("/login"));
   const { data: authorized } = await supabase.rpc("authorize_staff_action", {
@@ -42,7 +42,7 @@ export default async function CourseEditorPage({
       </section>
     );
   }
-  const { draft } = await searchParams;
+  const { draft, preview } = await searchParams;
   const selectedDraft =
     options.courseDrafts.find((item) => item.id === draft) ?? null;
 
@@ -56,6 +56,7 @@ export default async function CourseEditorPage({
       <CourseEditor
         instructorOptions={instructorOptions}
         options={options}
+        previewMode={preview === "1"}
         selectedDraft={selectedDraft}
       />
     </section>
