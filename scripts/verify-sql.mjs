@@ -42,6 +42,8 @@ const expectedFiles = [
   "20260729165136_fix_learner_dashboard_and_org_rls_capabilities.sql",
   "20260729175514_organization_batch_assignments_with_deadlines.sql",
   "20260729181801_question_draft_batch_import.sql",
+  "20260730031000_organization_lifecycle_controls.sql",
+  "20260730033000_staff_directory_video_backup_workspace.sql",
 ];
 if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) {
   throw new Error(
@@ -95,6 +97,14 @@ const required = [
   "read_organization_workspace_v3",
   "internal.import_question_draft_batch",
   "question_draft:batch_import",
+  "internal.change_organization_status",
+  "ORGANIZATION_STATUS_TRANSITION_REJECTED",
+  "read_organization_lifecycle_controls",
+  "organization.suspended",
+  "organization.reactivated",
+  "internal.read_staff_role_candidates",
+  "read_video_master_backup_worklist",
+  "masterBackupVerified",
 ];
 for (const invariant of required) {
   if (!sql.includes(invariant))

@@ -6,11 +6,13 @@ import type {
   InstructorBindingOption,
   PlatformPrerequisiteOptions,
 } from "@/application/workspace";
+import type { VideoMasterBackupItem } from "@/application/video-backup-workspace";
 import { CourseDraftLearnerPreview } from "@/components/course-draft-learner-preview";
 import { CourseLifecyclePanel } from "@/components/course-lifecycle-panel";
 import { CourseDraftStructureManager } from "@/components/course-draft-structure-manager";
 import { CourseDraftMetadataEditor } from "@/components/course-draft-metadata-editor";
 import { QuestionCsvImporter } from "@/components/question-csv-importer";
+import { VideoMasterBackupPanel } from "@/components/video-master-backup-panel";
 import { presentErrorCode } from "@/domain/presentation";
 
 type CourseDraft = PlatformPrerequisiteOptions["courseDrafts"][number];
@@ -108,11 +110,13 @@ export function CourseEditor({
   options,
   selectedDraft,
   instructorOptions,
+  videoBackupItems,
   previewMode = false,
 }: {
   options: PlatformPrerequisiteOptions;
   selectedDraft: CourseDraft | null;
   instructorOptions: InstructorBindingOption[];
+  videoBackupItems: VideoMasterBackupItem[] | null;
   previewMode?: boolean;
 }) {
   const [message, setMessage] = useState("");
@@ -865,6 +869,17 @@ export function CourseEditor({
             </button>
           </form>
 
+          {videoBackupItems ? (
+            <VideoMasterBackupPanel items={videoBackupItems} />
+          ) : (
+            <div className="warning-panel">
+              <strong>影音母檔備份清單暫時無法讀取</strong>
+              <p>
+                安全投影恢復前不接受手動輸入影片資產編號；課程也不會因而略過母檔備份門檻。
+              </p>
+            </div>
+          )}
+
           <form
             className="single-step-form"
             onSubmit={(event) => {
@@ -1000,7 +1015,7 @@ export function CourseEditor({
               );
             }}
           >
-            <h2>第六步：建立四選一題庫</h2>
+            <h2>第七步：建立四選一題庫</h2>
             <label>
               題目
               <textarea name="prompt" minLength={5} maxLength={2000} required />
@@ -1053,7 +1068,7 @@ export function CourseEditor({
               );
             }}
           >
-            <h2>第七步：提交審核</h2>
+            <h2>第八步：提交審核</h2>
             <p>
               系統會再次檢查核定、法務、保存政策、題庫、影片狀態與退款配置；缺件時安全拒絕。
             </p>

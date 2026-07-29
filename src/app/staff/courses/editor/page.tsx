@@ -3,6 +3,7 @@ import {
   readActiveInstructorOptions,
   readPlatformPrerequisiteOptions,
 } from "@/application/workspace";
+import { readVideoMasterBackupWorklist } from "@/application/video-backup-workspace";
 import { CourseEditor } from "@/components/course-editor";
 import { requireUser } from "@/infrastructure/supabase/server";
 
@@ -14,6 +15,7 @@ export default async function CourseEditorPage({
   searchParams: Promise<{ draft?: string; preview?: string }>;
 }) {
   const { supabase } = await requireUser().catch(() => redirect("/login"));
+  const { draft, preview } = await searchParams;
   const { data: authorized } = await supabase.rpc("authorize_staff_action", {
     p_required_role: "course_admin",
     p_action: "staff.course_editor",
@@ -42,9 +44,13 @@ export default async function CourseEditorPage({
       </section>
     );
   }
-  const { draft, preview } = await searchParams;
   const selectedDraft =
     options.courseDrafts.find((item) => item.id === draft) ?? null;
+  const videoBackupItems = selectedDraft
+    ? await readVideoMasterBackupWorklist(supabase, selectedDraft.id).catch(
+        () => null,
+      )
+    : [];
 
   return (
     <section className="page-shell shell">
@@ -58,6 +64,7 @@ export default async function CourseEditorPage({
         options={options}
         previewMode={preview === "1"}
         selectedDraft={selectedDraft}
+        videoBackupItems={videoBackupItems}
       />
     </section>
   );

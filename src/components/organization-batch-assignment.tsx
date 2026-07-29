@@ -24,6 +24,112 @@ export type OrganizationAssignmentCourse = {
   }[];
 };
 
+export const ORGANIZATION_BATCH_ASSIGNMENT_LIMIT = 200;
+
+type SelectableOrganizationMember = {
+  personId: string;
+};
+
+function normalizeOrganizationBatchSelection(
+  currentMemberIds: readonly string[],
+  members: readonly SelectableOrganizationMember[],
+) {
+  const availableMemberIds = new Set(members.map((member) => member.personId));
+  const selectedMemberIds: string[] = [];
+  const selectedMemberIdSet = new Set<string>();
+
+  for (const personId of currentMemberIds) {
+    if (
+      availableMemberIds.has(personId) &&
+      !selectedMemberIdSet.has(personId) &&
+      selectedMemberIds.length < ORGANIZATION_BATCH_ASSIGNMENT_LIMIT
+    ) {
+      selectedMemberIds.push(personId);
+      selectedMemberIdSet.add(personId);
+    }
+  }
+
+  return { selectedMemberIds, selectedMemberIdSet };
+}
+
+export function fillOrganizationBatchSelection(
+  currentMemberIds: readonly string[],
+  members: readonly SelectableOrganizationMember[],
+) {
+  const { selectedMemberIds, selectedMemberIdSet } =
+    normalizeOrganizationBatchSelection(currentMemberIds, members);
+
+  for (const member of members) {
+    if (selectedMemberIds.length >= ORGANIZATION_BATCH_ASSIGNMENT_LIMIT) break;
+    if (!selectedMemberIdSet.has(member.personId)) {
+      selectedMemberIds.push(member.personId);
+      selectedMemberIdSet.add(member.personId);
+    }
+  }
+
+  return selectedMemberIds;
+}
+
+export function updateOrganizationBatchMemberSelection(
+  currentMemberIds: readonly string[],
+  members: readonly SelectableOrganizationMember[],
+  personId: string,
+  checked: boolean,
+) {
+  const { selectedMemberIds, selectedMemberIdSet } =
+    normalizeOrganizationBatchSelection(currentMemberIds, members);
+
+  if (!checked) {
+    return selectedMemberIds.filter(
+      (selectedPersonId) => selectedPersonId !== personId,
+    );
+  }
+  if (
+    selectedMemberIdSet.has(personId) ||
+    selectedMemberIds.length >= ORGANIZATION_BATCH_ASSIGNMENT_LIMIT
+  ) {
+    return selectedMemberIds;
+  }
+  if (!members.some((member) => member.personId === personId)) {
+    return selectedMemberIds;
+  }
+  return [...selectedMemberIds, personId];
+}
+
+export function isOrganizationBatchSelectionValid(
+  selectedMemberIds: readonly string[],
+) {
+  return (
+    selectedMemberIds.length >= 1 &&
+    selectedMemberIds.length <= ORGANIZATION_BATCH_ASSIGNMENT_LIMIT &&
+    new Set(selectedMemberIds).size === selectedMemberIds.length
+  );
+}
+
+export function translateOrganizationBatchAssignmentError(errorCode: string) {
+  const normalizedCode = errorCode.trim().toUpperCase().replaceAll(" ", "_");
+  if (
+    normalizedCode === "TOO_BIG" ||
+    normalizedCode.includes("BATCH_LIMIT") ||
+    normalizedCode.includes("MEMBER_LIMIT") ||
+    normalizedCode.includes("TOO_MANY_MEMBER")
+  ) {
+    return `單批最多只能指派 ${ORGANIZATION_BATCH_ASSIGNMENT_LIMIT} 位員工，請保留 ${ORGANIZATION_BATCH_ASSIGNMENT_LIMIT} 位以內後重新送出。`;
+  }
+
+  const labels: Record<string, string> = {
+    IDEMPOTENCY_REQUEST_CONFLICT:
+      "相同送出識別碼的內容不一致，請重新選擇後再試。",
+    COMPLETION_DEADLINE_INVALID: "完成期限必須晚於現在。",
+    COMPLETION_DEADLINE_BEFORE_SESSION_END: "完成期限必須晚於直播結束時間。",
+    LIVE_SESSION_REQUIRED: "直播課必須先選擇場次。",
+  };
+  return (
+    labels[normalizedCode] ??
+    "整批尚未送出；請確認權限、課程狀態與系統開關後再試。"
+  );
+}
+
 const assignmentErrorLabels: Record<string, string> = {
   ORGANIZATION_MEMBER_REQUIRED: "不是本機構的有效成員",
   DUPLICATE_ASSIGNMENT: "已經擁有這門課",
@@ -107,14 +213,39 @@ export function OrganizationBatchAssignment({
     [courses, selectedCourseId],
   );
   const selectedMembers = new Set(selectedMemberIds);
+  const selectableMemberCount = Math.min(
+    members.length,
+    ORGANIZATION_BATCH_ASSIGNMENT_LIMIT,
+  );
   const allSelected =
-    members.length > 0 && selectedMemberIds.length === members.length;
+    selectableMemberCount > 0 &&
+    selectedMemberIds.length === selectableMemberCount;
+  const remainingCapacity = Math.max(
+    0,
+    ORGANIZATION_BATCH_ASSIGNMENT_LIMIT - selectedMemberIds.length,
+  );
   const liveSessionRequired = selectedCourse?.deliveryType === "live";
+  const validMemberSelection =
+    isOrganizationBatchSelectionValid(selectedMemberIds);
   const canSubmit =
     !busy &&
-    selectedMemberIds.length > 0 &&
+    validMemberSelection &&
     Boolean(selectedCourse) &&
     (!liveSessionRequired || Boolean(selectedLiveSessionId));
+  const selectionCapacityHelpId = `batch-selection-capacity-${organizationId}`;
+  const submitHelpId = `batch-submit-help-${organizationId}`;
+  const submitHelp =
+    selectedMemberIds.length === 0
+      ? "請至少選擇 1 位員工。"
+      : selectedMemberIds.length > ORGANIZATION_BATCH_ASSIGNMENT_LIMIT
+        ? `單批最多只能指派 ${ORGANIZATION_BATCH_ASSIGNMENT_LIMIT} 位員工。`
+        : !selectedCourse
+          ? "請先選擇課程。"
+          : liveSessionRequired && !selectedLiveSessionId
+            ? "直播課必須先選擇場次。"
+            : busy
+              ? "正在安全處理這批派課，請稍候。"
+              : "資料已可送出。";
 
   return (
     <section className="single-step-form organization-batch-assignment">
@@ -171,15 +302,7 @@ export function OrganizationBatchAssignment({
             })
             .catch((error: Error) => {
               setMessage(
-                error.message === "IDEMPOTENCY_REQUEST_CONFLICT"
-                  ? "相同送出識別碼的內容不一致，請重新選擇後再試。"
-                  : error.message === "COMPLETION_DEADLINE_INVALID"
-                    ? "完成期限必須晚於現在。"
-                    : error.message === "COMPLETION_DEADLINE_BEFORE_SESSION_END"
-                      ? "完成期限必須晚於直播結束時間。"
-                      : error.message === "LIVE_SESSION_REQUIRED"
-                        ? "直播課必須先選擇場次。"
-                        : "整批尚未送出；請確認權限、課程狀態與系統開關後再試。",
+                translateOrganizationBatchAssignmentError(error.message),
               );
             })
             .finally(() => setBusy(false));
@@ -256,15 +379,31 @@ export function OrganizationBatchAssignment({
         </label>
 
         <fieldset className="organization-member-picker">
-          <legend>選擇員工（{selectedMemberIds.length} 位）</legend>
+          <legend>
+            選擇員工（最多 {ORGANIZATION_BATCH_ASSIGNMENT_LIMIT} 位）
+          </legend>
+          <p
+            aria-live="polite"
+            className="closed-note"
+            id={selectionCapacityHelpId}
+            role="status"
+          >
+            已選 {selectedMemberIds.length} /{" "}
+            {ORGANIZATION_BATCH_ASSIGNMENT_LIMIT} 位；還可選 {remainingCapacity}{" "}
+            位。
+            {members.length > ORGANIZATION_BATCH_ASSIGNMENT_LIMIT
+              ? ` 目前共有 ${members.length} 位有效成員；全選會保留您已手動勾選的人，再依名單順序補滿本批，其餘成員請另開一批。`
+              : ""}
+          </p>
           <label className="organization-member-select-all">
             <input
+              aria-describedby={selectionCapacityHelpId}
               checked={allSelected}
-              disabled={members.length === 0}
+              disabled={members.length === 0 || busy}
               onChange={(event) => {
                 setSelectedMemberIds(
                   event.target.checked
-                    ? members.map((member) => member.personId)
+                    ? fillOrganizationBatchSelection(selectedMemberIds, members)
                     : [],
                 );
                 setResult(null);
@@ -272,36 +411,50 @@ export function OrganizationBatchAssignment({
               }}
               type="checkbox"
             />
-            全選目前有效成員
+            全選目前有效成員（超過 {ORGANIZATION_BATCH_ASSIGNMENT_LIMIT}{" "}
+            位時只選滿本批）
           </label>
           <div className="organization-member-options">
-            {members.map((member) => (
-              <label key={member.personId}>
-                <input
-                  checked={selectedMembers.has(member.personId)}
-                  onChange={(event) => {
-                    setSelectedMemberIds((current) =>
-                      event.target.checked
-                        ? [...current, member.personId]
-                        : current.filter(
-                            (personId) => personId !== member.personId,
-                          ),
-                    );
-                    setResult(null);
-                    requestIdentity.current = null;
-                  }}
-                  type="checkbox"
-                  value={member.personId}
-                />
-                <span>
-                  <strong>{member.displayName}</strong>
-                  <small>
-                    {member.employeeNumber || "未填員編"}・
-                    {member.department || "未填部門"}
-                  </small>
-                </span>
-              </label>
-            ))}
+            {members.map((member) => {
+              const memberSelected = selectedMembers.has(member.personId);
+              const capacityReached =
+                remainingCapacity === 0 && !memberSelected;
+              return (
+                <label key={member.personId}>
+                  <input
+                    aria-describedby={selectionCapacityHelpId}
+                    checked={memberSelected}
+                    disabled={busy || capacityReached}
+                    onChange={(event) => {
+                      setSelectedMemberIds((current) =>
+                        updateOrganizationBatchMemberSelection(
+                          current,
+                          members,
+                          member.personId,
+                          event.target.checked,
+                        ),
+                      );
+                      setResult(null);
+                      requestIdentity.current = null;
+                    }}
+                    title={
+                      capacityReached
+                        ? `本批已選滿 ${ORGANIZATION_BATCH_ASSIGNMENT_LIMIT} 位；取消一位後即可改選。`
+                        : undefined
+                    }
+                    type="checkbox"
+                    value={member.personId}
+                  />
+                  <span>
+                    <strong>{member.displayName}</strong>
+                    <small>
+                      {member.employeeNumber || "未填員編"}・
+                      {member.department || "未填部門"}
+                    </small>
+                  </span>
+                </label>
+              );
+            })}
           </div>
           {members.length === 0 && (
             <p className="closed-note">目前沒有可指派的有效成員。</p>
@@ -318,9 +471,17 @@ export function OrganizationBatchAssignment({
             </strong>{" "}
             點
           </span>
-          <button className="button" disabled={!canSubmit} type="submit">
+          <button
+            aria-describedby={`${selectionCapacityHelpId} ${submitHelpId}`}
+            className="button"
+            disabled={!canSubmit}
+            type="submit"
+          >
             {busy ? "安全處理中…" : `指派 ${selectedMemberIds.length} 位員工`}
           </button>
+          <span className="closed-note" id={submitHelpId}>
+            {submitHelp}
+          </span>
         </div>
       </form>
 

@@ -283,6 +283,17 @@ input:focus-visible,
   color: var(--orange-deep);
 }
 
+.button.danger {
+  background: var(--state-danger-bg);
+  border-color: var(--state-danger-border);
+  color: var(--state-danger-fg);
+}
+
+.button.danger:hover {
+  background: #ffe4df;
+  border-color: var(--state-danger-fg);
+}
+
 .text-link,
 .link-button {
   background: none;

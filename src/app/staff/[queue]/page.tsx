@@ -7,9 +7,19 @@ import {
   readZoomOrphanCleanupWorklist,
   readZoomSetupReconciliationWorklist,
 } from "@/application/workspace";
+import {
+  readOrganizationLifecycleControls,
+  type OrganizationLifecycleItem,
+} from "@/application/organization-lifecycle";
+import {
+  readStaffRoleCandidates,
+  type StaffRoleCandidate,
+} from "@/application/staff-role-directory";
 import { AccreditationOperationsPanel } from "@/components/accreditation-operations-panel";
 import { EmergencySuspendPanel } from "@/components/emergency-suspend-panel";
 import { FinanceBankImportPanel } from "@/components/finance-bank-import-panel";
+import { OrganizationLifecyclePanel } from "@/components/organization-lifecycle-panel";
+import { StaffRoleCandidatePanel } from "@/components/staff-role-candidate-panel";
 import { StaffQueueActions } from "@/components/staff-queue-actions";
 import {
   ZoomOrphanCleanupPanel,
@@ -122,6 +132,8 @@ export default async function StaffQueuePage({
   let accreditationOperations: Awaited<
     ReturnType<typeof readAccreditationOperationsWorkspace>
   > | null = null;
+  let organizationLifecycle: OrganizationLifecycleItem[] | null = null;
+  let staffRoleCandidates: StaffRoleCandidate[] | null = null;
   try {
     worklist = await readStaffQueueItems(supabase, {
       queue,
@@ -159,6 +171,31 @@ export default async function StaffQueuePage({
       // submission controls fail closed without a safe projection.
     }
   }
+  if (queue === "organizations") {
+    try {
+      organizationLifecycle = await readOrganizationLifecycleControls(
+        supabase,
+        {
+          search: filters.q,
+          limit: 100,
+        },
+      );
+    } catch {
+      // The ordinary application queue remains available. Lifecycle controls
+      // never fall back to a broad organizations table read.
+    }
+  }
+  if (queue === "operations") {
+    try {
+      staffRoleCandidates = await readStaffRoleCandidates(supabase, {
+        search: filters.q,
+        limit: 25,
+      });
+    } catch {
+      // Role onboarding remains unavailable rather than falling back to
+      // auth.users or a broad people table read.
+    }
+  }
   const selected =
     worklist?.items.find((item) => item.itemId === filters.selected) ?? null;
   const filterQuery = new URLSearchParams();
@@ -183,6 +220,29 @@ export default async function StaffQueuePage({
             <strong>積分作業控制台尚未準備完成</strong>
             <p>
               核定生命週期與送審批次在安全投影恢復前保持不可操作，不會要求手動輸入資料庫識別碼。
+            </p>
+          </div>
+        ))}
+      {queue === "organizations" &&
+        (organizationLifecycle ? (
+          <OrganizationLifecyclePanel items={organizationLifecycle} />
+        ) : (
+          <div className="warning-panel">
+            <strong>機構停權與復權控制暫時無法使用</strong>
+            <p>
+              安全投影恢復前，網站不會要求管理員手動修改資料庫；申請審核清單仍可獨立使用。
+            </p>
+          </div>
+        ))}
+      {queue === "operations" &&
+        (staffRoleCandidates ? (
+          <StaffRoleCandidatePanel candidates={staffRoleCandidates} />
+        ) : (
+          <div className="warning-panel">
+            <strong>後台角色候選人目錄暫時無法使用</strong>
+            <p>
+              系統不會要求輸入人員 UUID，也不會直接讀取 Auth
+              名單；既有雙人覆核案件仍可獨立處理。
             </p>
           </div>
         ))}

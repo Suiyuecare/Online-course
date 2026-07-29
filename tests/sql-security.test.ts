@@ -11,8 +11,8 @@ const migrations = migrationFiles
   .join("\n");
 
 describe("clean migration chain", () => {
-  it("has the ten responsibility-separated migrations and twenty-six forward hardening migrations", () => {
-    expect(migrationFiles).toHaveLength(36);
+  it("has the ten responsibility-separated migrations and twenty-eight forward hardening migrations", () => {
+    expect(migrationFiles).toHaveLength(38);
     expect(migrationFiles.map((file) => file.replace(/^\d+_/, ""))).toEqual([
       "reset_legacy_application.sql",
       "identity_rbac_legal.sql",
@@ -50,6 +50,8 @@ describe("clean migration chain", () => {
       "fix_learner_dashboard_and_org_rls_capabilities.sql",
       "organization_batch_assignments_with_deadlines.sql",
       "question_draft_batch_import.sql",
+      "organization_lifecycle_controls.sql",
+      "staff_directory_video_backup_workspace.sql",
     ]);
   });
 
@@ -287,6 +289,39 @@ describe("authority and exact provider claims", () => {
     expect(migrations).toContain("grant_row.action = required_action");
     expect(migrations).toContain("grant_row.target = required_target");
     expect(migrations).toContain("grant_row.consumed_at is null");
+  });
+
+  it("guards organization suspension and reactivation with exact transitions", () => {
+    expect(migrations).toContain("internal.change_organization_status");
+    expect(migrations).toContain("ORGANIZATION_STATUS_TRANSITION_REJECTED");
+    expect(migrations).toContain(
+      "perform internal.consume_step_up_grant(\n    'emergency_suspend',\n    target_organization::text",
+    );
+    expect(migrations).toContain("'organization.suspended'");
+    expect(migrations).toContain("'organization.reactivated'");
+    expect(migrations).toContain(
+      "'organization_status_change', idempotency, request_hash",
+    );
+    expect(migrations).toContain(
+      "internal.read_organization_lifecycle_controls",
+    );
+  });
+
+  it("projects staff candidates and pending video backups without broad table grants", () => {
+    expect(migrations).toContain("internal.read_staff_role_candidates");
+    expect(migrations).toContain("'maskedPhone'");
+    expect(migrations).toContain("'maskedEmail'");
+    expect(migrations).toContain("internal.read_video_master_backup_worklist");
+    expect(migrations).toContain("'masterBackupVerified'");
+    expect(migrations).toContain(
+      "version.status = 'draft'\n      and asset.status in",
+    );
+    expect(migrations).toContain(
+      "revoke all on function public.read_staff_role_candidates",
+    );
+    expect(migrations).toContain(
+      "revoke all on function public.read_video_master_backup_worklist",
+    );
   });
 
   it("invalidates pre-fence JWTs after role or identity changes", () => {
