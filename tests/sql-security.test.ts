@@ -300,7 +300,7 @@ describe("authority and exact provider claims", () => {
     expect(migrations).toContain("'organization.suspended'");
     expect(migrations).toContain("'organization.reactivated'");
     expect(migrations).toContain(
-      "'organization_status_change', idempotency, request_hash",
+      "'organization_status_change', idempotency, canonical_hash",
     );
     expect(migrations).toContain(
       "internal.read_organization_lifecycle_controls",

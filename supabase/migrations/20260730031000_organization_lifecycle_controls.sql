@@ -15,7 +15,7 @@ declare
   organization_row public.organizations%rowtype;
   expected_status text;
   next_status text;
-  request_hash text;
+  canonical_hash text;
   result jsonb;
 begin
   if not internal.has_staff_role('platform_admin')
@@ -26,7 +26,7 @@ begin
     raise exception 'ORGANIZATION_STATUS_CHANGE_REJECTED';
   end if;
 
-  request_hash := encode(extensions.digest(
+  canonical_hash := encode(extensions.digest(
     target_organization::text || '|' || submitted_action || '|'
       || trim(submitted_reason),
     'sha256'
@@ -35,7 +35,7 @@ begin
   insert into public.idempotency_records (
     actor_id, operation, idempotency_key, request_hash, locked_until
   ) values (
-    actor, 'organization_status_change', idempotency, request_hash,
+    actor, 'organization_status_change', idempotency, canonical_hash,
     clock_timestamp() + interval '1 minute'
   )
   on conflict (actor_id, operation, idempotency_key) do nothing;
@@ -46,7 +46,7 @@ begin
     where record.actor_id = actor
       and record.operation = 'organization_status_change'
       and record.idempotency_key = idempotency
-      and record.request_hash = request_hash
+      and record.request_hash = canonical_hash
       and record.completed_at is not null;
     if result is null then
       raise exception 'IDEMPOTENCY_REQUEST_CONFLICT';
