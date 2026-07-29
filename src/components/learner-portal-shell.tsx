@@ -10,6 +10,7 @@ import {
   LearnerPortalProvider,
   useLearnerPortal,
 } from "@/components/learner-portal-store";
+import type { LearnerCartItem } from "@/domain/learner-cart";
 import { SignOutButton } from "@/components/sign-out-button";
 import { learnerCourseTaxonomy } from "@/content/showcase-courses";
 
@@ -318,8 +319,8 @@ function PortalChrome({
                 <div className="learner-explore-list">
                   {learnerCourseTaxonomy.map((category, index) => (
                     <Link
-                      href={`/learner/catalog?category=${encodeURIComponent(category.title)}#course-search`}
-                      key={category.title}
+                      href={`/learner/catalog?category=${category.code}#course-search`}
+                      key={category.code}
                     >
                       <span aria-hidden="true">
                         {String(index + 1).padStart(2, "0")}
@@ -435,16 +436,22 @@ export function LearnerPortalShell({
   availableCouponCount,
   children,
   identity,
+  initialCart,
+  initialCartAvailable,
   initialFavoriteSlugs,
 }: {
   availableCouponCount: number;
   children: ReactNode;
   identity: LearnerIdentity;
+  initialCart: LearnerCartItem[];
+  initialCartAvailable: boolean;
   initialFavoriteSlugs: string[];
 }) {
   return (
     <LearnerPortalProvider
       accountId={identity.accountId}
+      initialCart={initialCart}
+      initialCartAvailable={initialCartAvailable}
       initialFavoriteSlugs={initialFavoriteSlugs}
     >
       <PortalChrome

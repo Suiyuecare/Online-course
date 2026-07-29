@@ -30,6 +30,16 @@ export function assertSameOrigin(request: Request): void {
   }
 }
 
+export function assertExpectedAccount(
+  request: Request,
+  authenticatedUserId: string,
+): void {
+  const expectedAccountId = request.headers.get("x-suiyue-account-id");
+  if (!expectedAccountId || expectedAccountId !== authenticatedUserId) {
+    throw new Error("LEARNER_ACCOUNT_VERSION_CONFLICT");
+  }
+}
+
 export function assertEmergencyCapability(
   request: Request,
   explicitCapability?: EmergencyCapability,

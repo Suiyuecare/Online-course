@@ -3,20 +3,12 @@ import Link from "next/link";
 import { CourseCard } from "@/components/course-card";
 import { ShowcaseCourseCard } from "@/components/showcase-course-card";
 import { showcaseCourses } from "@/content/showcase-courses";
+import { learnerCourseTaxonomy } from "@/domain/course-taxonomy";
 import { catalogCourseListing } from "@/infrastructure/supabase/catalog";
 
 export const revalidate = 60;
 
-const homeCategories = [
-  ["進", "入門、資格與職涯進階", "共同訓練、資格與職類進階"],
-  ["護", "日常照護與專業技能", "吞嚥、移位、足部與急救技能"],
-  ["記", "失智、身障與特殊需求", "失智、身障與家庭支持"],
-  ["動", "復能、居家醫療與善終", "復能、居家醫療與安寧照護"],
-  ["安", "品質、安全與感染管制", "消防、緊急應變與感染管制"],
-  ["管", "溝通、督導與服務管理", "跨專業、個管與人力督導"],
-  ["倫", "倫理、人權與文化安全", "尊嚴、性別與多元文化安全"],
-  ["法", "政策法規與職場權益", "長照法規、個資與勞動權益"],
-] as const;
+const homeCategoryIcons = ["進", "護", "記", "動", "安", "管", "倫", "法"];
 
 export default async function Home() {
   const catalog = await catalogCourseListing();
@@ -156,14 +148,14 @@ export default async function Home() {
           </Link>
         </div>
         <div className="category-grid">
-          {homeCategories.map(([icon, title, description]) => (
+          {learnerCourseTaxonomy.map((category, index) => (
             <Link
-              href={`/courses?category=${encodeURIComponent(title)}#course-showcase`}
-              key={title}
+              href={`/courses?category=${category.code}#course-showcase`}
+              key={category.code}
             >
-              <span aria-hidden="true">{icon}</span>
-              <strong>{title}</strong>
-              <small>{description}</small>
+              <span aria-hidden="true">{homeCategoryIcons[index]}</span>
+              <strong>{category.title}</strong>
+              <small>{category.description}</small>
             </Link>
           ))}
         </div>

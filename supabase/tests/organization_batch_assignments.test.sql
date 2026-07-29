@@ -147,14 +147,15 @@ insert into public.courses (
 set local session_replication_role = replica;
 insert into public.course_versions (
   id, course_id, version, title, summary, description,
-  delivery_type, status, organization_point_price,
+  category_code, delivery_type, status, organization_point_price,
   commerce_close_at, created_by, authoring_idempotency_key
 ) values (
   '97200000-0000-4000-8000-000000000004',
   '97200000-0000-4000-8000-000000000003',
   1, '批次派課錄播課', '驗證批次派課',
   '驗證點數、跨機構、冪等與完成期限。',
-  'recorded', 'published', 10, now() + interval '365 days',
+  'daily_care_skills', 'recorded', 'published', 10,
+  now() + interval '365 days',
   current_setting('test.batch.owner_person_id')::uuid,
   '97200000-0000-4000-8000-000000000005'
 );

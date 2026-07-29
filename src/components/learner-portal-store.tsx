@@ -1,21 +1,30 @@
 "use client";
 
 import {
+  useCallback,
   createContext,
   type ReactNode,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
+import {
+  anonymousLearnerCartStorageKey,
+  deduplicateLearnerCartItems,
+  learnerCartCacheStorageKey,
+  learnerCartMaximumItems,
+  learnerCartResponseSchema,
+  legacyLearnerPortalStorageKey,
+  mergeLearnerCartItems,
+  parseLearnerCartStorage,
+  serializeLearnerCartStorage,
+  type LearnerCartItem,
+  type LearnerCartMutation,
+  type LearnerCartResponse,
+} from "@/domain/learner-cart";
 
-export type LearnerCartItem = {
-  courseVersionId: string;
-  slug: string;
-  title: string;
-  priceTwd: number;
-  deliveryType: "recorded" | "live" | "hybrid";
-  coverUrl: string | null;
-};
+export type { LearnerCartItem } from "@/domain/learner-cart";
 
 type LearnerPortalState = {
   cart: LearnerCartItem[];
@@ -24,77 +33,82 @@ type LearnerPortalState = {
 type LearnerPortalContextValue = LearnerPortalState & {
   favoriteSlugs: string[];
   favoritePendingSlugs: string[];
+  cartPendingIds: string[];
+  cartSyncStatus: "syncing" | "synced" | "unavailable";
   hydrated: boolean;
-  addCartItem: (item: LearnerCartItem) => void;
-  removeCartItem: (courseVersionId: string) => void;
+  addCartItem: (item: LearnerCartItem) => Promise<void>;
+  removeCartItem: (courseVersionId: string) => Promise<void>;
   toggleFavorite: (slug: string) => Promise<void>;
   isFavorite: (slug: string) => boolean;
   announcement: string;
 };
 
-const emptyState: LearnerPortalState = {
-  cart: [],
-};
-
 const LearnerPortalContext = createContext<LearnerPortalContextValue | null>(
   null,
 );
-const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const coverPattern = /^\/api\/catalog\/courses\/[0-9a-f-]{36}\/cover$/i;
 
-function isDeliveryType(
-  value: unknown,
-): value is LearnerCartItem["deliveryType"] {
-  return value === "recorded" || value === "live" || value === "hybrid";
+async function parseCartResponse(response: Response) {
+  const body: unknown = await response.json().catch(() => null);
+  if (!response.ok || !body || typeof body !== "object" || !("data" in body)) {
+    throw new Error("LEARNER_CART_UNAVAILABLE");
+  }
+  const parsed = learnerCartResponseSchema.safeParse(body.data);
+  if (!parsed.success) throw new Error("LEARNER_CART_UNAVAILABLE");
+  return parsed.data;
 }
 
-function parseState(value: string | null): LearnerPortalState {
-  if (!value) return emptyState;
-  try {
-    const parsed: unknown = JSON.parse(value);
-    if (!parsed || typeof parsed !== "object") return emptyState;
-    const candidate = parsed as Partial<LearnerPortalState>;
-    const cart = Array.isArray(candidate.cart)
-      ? candidate.cart.filter((item): item is LearnerCartItem => {
-          if (!item || typeof item !== "object") return false;
-          const course = item as Partial<LearnerCartItem>;
-          return (
-            typeof course.courseVersionId === "string" &&
-            uuidPattern.test(course.courseVersionId) &&
-            typeof course.slug === "string" &&
-            slugPattern.test(course.slug) &&
-            typeof course.title === "string" &&
-            course.title.length > 0 &&
-            course.title.length <= 160 &&
-            Number.isInteger(course.priceTwd) &&
-            (course.priceTwd ?? -1) >= 0 &&
-            (course.priceTwd ?? 10_000_001) <= 10_000_000 &&
-            isDeliveryType(course.deliveryType) &&
-            (course.coverUrl === null ||
-              (typeof course.coverUrl === "string" &&
-                coverPattern.test(course.coverUrl)))
-          );
-        })
-      : [];
-    return { cart };
-  } catch {
-    return emptyState;
-  }
+async function requestCartMutation(
+  accountId: string,
+  input: LearnerCartMutation,
+) {
+  return parseCartResponse(
+    await fetch("/api/cart", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "idempotency-key": crypto.randomUUID(),
+        "x-suiyue-account-id": accountId,
+      },
+      body: JSON.stringify(input),
+    }),
+  );
+}
+
+async function requestCartRefresh(accountId: string) {
+  return parseCartResponse(
+    await fetch("/api/cart", {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        "x-suiyue-account-id": accountId,
+      },
+      cache: "no-store",
+    }),
+  );
 }
 
 export function LearnerPortalProvider({
   accountId,
   children,
+  initialCart,
+  initialCartAvailable,
   initialFavoriteSlugs,
 }: {
   accountId: string;
   children: ReactNode;
+  initialCart: LearnerCartItem[];
+  initialCartAvailable: boolean;
   initialFavoriteSlugs: string[];
 }) {
-  const storageKey = `suiyue:learner-portal:${accountId}:v1`;
-  const [state, setState] = useState<LearnerPortalState>(emptyState);
+  const cacheStorageKey = learnerCartCacheStorageKey(accountId);
+  const legacyStorageKey = legacyLearnerPortalStorageKey(accountId);
+  const initialCartRef = useRef(initialCart);
+  const [state, setState] = useState<LearnerPortalState>(() => ({
+    cart: initialCart,
+  }));
+  const stateRef = useRef(state);
+  const cartRequestQueueRef = useRef<Promise<void>>(Promise.resolve());
   const [favoriteSlugs, setFavoriteSlugs] = useState(() =>
     Array.from(
       new Set(initialFavoriteSlugs.filter((slug) => slugPattern.test(slug))),
@@ -103,58 +117,285 @@ export function LearnerPortalProvider({
   const [favoritePendingSlugs, setFavoritePendingSlugs] = useState<string[]>(
     [],
   );
+  const [cartPendingIds, setCartPendingIds] = useState<string[]>([]);
+  const [cartSyncStatus, setCartSyncStatus] = useState<
+    "syncing" | "synced" | "unavailable"
+  >(initialCartAvailable ? "syncing" : "unavailable");
   const [hydrated, setHydrated] = useState(false);
   const [announcement, setAnnouncement] = useState("");
 
+  const saveCart = useCallback(
+    (cart: LearnerCartItem[]) => {
+      const next = { cart };
+      stateRef.current = next;
+      setState(next);
+      window.localStorage.setItem(
+        cacheStorageKey,
+        serializeLearnerCartStorage(cart),
+      );
+    },
+    [cacheStorageKey],
+  );
+
+  const acceptServerCart = useCallback(
+    (cart: LearnerCartItem[]) => {
+      saveCart(cart);
+      setCartSyncStatus("synced");
+    },
+    [saveCart],
+  );
+
+  const enqueueCartRequest = useCallback(
+    (request: () => Promise<LearnerCartResponse>) => {
+      const result = cartRequestQueueRef.current.then(request, request);
+      cartRequestQueueRef.current = result.then(
+        () => undefined,
+        () => undefined,
+      );
+      return result;
+    },
+    [],
+  );
+
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setState(parseState(window.localStorage.getItem(storageKey)));
-      setHydrated(true);
-    }, 0);
+    let active = true;
+    const anonymousItems = parseLearnerCartStorage(
+      window.localStorage.getItem(anonymousLearnerCartStorageKey),
+    );
+    const legacyItems = parseLearnerCartStorage(
+      window.localStorage.getItem(legacyStorageKey),
+    );
+    const cachedItems = parseLearnerCartStorage(
+      window.localStorage.getItem(cacheStorageKey),
+    );
+    const migrationItems = deduplicateLearnerCartItems(
+      anonymousItems,
+      legacyItems,
+    );
+    // The account cache is display-only fallback data. Uploading it would
+    // resurrect items that another device or a completed order removed.
+    const fallback = initialCartAvailable
+      ? mergeLearnerCartItems(initialCartRef.current, migrationItems)
+      : mergeLearnerCartItems(migrationItems, cachedItems);
+    saveCart(fallback);
+    setHydrated(true);
+    setCartSyncStatus("syncing");
+
+    async function mergeLocalCart(
+      items: LearnerCartItem[],
+      sources: {
+        anonymous: LearnerCartItem[];
+        legacy: LearnerCartItem[];
+      },
+    ) {
+      try {
+        let result: LearnerCartResponse;
+        const rejectedIds = new Set<string>();
+        if (items.length === 0) {
+          result = initialCartAvailable
+            ? {
+                items: initialCartRef.current,
+                rejectedCourseVersionIds: [],
+              }
+            : await enqueueCartRequest(() => requestCartRefresh(accountId));
+        } else {
+          let latestResult: LearnerCartResponse | null = null;
+          for (
+            let offset = 0;
+            offset < items.length;
+            offset += learnerCartMaximumItems
+          ) {
+            const batch = items.slice(offset, offset + learnerCartMaximumItems);
+            latestResult = await enqueueCartRequest(() =>
+              requestCartMutation(accountId, {
+                operation: "merge",
+                courseVersionIds: batch.map((item) => item.courseVersionId),
+              }),
+            );
+            for (const id of latestResult.rejectedCourseVersionIds) {
+              rejectedIds.add(id);
+            }
+          }
+          if (!latestResult) throw new Error("LEARNER_CART_UNAVAILABLE");
+          result = latestResult;
+        }
+        if (!active) return;
+        acceptServerCart(result.items);
+        const submittedIds = new Set(items.map((item) => item.courseVersionId));
+        const concurrentAnonymousItems = parseLearnerCartStorage(
+          window.localStorage.getItem(anonymousLearnerCartStorageKey),
+        ).filter((item) => !submittedIds.has(item.courseVersionId));
+        const rejectedAnonymousItems = sources.anonymous.filter((item) =>
+          rejectedIds.has(item.courseVersionId),
+        );
+        const rejectedLegacyItems = sources.legacy.filter((item) =>
+          rejectedIds.has(item.courseVersionId),
+        );
+        const remainingAnonymousItems = mergeLearnerCartItems(
+          rejectedAnonymousItems,
+          concurrentAnonymousItems,
+        );
+        if (remainingAnonymousItems.length > 0) {
+          window.localStorage.setItem(
+            anonymousLearnerCartStorageKey,
+            serializeLearnerCartStorage(remainingAnonymousItems),
+          );
+        } else {
+          window.localStorage.removeItem(anonymousLearnerCartStorageKey);
+        }
+        if (rejectedLegacyItems.length > 0) {
+          window.localStorage.setItem(
+            legacyStorageKey,
+            serializeLearnerCartStorage(rejectedLegacyItems),
+          );
+        } else {
+          window.localStorage.removeItem(legacyStorageKey);
+        }
+        if (rejectedIds.size > 0) {
+          setAnnouncement(
+            `${rejectedIds.size} 門已停售或購物車已滿的課程仍保留在這台裝置，尚未加入帳號購物車。`,
+          );
+        }
+      } catch {
+        if (!active) return;
+        setCartSyncStatus("unavailable");
+        setAnnouncement(
+          "購物車暫時無法同步；目前先顯示這台裝置上次保存的內容。",
+        );
+      }
+    }
+
+    async function refreshServerCart() {
+      try {
+        const result = await enqueueCartRequest(() =>
+          requestCartRefresh(accountId),
+        );
+        if (active) acceptServerCart(result.items);
+      } catch {
+        if (active) setCartSyncStatus("unavailable");
+      }
+    }
+
+    void mergeLocalCart(migrationItems, {
+      anonymous: anonymousItems,
+      legacy: legacyItems,
+    });
+
     const syncAcrossTabs = (event: StorageEvent) => {
-      if (event.key === storageKey) setState(parseState(event.newValue));
+      if (event.key === anonymousLearnerCartStorageKey) {
+        const incomingAnonymousItems = parseLearnerCartStorage(event.newValue);
+        if (incomingAnonymousItems.length === 0) {
+          void refreshServerCart();
+          return;
+        }
+        saveCart(
+          mergeLearnerCartItems(stateRef.current.cart, incomingAnonymousItems),
+        );
+        setCartSyncStatus("syncing");
+        void mergeLocalCart(incomingAnonymousItems, {
+          anonymous: incomingAnonymousItems,
+          legacy: [],
+        });
+      } else if (event.key === cacheStorageKey) {
+        void refreshServerCart();
+      }
+    };
+    const refreshOnFocus = () => void refreshServerCart();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refreshServerCart();
     };
     window.addEventListener("storage", syncAcrossTabs);
+    window.addEventListener("focus", refreshOnFocus);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
-      window.clearTimeout(timer);
+      active = false;
       window.removeEventListener("storage", syncAcrossTabs);
+      window.removeEventListener("focus", refreshOnFocus);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [storageKey]);
-
-  function save(next: LearnerPortalState) {
-    setState(next);
-    window.localStorage.setItem(storageKey, JSON.stringify(next));
-  }
+  }, [
+    accountId,
+    acceptServerCart,
+    cacheStorageKey,
+    enqueueCartRequest,
+    initialCartAvailable,
+    legacyStorageKey,
+    saveCart,
+  ]);
 
   const value: LearnerPortalContextValue = {
     ...state,
     favoriteSlugs,
     favoritePendingSlugs,
+    cartPendingIds,
+    cartSyncStatus,
     hydrated,
     announcement,
-    addCartItem(item) {
+    async addCartItem(item) {
       if (
-        state.cart.some(
+        cartSyncStatus === "syncing" ||
+        cartPendingIds.includes(item.courseVersionId)
+      ) {
+        return;
+      }
+      if (
+        stateRef.current.cart.some(
           (course) => course.courseVersionId === item.courseVersionId,
         )
       ) {
         setAnnouncement(`${item.title} 已經在購物車裡。`);
         return;
       }
-      save({ ...state, cart: [...state.cart, item] });
-      setAnnouncement(`已將 ${item.title} 加入購物車。`);
+      setCartPendingIds((current) => [...current, item.courseVersionId]);
+      setAnnouncement(`正在將 ${item.title} 加入購物車…`);
+      try {
+        const result = await enqueueCartRequest(() =>
+          requestCartMutation(accountId, {
+            operation: "add",
+            courseVersionIds: [item.courseVersionId],
+          }),
+        );
+        acceptServerCart(result.items);
+        setAnnouncement(`已將 ${item.title} 加入購物車並同步到帳號。`);
+      } catch {
+        setCartSyncStatus("unavailable");
+        setAnnouncement("課程沒有加入購物車，請稍後再試。");
+      } finally {
+        setCartPendingIds((current) =>
+          current.filter((id) => id !== item.courseVersionId),
+        );
+      }
     },
-    removeCartItem(courseVersionId) {
-      const removed = state.cart.find(
+    async removeCartItem(courseVersionId) {
+      if (
+        cartSyncStatus === "syncing" ||
+        cartPendingIds.includes(courseVersionId)
+      ) {
+        return;
+      }
+      const removed = stateRef.current.cart.find(
         (course) => course.courseVersionId === courseVersionId,
       );
-      save({
-        ...state,
-        cart: state.cart.filter(
-          (course) => course.courseVersionId !== courseVersionId,
-        ),
-      });
-      if (removed) setAnnouncement(`已從購物車移除 ${removed.title}。`);
+      if (!removed) return;
+      setCartPendingIds((current) => [...current, courseVersionId]);
+      setAnnouncement(`正在從購物車移除 ${removed.title}…`);
+      try {
+        const result = await enqueueCartRequest(() =>
+          requestCartMutation(accountId, {
+            operation: "remove",
+            courseVersionIds: [courseVersionId],
+          }),
+        );
+        acceptServerCart(result.items);
+        setAnnouncement(`已從購物車移除 ${removed.title}。`);
+      } catch {
+        setCartSyncStatus("unavailable");
+        setAnnouncement("購物車沒有更新，請稍後再試。");
+      } finally {
+        setCartPendingIds((current) =>
+          current.filter((id) => id !== courseVersionId),
+        );
+      }
     },
     async toggleFavorite(slug) {
       if (!slugPattern.test(slug) || favoritePendingSlugs.includes(slug)) {

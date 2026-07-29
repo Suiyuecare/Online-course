@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { PlatformPrerequisiteOptions } from "@/application/workspace";
+import { courseCategoryByCode } from "@/domain/course-taxonomy";
 
 type CourseDraft = PlatformPrerequisiteOptions["courseDrafts"][number];
 
@@ -26,6 +27,7 @@ function formatPrice(value: number) {
 
 export function CourseDraftLearnerPreview({ draft }: { draft: CourseDraft }) {
   const recordedMinutes = Math.ceil(draft.metadata.requiredWatchSeconds / 60);
+  const category = courseCategoryByCode(draft.metadata.categoryCode);
 
   return (
     <section
@@ -47,6 +49,7 @@ export function CourseDraftLearnerPreview({ draft }: { draft: CourseDraft }) {
         <div>
           <p className="eyebrow">歲悅學苑・長照積分課程</p>
           <div className="course-preview-tags" aria-label="課程標籤">
+            <span>{category?.title ?? "主題待補"}</span>
             <span>{deliveryLabels[draft.deliveryType]}</span>
             <span>
               {draft.metadata.accreditationRevisionId

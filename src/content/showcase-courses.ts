@@ -1,3 +1,7 @@
+import { learnerCourseTaxonomy } from "@/domain/course-taxonomy";
+
+export { learnerCourseTaxonomy } from "@/domain/course-taxonomy";
+
 export type ShowcaseDeliveryType = "recorded" | "live" | "hybrid";
 export type ShowcaseCreditType =
   | "專業課程"
@@ -35,14 +39,7 @@ export type ShowcaseCourse = {
 
 export const showcaseCategories = [
   "全部課程",
-  "入門、資格與職涯進階",
-  "日常照護與專業技能",
-  "失智、身障與特殊需求",
-  "復能、居家醫療與善終",
-  "品質、安全與感染管制",
-  "溝通、督導與服務管理",
-  "倫理、人權與文化安全",
-  "政策法規與職場權益",
+  ...learnerCourseTaxonomy.map((category) => category.title),
 ] as const;
 
 export const showcaseCreditTypes = [
@@ -51,49 +48,6 @@ export const showcaseCreditTypes = [
   "專業品質",
   "專業倫理",
   "專業法規",
-] as const;
-
-export const learnerCourseTaxonomy = [
-  {
-    title: "入門、資格與職涯進階",
-    description: "共同訓練、照服員資格，以及居督、照管與個管進階。",
-    shortLabel: "入門進階",
-  },
-  {
-    title: "日常照護與專業技能",
-    description: "營養吞嚥、移位輔具、足部照護、管路與急救技能。",
-    shortLabel: "照護技能",
-  },
-  {
-    title: "失智、身障與特殊需求",
-    description: "失智照護、身障支持、精神照護與家庭照顧者支持。",
-    shortLabel: "特殊需求",
-  },
-  {
-    title: "復能、居家醫療與善終",
-    description: "復能、延緩失能、居家醫療、安寧與預立醫療。",
-    shortLabel: "復能善終",
-  },
-  {
-    title: "品質、安全與感染管制",
-    description: "感染、消防、緊急應變、風險管理與職業安全。",
-    shortLabel: "品質安全",
-  },
-  {
-    title: "溝通、督導與服務管理",
-    description: "跨專業溝通、個案管理、人力督導與資源連結。",
-    shortLabel: "督導管理",
-  },
-  {
-    title: "倫理、人權與文化安全",
-    description: "尊嚴隱私、性別敏感度、原民與多元文化安全。",
-    shortLabel: "倫理人權",
-  },
-  {
-    title: "政策法規與職場權益",
-    description: "長照法規、個資、消保、勞權與職場安全規範。",
-    shortLabel: "政策法規",
-  },
 ] as const;
 
 export const showcaseCourses: ShowcaseCourse[] = [

@@ -73,6 +73,9 @@ export function ShowcaseCourseDetail({ course }: { course: ShowcaseCourse }) {
             <Link className="button secondary" href="/courses">
               繼續看其他課程
             </Link>
+            <Link className="button secondary" href="/demo/organization">
+              下一段：機構培訓示範
+            </Link>
           </aside>
         </div>
       </section>

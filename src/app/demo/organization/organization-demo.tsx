@@ -374,6 +374,18 @@ export function OrganizationDemo() {
         </div>
       </div>
 
+      <footer className={styles.nextDemo}>
+        <div>
+          <small>DEMO 02 / 03</small>
+          <strong>機構端看完後，接著看平台如何建課與審核。</strong>
+          <span>下一段會展示課程發布、匯款核對、資格審查與權限稽核。</span>
+        </div>
+        <a href="/demo/staff">
+          下一段：管理後台
+          <span aria-hidden="true">→</span>
+        </a>
+      </footer>
+
       {notice && (
         <div
           className={`${styles.toast} ${notice.tone === "info" ? styles.toastInfo : ""}`}

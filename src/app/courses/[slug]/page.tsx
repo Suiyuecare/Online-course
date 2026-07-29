@@ -3,7 +3,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { CoursePreviewPlayer } from "@/components/course-preview-player";
 import { RefundAllocationDisclosure } from "@/components/refund-allocation-disclosure";
-import { CourseDetailFavoriteAction } from "@/components/learner-course-actions";
+import {
+  AddPublicCourseToCart,
+  CourseDetailFavoriteAction,
+} from "@/components/learner-course-actions";
 import { readOwnCourseFavorites } from "@/application/course-favorites";
 import {
   catalogCourse,
@@ -199,9 +202,15 @@ export default async function CoursePage({
           <li>實際入帳確認後才會開通。</li>
         </ol>
         {readiness.purchaseReady ? (
-          <Link className="button" href={`/courses/${slug}/contract`}>
-            開始契約審閱
-          </Link>
+          <>
+            <AddPublicCourseToCart
+              className="button secondary"
+              course={course}
+            />
+            <Link className="button" href={`/courses/${slug}/contract`}>
+              開始契約審閱
+            </Link>
+          </>
         ) : (
           <div className="closed-note">
             <strong>目前暫不開放購買</strong>

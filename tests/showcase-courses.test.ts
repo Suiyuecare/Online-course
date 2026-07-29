@@ -108,7 +108,7 @@ describe("public showcase courses", () => {
     const home = source("src/app/page.tsx");
     const explorer = source("src/components/showcase-course-explorer.tsx");
 
-    expect(home).toContain("encodeURIComponent(title)");
+    expect(home).toContain("category=${category.code}");
     expect(explorer).toContain("initialCategory");
     expect(explorer).toContain('aria-live="polite"');
     expect(explorer).toContain('role="status"');
@@ -123,7 +123,7 @@ describe("public showcase courses", () => {
     expect(header).toContain('action="/courses"');
     expect(header).toContain('method="get"');
     expect(header).toContain('name="q"');
-    expect(catalog).toContain("resolvedSearchParams.q");
+    expect(catalog).toContain("parseCatalogFilters(resolvedSearchParams)");
     expect(catalog).toContain("initialQuery={initialQuery}");
 
     const results = filterShowcaseCourses(showcaseCourses, {

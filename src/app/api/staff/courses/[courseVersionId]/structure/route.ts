@@ -4,6 +4,7 @@ import {
   readJson,
   requireIdempotencyKey,
 } from "@/app/api/_shared/route-helpers";
+import { courseCategoryCodeSchema } from "@/domain/course-taxonomy";
 import { requireUser } from "@/infrastructure/supabase/server";
 
 const schema = z.discriminatedUnion("operation", [
@@ -38,6 +39,7 @@ const schema = z.discriminatedUnion("operation", [
     summary: z.string().trim().min(10).max(500),
     description: z.string().trim().min(20).max(10_000),
     learningObjectives: z.array(z.string().trim().min(2).max(300)).min(1),
+    categoryCode: courseCategoryCodeSchema,
     priceTwd: z.number().int().nonnegative(),
     organizationPointPrice: z.number().int().positive(),
     recordedRefundAllocationTwd: z.number().int().nonnegative(),

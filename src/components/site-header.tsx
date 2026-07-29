@@ -43,8 +43,8 @@ export function SiteHeader() {
             <div className="site-explore-grid">
               {learnerCourseTaxonomy.map((item, index) => (
                 <Link
-                  href={`/courses?category=${encodeURIComponent(item.title)}#course-search`}
-                  key={item.title}
+                  href={`/courses?category=${item.code}#course-search`}
+                  key={item.code}
                 >
                   <span aria-hidden="true">
                     {String(index + 1).padStart(2, "0")}

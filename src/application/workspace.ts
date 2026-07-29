@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { courseCategoryCodeSchema } from "@/domain/course-taxonomy";
 
 const nullableString = z.string().nullable();
 
@@ -705,9 +706,17 @@ export type StaffLiveSessionContext = z.infer<
 >;
 
 const optionSchema = z.object({ id: z.string().uuid(), label: z.string() });
+const courseCategoryOptionSchema = z.object({
+  code: courseCategoryCodeSchema,
+  title: z.string(),
+  description: z.string(),
+  shortLabel: z.string(),
+  sortOrder: z.number().int().nonnegative(),
+});
 const courseDraftSchema = optionSchema.extend({
   deliveryType: z.enum(["recorded", "live", "hybrid"]),
   metadata: z.object({
+    categoryCode: courseCategoryCodeSchema.nullable().default(null),
     title: z.string(),
     summary: z.string(),
     description: z.string(),
@@ -784,6 +793,7 @@ const courseDraftSchema = optionSchema.extend({
 });
 export const platformPrerequisiteOptionsSchema = z.object({
   courses: z.array(optionSchema),
+  courseCategories: z.array(courseCategoryOptionSchema).default([]),
   courseDrafts: z.array(courseDraftSchema),
   liveCourseVersions: z.array(
     optionSchema.extend({
@@ -818,6 +828,16 @@ export const platformPrerequisiteOptionsSchema = z.object({
 export type PlatformPrerequisiteOptions = z.infer<
   typeof platformPrerequisiteOptionsSchema
 >;
+
+const courseCategoryWorkspaceSchema = z.object({
+  categories: z.array(courseCategoryOptionSchema).length(8),
+  assignments: z.array(
+    z.object({
+      courseVersionId: z.string().uuid(),
+      categoryCode: courseCategoryCodeSchema.nullable(),
+    }),
+  ),
+});
 
 export const launchControlWorkspaceSchema = z.object({
   settings: z.array(
@@ -1439,12 +1459,16 @@ export async function readStaffLiveSessionContext(
 export async function readPlatformPrerequisiteOptions(
   client: SupabaseClient,
 ): Promise<PlatformPrerequisiteOptions> {
-  const [{ data, error }, { data: controls, error: controlsError }] =
-    await Promise.all([
-      client.rpc("read_platform_prerequisite_options"),
-      client.rpc("read_course_product_controls"),
-    ]);
-  if (error || controlsError) {
+  const [
+    { data, error },
+    { data: controls, error: controlsError },
+    { data: categoryData, error: categoryError },
+  ] = await Promise.all([
+    client.rpc("read_platform_prerequisite_options"),
+    client.rpc("read_course_product_controls"),
+    client.rpc("read_course_category_workspace"),
+  ]);
+  if (error || controlsError || categoryError) {
     throw new Error("PLATFORM_PREREQUISITES_UNAVAILABLE");
   }
   const controlResult = z
@@ -1473,10 +1497,15 @@ export async function readPlatformPrerequisiteOptions(
   if (!controlResult.success) {
     throw new Error("COURSE_PRODUCT_CONTROLS_INVALID");
   }
+  const categoryResult = courseCategoryWorkspaceSchema.safeParse(categoryData);
+  if (!categoryResult.success) {
+    throw new Error("COURSE_CATEGORY_WORKSPACE_INVALID");
+  }
   const raw =
     data && typeof data === "object"
       ? {
           ...(data as Record<string, unknown>),
+          courseCategories: categoryResult.data.categories,
           courseLifecycleVersions: controlResult.data.lifecycleVersions,
         }
       : data;
@@ -1486,6 +1515,12 @@ export async function readPlatformPrerequisiteOptions(
     controlResult.data.hybridConfigurations.map((configuration) => [
       configuration.courseVersionId,
       configuration,
+    ]),
+  );
+  const categoryAssignments = new Map(
+    categoryResult.data.assignments.map((assignment) => [
+      assignment.courseVersionId,
+      assignment.categoryCode,
     ]),
   );
   return {
@@ -1508,6 +1543,7 @@ export async function readPlatformPrerequisiteOptions(
         ...draft,
         metadata: {
           ...draft.metadata,
+          categoryCode: categoryAssignments.get(draft.id) ?? null,
           hybridComponents: draft.metadata.hybridComponents.map(
             (component) => ({
               ...component,

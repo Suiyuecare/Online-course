@@ -38,7 +38,7 @@ describe("logged-in learner portal", () => {
     expect(shell).toContain('method="get"');
     expect(shell).toContain('name="q"');
     expect(shell).toContain('type="search"');
-    expect(shell).toContain("encodeURIComponent(category.title)");
+    expect(shell).toContain("category=${category.code}");
     expect(shell).toContain(
       'className="learner-icon-button learner-search-button"',
     );
@@ -115,19 +115,26 @@ describe("logged-in learner portal", () => {
     );
   });
 
-  it("keeps cart non-authoritative and moves favorites to account storage", () => {
+  it("merges local carts into account storage without trusting cart prices", () => {
     const store = source("src/components/learner-portal-store.tsx");
     const cart = source("src/app/learner/cart/page.tsx");
+    const layout = source("src/app/learner/layout.tsx");
     const favorites = source("src/app/learner/favorites/page.tsx");
     const favoriteView = source("src/components/learner-favorites-view.tsx");
 
     expect(store).toContain("accountId");
     expect(store).toContain("window.localStorage");
+    expect(store).toContain("anonymousLearnerCartStorageKey");
+    expect(store).toContain('operation: "merge"');
+    expect(store).toContain('fetch("/api/cart"');
+    expect(store).toContain("requestCartRefresh");
     expect(store).toContain("courseVersionId");
     expect(store).toContain('fetch("/api/favorites"');
     expect(store).not.toContain("candidate.favoriteSlugs");
+    expect(layout).toContain("readOwnLearnerCart");
     expect(cart).toContain("正式訂單金額以伺服器結帳頁重新計算為準");
     expect(cart).toContain("每門課需個別確認");
+    expect(cart).toContain("購物車同步暫時中斷");
     expect(favorites).toContain("readOwnCourseFavorites");
     expect(favoriteView).toContain("收藏不等於購買");
     expect(favoriteView).toContain("換手機登入");

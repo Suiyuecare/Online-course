@@ -1,22 +1,16 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import {
+  filterCatalogCourses,
+  parseCatalogFilters,
+} from "@/application/catalog-filtering";
 import { CourseCard } from "@/components/course-card";
 import { ShowcaseCourseExplorer } from "@/components/showcase-course-explorer";
-import {
-  showcaseCategories,
-  showcaseCourses,
-} from "@/content/showcase-courses";
+import { showcaseCourses } from "@/content/showcase-courses";
+import { courseCategoryByCode } from "@/domain/course-taxonomy";
 import { catalogCourseListing } from "@/infrastructure/supabase/catalog";
 
 export const metadata: Metadata = { title: "找課程" };
-
-function firstSearchValue(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function normalizeSearchValue(value: string) {
-  return value.normalize("NFKC").toLocaleLowerCase("zh-Hant-TW");
-}
 
 export default async function CoursesPage({
   searchParams,
@@ -27,32 +21,13 @@ export default async function CoursesPage({
   }>;
 }) {
   const resolvedSearchParams = await searchParams;
-  const requestedCategory = firstSearchValue(resolvedSearchParams.category);
-  const initialQuery = (firstSearchValue(resolvedSearchParams.q) ?? "")
-    .trim()
-    .slice(0, 100);
-  const initialCategory = showcaseCategories.some(
-    (category) => category === requestedCategory,
-  )
-    ? (requestedCategory as (typeof showcaseCategories)[number])
-    : "全部課程";
+  const filters = parseCatalogFilters(resolvedSearchParams);
+  const initialQuery = filters.query;
+  const initialCategory =
+    courseCategoryByCode(filters.category)?.title ?? "全部課程";
   const catalog = await catalogCourseListing();
-  const normalizedQuery = normalizeSearchValue(initialQuery);
-  const courses = catalog.courses.filter((course) => {
-    if (!normalizedQuery) return true;
-    return normalizeSearchValue(
-      [
-        course.title,
-        course.summary,
-        course.description,
-        ...course.learning_objectives,
-        ...course.instructors.flatMap((instructor) => [
-          instructor.name,
-          instructor.credentials,
-        ]),
-      ].join(" "),
-    ).includes(normalizedQuery);
-  });
+  const courses = filterCatalogCourses(catalog.courses, filters);
+  const selectedCategory = courseCategoryByCode(filters.category);
   return (
     <>
       <section className="course-catalog-hero">
@@ -94,7 +69,9 @@ export default async function CoursesPage({
                 <h2>
                   {initialQuery
                     ? `「${initialQuery}」的正式課程`
-                    : "已完成發布與販售檢查"}
+                    : selectedCategory
+                      ? selectedCategory.title
+                      : "已完成發布與販售檢查"}
                 </h2>
               </div>
               <span>

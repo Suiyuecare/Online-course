@@ -268,6 +268,7 @@ export function CourseEditor({
               summary: form.get("summary"),
               description: form.get("description"),
               learningObjectives: lines(form.get("learningObjectives")),
+              categoryCode: form.get("categoryCode"),
               deliveryType,
               priceTwd: price,
               organizationPointPrice: Number(
@@ -409,6 +410,19 @@ export function CourseEditor({
           <label>
             學習目標（每行一項）
             <textarea name="learningObjectives" required />
+          </label>
+          <label>
+            長照課程主題
+            <select name="categoryCode" defaultValue="" required>
+              <option value="" disabled>
+                請選擇 8 大正式分類
+              </option>
+              {options.courseCategories.map((category) => (
+                <option key={category.code} value={category.code}>
+                  {category.title}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             課程形式

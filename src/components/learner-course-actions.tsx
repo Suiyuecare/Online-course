@@ -1,37 +1,129 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CatalogCourse } from "@/infrastructure/supabase/catalog";
 import { LearnerPortalIcon } from "@/components/learner-portal-icon";
 import { useLearnerPortal } from "@/components/learner-portal-store";
+import {
+  anonymousLearnerCartStorageKey,
+  mergeLearnerCartItems,
+  parseLearnerCartStorage,
+  serializeLearnerCartStorage,
+  type LearnerCartItem,
+} from "@/domain/learner-cart";
+
+function cartItemFromCourse(course: CatalogCourse): LearnerCartItem {
+  return {
+    courseVersionId: course.course_version_id,
+    slug: course.slug,
+    title: course.title,
+    priceTwd: course.price_twd,
+    deliveryType: course.delivery_type,
+    hasCover: course.has_cover,
+    available: true,
+    addedAt: new Date().toISOString(),
+  };
+}
+
+export function AddPublicCourseToCart({
+  className = "learner-card-cart-action",
+  course,
+}: {
+  className?: string;
+  course: CatalogCourse;
+}) {
+  const [added, setAdded] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const current = parseLearnerCartStorage(
+        window.localStorage.getItem(anonymousLearnerCartStorageKey),
+      );
+      setAdded(
+        current.some(
+          (item) => item.courseVersionId === course.course_version_id,
+        ),
+      );
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [course.course_version_id]);
+
+  function stageOnThisDevice(item: LearnerCartItem) {
+    const current = parseLearnerCartStorage(
+      window.localStorage.getItem(anonymousLearnerCartStorageKey),
+    );
+    const next = mergeLearnerCartItems(current, [item]);
+    if (
+      !next.some(
+        (candidate) => candidate.courseVersionId === item.courseVersionId,
+      )
+    ) {
+      setAnnouncement("購物車已達 100 門上限，這門課尚未加入。");
+      return false;
+    }
+    window.localStorage.setItem(
+      anonymousLearnerCartStorageKey,
+      serializeLearnerCartStorage(next),
+    );
+    return true;
+  }
+
+  function addToCart() {
+    const item = cartItemFromCourse(course);
+    if (!stageOnThisDevice(item)) return;
+    setAdded(true);
+    setAnnouncement(`已暫存 ${course.title}；登入後會自動合併到你的購物車。`);
+  }
+
+  return (
+    <>
+      <button
+        className={className}
+        disabled={added}
+        onClick={addToCart}
+        type="button"
+      >
+        <LearnerPortalIcon name="cart" size={20} />
+        {added ? "已加入購物車" : "加入購物車"}
+      </button>
+      <span
+        aria-atomic="true"
+        aria-live="polite"
+        className="visually-hidden"
+        role="status"
+      >
+        {announcement}
+      </span>
+    </>
+  );
+}
 
 export function AddOfficialCourseToCart({ course }: { course: CatalogCourse }) {
-  const { addCartItem, cart } = useLearnerPortal();
+  const { addCartItem, cart, cartPendingIds, cartSyncStatus } =
+    useLearnerPortal();
   const alreadyAdded = cart.some(
     (item) => item.courseVersionId === course.course_version_id,
   );
+  const pending = cartPendingIds.includes(course.course_version_id);
+  const synchronizing = cartSyncStatus === "syncing";
 
   return (
     <button
       className="learner-card-cart-action"
-      disabled={alreadyAdded}
-      onClick={() =>
-        addCartItem({
-          courseVersionId: course.course_version_id,
-          slug: course.slug,
-          title: course.title,
-          priceTwd: course.price_twd,
-          deliveryType: course.delivery_type,
-          coverUrl: course.has_cover
-            ? `/api/catalog/courses/${course.course_version_id}/cover`
-            : null,
-        })
-      }
+      disabled={alreadyAdded || pending || synchronizing}
+      onClick={() => void addCartItem(cartItemFromCourse(course))}
       type="button"
     >
       <LearnerPortalIcon name="cart" size={20} />
-      {alreadyAdded ? "已在購物車" : "加入購物車"}
+      {synchronizing
+        ? "同步購物車…"
+        : pending
+          ? "同步中…"
+          : alreadyAdded
+            ? "已在購物車"
+            : "加入購物車"}
     </button>
   );
 }

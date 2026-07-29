@@ -9,9 +9,9 @@ import { OfficialCourseExplorer } from "@/components/official-course-explorer";
 import { ShowcaseCourseExplorer } from "@/components/showcase-course-explorer";
 import {
   learnerCourseTaxonomy,
-  showcaseCategories,
   showcaseCourses,
 } from "@/content/showcase-courses";
+import { courseCategoryByCode } from "@/domain/course-taxonomy";
 import { catalogCourseListing } from "@/infrastructure/supabase/catalog";
 
 export const metadata: Metadata = { title: "課程總覽" };
@@ -22,13 +22,9 @@ export default async function LearnerCatalogPage({
   searchParams: Promise<CatalogSearchParams>;
 }) {
   const resolvedSearchParams = await searchParams;
-  const requestedCategory = resolvedSearchParams.category;
-  const initialCategory =
-    typeof requestedCategory === "string" &&
-    showcaseCategories.some((category) => category === requestedCategory)
-      ? (requestedCategory as (typeof showcaseCategories)[number])
-      : "全部課程";
   const filters = parseCatalogFilters(resolvedSearchParams);
+  const initialCategory =
+    courseCategoryByCode(filters.category)?.title ?? "全部課程";
   const catalog = await catalogCourseListing();
 
   return (
@@ -64,7 +60,7 @@ export default async function LearnerCatalogPage({
           </div>
           <div className="learner-taxonomy-grid">
             {learnerCourseTaxonomy.map((category, index) => {
-              const query = catalogFilterQuery(filters, category.title);
+              const query = catalogFilterQuery(filters, category.code);
               return (
                 <Link
                   href={`/learner/catalog?${query}#course-search`}
@@ -100,9 +96,6 @@ export default async function LearnerCatalogPage({
             <OfficialCourseExplorer
               courses={catalog.courses}
               filters={filters}
-              showcaseCategory={
-                initialCategory === "全部課程" ? undefined : initialCategory
-              }
             />
           </section>
         )}

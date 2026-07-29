@@ -3,6 +3,13 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { CheckoutCouponOption } from "@/application/workspace";
+import {
+  anonymousLearnerCartStorageKey,
+  learnerCartCacheStorageKey,
+  legacyLearnerPortalStorageKey,
+  parseLearnerCartStorage,
+  serializeLearnerCartStorage,
+} from "@/domain/learner-cart";
 import type { CatalogCourse } from "@/infrastructure/supabase/catalog";
 
 type Acceptance = {
@@ -28,10 +35,44 @@ async function deviceHash() {
     .join("");
 }
 
+function removeOrderedCourseFromLocalCart(
+  accountId: string | null,
+  courseVersionId: string,
+) {
+  try {
+    const keys = [
+      anonymousLearnerCartStorageKey,
+      ...(accountId
+        ? [
+            learnerCartCacheStorageKey(accountId),
+            legacyLearnerPortalStorageKey(accountId),
+          ]
+        : []),
+    ];
+    for (const key of keys) {
+      const current = parseLearnerCartStorage(window.localStorage.getItem(key));
+      const next = current.filter(
+        (item) => item.courseVersionId !== courseVersionId,
+      );
+      if (next.length === current.length) continue;
+      if (next.length > 0) {
+        window.localStorage.setItem(key, serializeLearnerCartStorage(next));
+      } else {
+        window.localStorage.removeItem(key);
+      }
+    }
+  } catch {
+    // The order is already authoritative. Browser preference cleanup must
+    // never hide or roll back a successfully created payment instruction.
+  }
+}
+
 export function ContractPurchaseFlow({
+  accountId,
   coupons,
   course,
 }: {
+  accountId: string | null;
   coupons: CheckoutCouponOption[];
   course: CatalogCourse;
 }) {
@@ -84,6 +125,7 @@ export function ContractPurchaseFlow({
         headers: {
           "content-type": "application/json",
           "idempotency-key": crypto.randomUUID(),
+          "x-suiyue-account-id": accountId ?? "",
         },
         body: JSON.stringify(body),
       });
@@ -92,9 +134,11 @@ export function ContractPurchaseFlow({
         setMessage(
           response.status === 401
             ? "請先用手機驗證碼登入，再開始契約審閱。"
-            : result?.error === "CONTRACT_REVIEW_PERIOD_ACTIVE"
-              ? "72 小時審閱期尚未結束，請於可確認時間後再回來。"
-              : "目前無法保存契約審閱紀錄，收費流程保持關閉。",
+            : result?.error === "LEARNER_ACCOUNT_VERSION_CONFLICT"
+              ? "登入帳號已變更，請重新整理頁面後再繼續。"
+              : result?.error === "CONTRACT_REVIEW_PERIOD_ACTIVE"
+                ? "72 小時審閱期尚未結束，請於可確認時間後再回來。"
+                : "目前無法保存契約審閱紀錄，收費流程保持關閉。",
         );
         return;
       }
@@ -129,6 +173,7 @@ export function ContractPurchaseFlow({
         headers: {
           "content-type": "application/json",
           "idempotency-key": crypto.randomUUID(),
+          "x-suiyue-account-id": accountId ?? "",
         },
         body: JSON.stringify({
           courseVersionId: course.course_version_id,
@@ -140,9 +185,11 @@ export function ContractPurchaseFlow({
       const result = await response.json().catch(() => null);
       if (!response.ok) {
         setMessage(
-          result?.error === "COUPON_NOT_AVAILABLE"
-            ? "這張折扣券剛剛已失效、額滿或不再適用，沒有建立原價訂單；請重新選擇。"
-            : "目前不能建立訂單；伺服器會重新檢查開關、價格、核定與名額。",
+          result?.error === "LEARNER_ACCOUNT_VERSION_CONFLICT"
+            ? "登入帳號已變更，請重新整理頁面後再建立訂單。"
+            : result?.error === "COUPON_NOT_AVAILABLE"
+              ? "這張折扣券剛剛已失效、額滿或不再適用，沒有建立原價訂單；請重新選擇。"
+              : "目前不能建立訂單；伺服器會重新檢查開關、價格、核定與名額。",
         );
         return;
       }
@@ -150,6 +197,7 @@ export function ContractPurchaseFlow({
         setMessage("訂單回應不完整，系統沒有導向匯款，也不會假設訂單已成立。");
         return;
       }
+      removeOrderedCourseFromLocalCart(accountId, course.course_version_id);
       window.location.assign(`/orders/${result.data.orderId}`);
     } catch {
       setMessage("目前無法連線建立訂單，請稍後重試；系統不會改用原價下單。");

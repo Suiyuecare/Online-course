@@ -32,4 +32,17 @@ describe("public customer demo hub", () => {
     expect(css).toContain("@media (prefers-reduced-motion: reduce)");
     expect(css).toContain(":focus-visible");
   });
+
+  it("keeps the walkthrough moving from learner to organization to staff", () => {
+    const learner = source("src/components/showcase-course-detail.tsx");
+    const organization = source(
+      "src/app/demo/organization/organization-demo.tsx",
+    );
+    const staff = source("src/app/demo/staff/staff-demo.tsx");
+
+    expect(learner).toContain('href="/demo/organization"');
+    expect(organization).toContain('href="/demo/staff"');
+    expect(staff).toContain('href="/demo"');
+    expect(staff).not.toContain('href="/demo/organization"');
+  });
 });

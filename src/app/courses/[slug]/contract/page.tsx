@@ -8,14 +8,22 @@ import {
 } from "@/infrastructure/supabase/catalog";
 import { userSupabase } from "@/infrastructure/supabase/server";
 
-async function availableCoupons(courseVersionId: string) {
+async function checkoutContext(courseVersionId: string) {
   try {
     const supabase = await userSupabase();
     const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) return [];
-    return await readCheckoutCouponOptions(supabase, courseVersionId);
+    if (error || !data.user) return { accountId: null, coupons: [] };
+    const accountId = data.user.id;
+    try {
+      return {
+        accountId,
+        coupons: await readCheckoutCouponOptions(supabase, courseVersionId),
+      };
+    } catch {
+      return { accountId, coupons: [] };
+    }
   } catch {
-    return [];
+    return { accountId: null, coupons: [] };
   }
 }
 
@@ -27,9 +35,9 @@ export default async function ContractPage({
   const { slug } = await params;
   const course = await catalogCourse(slug);
   if (!course) notFound();
-  const [readiness, coupons] = await Promise.all([
+  const [readiness, checkout] = await Promise.all([
     coursePurchaseReadiness(course.course_version_id),
-    availableCoupons(course.course_version_id),
+    checkoutContext(course.course_version_id),
   ]);
   return (
     <section className="page-shell narrow shell">
@@ -46,7 +54,11 @@ export default async function ContractPage({
       )}
       <RefundAllocationDisclosure course={course} />
       {readiness.purchaseReady ? (
-        <ContractPurchaseFlow coupons={coupons} course={course} />
+        <ContractPurchaseFlow
+          accountId={checkout.accountId}
+          coupons={checkout.coupons}
+          course={course}
+        />
       ) : (
         <div className="warning-panel">
           <strong>目前暫不接受新訂單</strong>

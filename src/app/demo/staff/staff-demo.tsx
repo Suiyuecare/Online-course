@@ -422,10 +422,10 @@ export function StaffDemo() {
 
       <footer className={styles.footer}>
         <div>
-          <strong>下一段建議展示</strong>
-          <span>切換到機構端，示範買點、邀請員工與批次派課。</span>
+          <strong>三種角色已完整走完</strong>
+          <span>回到導覽總覽，整理客戶問題或重新選擇任一角色。</span>
         </div>
-        <Link href="/demo/organization">前往機構 Demo</Link>
+        <Link href="/demo">完成並回到 Demo 導覽</Link>
       </footer>
     </div>
   );

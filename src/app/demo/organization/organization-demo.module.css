@@ -1180,10 +1180,67 @@
   border-color: #657591;
 }
 
+.nextDemo {
+  align-items: center;
+  background: #40372f;
+  border-radius: 22px;
+  color: #fff;
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+  margin: 28px auto 0;
+  max-width: 1192px;
+  padding: 24px 28px;
+  width: calc(100% - 48px);
+}
+
+.nextDemo div,
+.nextDemo strong,
+.nextDemo span {
+  display: block;
+}
+
+.nextDemo small {
+  color: #f4c99f;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+}
+
+.nextDemo strong {
+  margin-top: 4px;
+  font-size: 18px;
+}
+
+.nextDemo div > span {
+  margin-top: 4px;
+  color: #e4d8cd;
+  font-size: 14px;
+}
+
+.nextDemo > a {
+  align-items: center;
+  background: #fff8ee;
+  border-radius: 13px;
+  color: var(--demo-orange-deep);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-weight: 900;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 18px;
+  text-decoration: none;
+}
+
+.nextDemo > a:hover {
+  background: #fff;
+}
+
 .page button:focus-visible,
 .page input:focus-visible,
 .page select:focus-visible,
-.fileButton:focus-within {
+.fileButton:focus-within,
+.nextDemo > a:focus-visible {
   outline: 3px solid #3f679f;
   outline-offset: 3px;
 }
@@ -1361,6 +1418,16 @@
     bottom: 16px;
     left: 16px;
     right: 16px;
+  }
+
+  .nextDemo {
+    align-items: stretch;
+    flex-direction: column;
+    width: calc(100% - 28px);
+  }
+
+  .nextDemo > a {
+    justify-content: center;
   }
 }
 

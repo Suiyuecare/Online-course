@@ -163,6 +163,7 @@ export function CourseDraftMetadataEditor({
           summary: form.get("summary"),
           description: form.get("description"),
           learningObjectives: objectiveLines(form.get("learningObjectives")),
+          categoryCode: form.get("categoryCode"),
           priceTwd,
           organizationPointPrice: Number(form.get("organizationPointPrice")),
           recordedRefundAllocationTwd,
@@ -273,6 +274,23 @@ export function CourseDraftMetadataEditor({
           defaultValue={draft.metadata.learningObjectives.join("\n")}
           required
         />
+      </label>
+      <label>
+        長照課程主題
+        <select
+          name="categoryCode"
+          defaultValue={draft.metadata.categoryCode ?? ""}
+          required
+        >
+          <option value="" disabled>
+            請選擇 8 大正式分類
+          </option>
+          {options.courseCategories.map((category) => (
+            <option key={category.code} value={category.code}>
+              {category.title}
+            </option>
+          ))}
+        </select>
       </label>
       <label>
         個人售價（NT$）

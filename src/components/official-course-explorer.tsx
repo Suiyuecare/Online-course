@@ -6,6 +6,7 @@ import {
   type CatalogFilters,
 } from "@/application/catalog-filtering";
 import { CourseCard } from "@/components/course-card";
+import { learnerCourseTaxonomy } from "@/domain/course-taxonomy";
 import type { CatalogCourse } from "@/infrastructure/supabase/catalog";
 
 const resultDescription = {
@@ -17,18 +18,18 @@ const resultDescription = {
 export function OfficialCourseExplorer({
   courses,
   filters,
-  showcaseCategory,
 }: {
   courses: CatalogCourse[];
   filters: CatalogFilters;
-  showcaseCategory?: string;
 }) {
   const visibleCourses = filterCatalogCourses(courses, filters);
   const filtersActive = catalogFiltersAreActive(filters);
-  const resetQuery = catalogFilterQuery(
-    { query: "", delivery: "all", accreditation: "all" },
-    showcaseCategory,
-  );
+  const resetQuery = catalogFilterQuery({
+    query: "",
+    delivery: "all",
+    accreditation: "all",
+    category: "all",
+  });
   const resetHref = `/learner/catalog${resetQuery ? `?${resetQuery}` : ""}#official-courses`;
 
   return (
@@ -39,9 +40,6 @@ export function OfficialCourseExplorer({
         method="get"
         role="search"
       >
-        {showcaseCategory && (
-          <input name="category" type="hidden" value={showcaseCategory} />
-        )}
         <label>
           搜尋正式課程
           <input
@@ -51,6 +49,17 @@ export function OfficialCourseExplorer({
             placeholder="輸入課程、照護主題或講師"
             type="search"
           />
+        </label>
+        <label>
+          照護主題
+          <select defaultValue={filters.category} name="category">
+            <option value="all">全部主題</option>
+            {learnerCourseTaxonomy.map((category) => (
+              <option key={category.code} value={category.code}>
+                {category.title}
+              </option>
+            ))}
+          </select>
         </label>
         <label>
           課程形式

@@ -45,6 +45,10 @@ const expectedFiles = [
   "20260730031000_organization_lifecycle_controls.sql",
   "20260730033000_staff_directory_video_backup_workspace.sql",
   "20260730043000_course_content_release_gates.sql",
+  "20260730051000_course_category_taxonomy.sql",
+  "20260730052000_learner_server_cart.sql",
+  "20260730053000_fix_course_category_audit_signature.sql",
+  "20260730054000_reject_null_learner_cart_operations.sql",
 ];
 if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) {
   throw new Error(
@@ -110,6 +114,18 @@ const required = [
   "COURSE_CONTENT_NOT_AVAILABLE",
   "internal.assert_enrollment_content_available",
   "contentAvailableAt",
+  "create table public.course_categories",
+  "course_versions_published_category_check",
+  "internal.create_course_draft_with_category",
+  "internal.author_course_structure_with_category",
+  "COURSE_CATEGORY_INVALID",
+  "read_course_category_workspace",
+  "category.code as category_code",
+  "create table public.learner_cart_items",
+  "learner_cart_items_owner_read",
+  "internal.sync_own_learner_cart",
+  "LEARNER_CART_COURSE_UNAVAILABLE",
+  "rejectedCourseVersionIds",
 ];
 for (const invariant of required) {
   if (!sql.includes(invariant))

@@ -20,6 +20,8 @@ function course(
     summary: "長照專業課程",
     description: "提供第一線照護工作者可實作的方法。",
     learning_objectives: ["完成情境演練"],
+    category_code: "complex_care_needs",
+    category_title: "失智、身障與特殊需求",
     delivery_type: "recorded",
     price_twd: 680,
     recorded_refund_allocation_twd: 680,
@@ -54,6 +56,8 @@ const courses = [
     slug: "infection-live",
     title: "感染管制直播實務",
     delivery_type: "live",
+    category_code: "quality_safety_infection",
+    category_title: "品質、安全與感染管制",
     accreditation_status: "applying",
     accreditation_points: null,
     recorded_refund_allocation_twd: 0,
@@ -81,11 +85,13 @@ describe("official course catalog filters", () => {
         q: " 失智 ",
         delivery: "recorded",
         accreditation: "approved",
+        category: "complex_care_needs",
       }),
     ).toEqual({
       query: "失智",
       delivery: "recorded",
       accreditation: "approved",
+      category: "complex_care_needs",
     });
 
     expect(
@@ -93,11 +99,13 @@ describe("official course catalog filters", () => {
         q: ["第一個", "第二個"],
         delivery: "video",
         accreditation: "credited",
+        category: "自由輸入分類",
       }),
     ).toEqual({
       query: "第一個",
       delivery: "all",
       accreditation: "all",
+      category: "all",
     });
   });
 
@@ -107,6 +115,7 @@ describe("official course catalog filters", () => {
         query: "行為",
         delivery: "recorded",
         accreditation: "approved",
+        category: "complex_care_needs",
       }).map(({ slug }) => slug),
     ).toEqual(["dementia-care"]);
 
@@ -115,6 +124,7 @@ describe("official course catalog filters", () => {
         query: "感染管制護理師",
         delivery: "live",
         accreditation: "applying",
+        category: "quality_safety_infection",
       }).map(({ slug }) => slug),
     ).toEqual(["infection-live"]);
 
@@ -123,6 +133,7 @@ describe("official course catalog filters", () => {
         query: "不存在",
         delivery: "all",
         accreditation: "all",
+        category: "all",
       }),
     ).toEqual([]);
   });
@@ -133,6 +144,7 @@ describe("official course catalog filters", () => {
         query: "失智症安心照護",
         delivery: "all",
         accreditation: "all",
+        category: "all",
       }),
     ).toHaveLength(1);
 
@@ -140,16 +152,18 @@ describe("official course catalog filters", () => {
       query: "失智",
       delivery: "recorded",
       accreditation: "approved",
+      category: "complex_care_needs",
     } as const;
     expect(catalogFiltersAreActive(filters)).toBe(true);
-    expect(catalogFilterQuery(filters, "失智、身障與特殊需求")).toBe(
-      "q=%E5%A4%B1%E6%99%BA&delivery=recorded&accreditation=approved&category=%E5%A4%B1%E6%99%BA%E3%80%81%E8%BA%AB%E9%9A%9C%E8%88%87%E7%89%B9%E6%AE%8A%E9%9C%80%E6%B1%82",
+    expect(catalogFilterQuery(filters)).toBe(
+      "q=%E5%A4%B1%E6%99%BA&delivery=recorded&accreditation=approved&category=complex_care_needs",
     );
     expect(
       catalogFilterQuery({
         query: "",
         delivery: "all",
         accreditation: "all",
+        category: "all",
       }),
     ).toBe("");
   });

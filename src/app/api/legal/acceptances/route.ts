@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  assertExpectedAccount,
   mutation,
   readJson,
   requireIdempotencyKey,
@@ -35,8 +36,9 @@ function clientIp(request: Request) {
 export async function POST(request: Request) {
   return mutation(request, async () => {
     requireIdempotencyKey(request);
+    const { supabase, user } = await requireUser();
+    assertExpectedAccount(request, user.id);
     const input = await readJson(request, schema);
-    const { supabase } = await requireUser();
     const application = new PlatformApplication(supabase);
     const requestIp = clientIp(request);
     return input.phase === "present"

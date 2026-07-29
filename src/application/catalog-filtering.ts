@@ -1,4 +1,8 @@
 import type { CatalogCourse } from "@/infrastructure/supabase/catalog";
+import {
+  courseCategoryCodeSchema,
+  type CourseCategoryCode,
+} from "@/domain/course-taxonomy";
 
 export const catalogDeliveryFilters = [
   "all",
@@ -21,6 +25,7 @@ export type CatalogFilters = {
   query: string;
   delivery: CatalogDeliveryFilter;
   accreditation: CatalogAccreditationFilter;
+  category: CourseCategoryCode | "all";
 };
 
 export type CatalogSearchParams = Record<string, string | string[] | undefined>;
@@ -53,11 +58,14 @@ export function parseCatalogFilters(
   const rawQuery = firstValue(searchParams.q)?.trim() ?? "";
   const delivery = firstValue(searchParams.delivery);
   const accreditation = firstValue(searchParams.accreditation);
+  const rawCategory = firstValue(searchParams.category);
+  const parsedCategory = courseCategoryCodeSchema.safeParse(rawCategory);
 
   return {
     query: rawQuery.slice(0, maximumQueryLength),
     delivery: isDeliveryFilter(delivery) ? delivery : "all",
     accreditation: isAccreditationFilter(accreditation) ? accreditation : "all",
+    category: parsedCategory.success ? parsedCategory.data : "all",
   };
 }
 
@@ -77,6 +85,12 @@ export function filterCatalogCourses(
     if (
       filters.accreditation !== "all" &&
       course.accreditation_status !== filters.accreditation
+    ) {
+      return false;
+    }
+    if (
+      filters.category !== "all" &&
+      course.category_code !== filters.category
     ) {
       return false;
     }
@@ -101,17 +115,24 @@ export function catalogFiltersAreActive(filters: CatalogFilters) {
   return (
     Boolean(filters.query) ||
     filters.delivery !== "all" ||
-    filters.accreditation !== "all"
+    filters.accreditation !== "all" ||
+    filters.category !== "all"
   );
 }
 
-export function catalogFilterQuery(filters: CatalogFilters, category?: string) {
+export function catalogFilterQuery(
+  filters: CatalogFilters,
+  category?: CourseCategoryCode,
+) {
   const params = new URLSearchParams();
   if (filters.query) params.set("q", filters.query);
   if (filters.delivery !== "all") params.set("delivery", filters.delivery);
   if (filters.accreditation !== "all") {
     params.set("accreditation", filters.accreditation);
   }
-  if (category) params.set("category", category);
+  const selectedCategory = category ?? filters.category;
+  if (selectedCategory !== "all") {
+    params.set("category", selectedCategory);
+  }
   return params.toString();
 }
