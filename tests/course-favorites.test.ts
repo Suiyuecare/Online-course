@@ -73,4 +73,17 @@ describe("account-backed course favorites", () => {
     expect(page).toContain("同步直播");
     expect(page).toContain("錄播＋直播");
   });
+
+  it("keeps the favorite row visible when its course leaves the catalog", () => {
+    const application = source("src/application/course-favorites.ts");
+    const page = source("src/components/learner-favorites-view.tsx");
+
+    expect(application).toContain(
+      '.select("course_id,created_at,courses(slug)")',
+    );
+    expect(application).not.toContain("courses!inner(slug)");
+    expect(application).toContain("slug: string | null");
+    expect(page).toContain("currentUnavailableFavorites");
+    expect(page).toContain("重新開放後會自動恢復課程資訊");
+  });
 });

@@ -20,6 +20,8 @@ export function CourseCard({
   course: CatalogCourse;
   learnerMode?: boolean;
 }) {
+  const purchaseReady = course.purchase_readiness?.purchaseReady === true;
+
   return (
     <article className="course-card">
       <div className="course-visual" aria-hidden="true">
@@ -61,10 +63,12 @@ export function CourseCard({
           {learnerMode && (
             <>
               <ToggleOfficialCourseFavorite course={course} />
-              <AddOfficialCourseToCart course={course} />
+              {purchaseReady && <AddOfficialCourseToCart course={course} />}
             </>
           )}
-          {!learnerMode && <AddPublicCourseToCart course={course} />}
+          {!learnerMode && purchaseReady && (
+            <AddPublicCourseToCart course={course} />
+          )}
         </div>
       </div>
     </article>

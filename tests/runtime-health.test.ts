@@ -21,7 +21,9 @@ function healthySignals() {
     })),
     workerLastSuccessAt: "2026-07-24T11:50:00.000Z",
     oldestDueJobCreatedAt: null,
-    deadLetterCount: 0,
+    oldestDueNotificationCreatedAt: null,
+    durableDeadLetterCount: 0,
+    notificationDeadLetterCount: 0,
   };
 }
 
@@ -59,10 +61,28 @@ describe("runtime production health", () => {
       ...healthySignals(),
       workerLastSuccessAt: "2026-07-24T11:39:59.000Z",
       oldestDueJobCreatedAt: "2026-07-24T11:44:59.000Z",
-      deadLetterCount: 1,
+      oldestDueNotificationCreatedAt: "2026-07-24T11:44:59.000Z",
+      durableDeadLetterCount: 1,
+      notificationDeadLetterCount: 1,
     });
     expect(result.status).toBe("closed");
     expect(result.dependencies.worker).toBe(false);
     expect(result.dependencies.queue).toBe(false);
+  });
+
+  it("treats notification backlog and dead letters as formal queue failures", () => {
+    const overdue = evaluateRuntimeHealth({
+      ...healthySignals(),
+      oldestDueNotificationCreatedAt: "2026-07-24T11:44:59.000Z",
+    });
+    expect(overdue.status).toBe("closed");
+    expect(overdue.dependencies.queue).toBe(false);
+
+    const deadLetter = evaluateRuntimeHealth({
+      ...healthySignals(),
+      notificationDeadLetterCount: 1,
+    });
+    expect(deadLetter.status).toBe("closed");
+    expect(deadLetter.dependencies.queue).toBe(false);
   });
 });

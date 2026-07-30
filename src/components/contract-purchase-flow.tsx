@@ -200,7 +200,7 @@ export function ContractPurchaseFlow({
         return;
       }
       removeOrderedCourseFromLocalCart(accountId, course.course_version_id);
-      window.location.assign(`/orders/${result.data.orderId}`);
+      window.location.assign(`/learner/orders/${result.data.orderId}`);
     } catch {
       setMessage("目前無法連線建立訂單，請稍後重試；系統不會改用原價下單。");
     } finally {

@@ -61,16 +61,18 @@ describe("public showcase courses", () => {
     }
   });
 
-  it("keeps YouTube previews outside formal learning evidence", () => {
-    const preview = source("src/components/youtube-demo-preview.tsx");
+  it("keeps self-hosted previews outside formal learning evidence", () => {
+    const preview = source("src/components/local-course-demo-preview.tsx");
     const detail = source("src/components/showcase-course-detail.tsx");
     const card = source("src/components/showcase-course-card.tsx");
     const demoRoute = source("src/app/courses/demo/[slug]/page.tsx");
     const formalRoute = source("src/app/courses/[slug]/page.tsx");
 
-    expect(preview).toContain("https://www.youtube-nocookie.com/embed/");
+    expect(preview).toContain("本站展示不需要載入 YouTube 或其他影音服務");
     expect(preview).toContain("不計入觀看分鐘、防掛機、測驗或長照積分");
-    expect(preview).toContain("在 YouTube 開啟原始影片（新視窗）");
+    expect(preview).toContain("延伸參考");
+    expect(preview).not.toContain("<iframe");
+    expect(preview).not.toContain("youtube-nocookie.com/embed");
     expect(preview).not.toMatch(/heartbeat|watch_blocks|learning_events/);
     expect(detail).toContain("網站功能示範");
     expect(detail).toContain("尚未開放報名");
@@ -87,13 +89,13 @@ describe("public showcase courses", () => {
     const config = source("next.config.ts");
     const home = source("src/app/page.tsx");
     const card = source("src/components/showcase-course-card.tsx");
-    const preview = source("src/components/youtube-demo-preview.tsx");
+    const preview = source("src/components/local-course-demo-preview.tsx");
     const heroPath = resolve(
       process.cwd(),
       "public/images/suiyue-original/home-hero-learning-wide-v2.jpg",
     );
 
-    expect(config).toContain("https://www.youtube-nocookie.com");
+    expect(config).not.toContain("https://www.youtube-nocookie.com");
     expect(config).not.toContain("i.ytimg.com");
     expect(config).not.toContain("images.unsplash.com");
     expect(home).not.toMatch(/unsplash|pexels|pixabay/i);
@@ -101,6 +103,7 @@ describe("public showcase courses", () => {
     expect(existsSync(heroPath)).toBe(true);
     expect(card).toContain("course.coverImage");
     expect(preview).toContain("posterImage");
+    expect(preview).toContain("/images/suiyue-original/");
     expect(config).not.toContain("https://*.youtube.com");
   });
 

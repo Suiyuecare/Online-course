@@ -140,15 +140,17 @@ export class PlatformApplication {
   applyForOrganization(input: {
     legalName: string;
     taxIdBlindIndex: string;
+    taxIdLastFour: string;
     invoiceEmail: string;
     idempotencyKey: string;
   }) {
     return rpc<{ organizationId: string; status: string }>(
       this.client,
-      "apply_for_organization",
+      "apply_for_organization_v2",
       {
         p_legal_name: input.legalName,
         p_tax_id_blind_index: input.taxIdBlindIndex,
+        p_tax_id_last_four: input.taxIdLastFour,
         p_invoice_email: input.invoiceEmail,
         p_idempotency_key: input.idempotencyKey,
       },
@@ -281,15 +283,24 @@ export class PlatformApplication {
     accountLastFive: string;
     transferredAt: string;
     amountTwd: number;
+    objectPath: string | null;
+    contentHash: string | null;
     idempotencyKey: string;
   }) {
-    return rpc<{ status: string }>(this.client, "submit_point_topup_proof", {
+    return rpc<{
+      status: string;
+      proofId: string;
+      attachmentStatus: "not_provided" | "safe";
+      replayed: boolean;
+    }>(this.client, "submit_point_topup_proof", {
       p_topup_id: input.topupId,
       p_remitter_name: input.remitterName,
       p_bank_name: input.bankName,
       p_account_last_five: input.accountLastFive,
       p_transferred_at: input.transferredAt,
       p_amount_twd: input.amountTwd,
+      p_object_path: input.objectPath,
+      p_content_hash: input.contentHash,
       p_idempotency_key: input.idempotencyKey,
     });
   }
@@ -422,6 +433,23 @@ export class PlatformApplication {
       p_amount_twd: input.amountTwd,
       p_object_path: input.objectPath,
       p_content_hash: input.contentHash,
+      p_idempotency_key: input.idempotencyKey,
+    });
+  }
+
+  cancelPendingTransferOrder(input: {
+    orderId: string;
+    idempotencyKey: string;
+  }) {
+    return rpc<{
+      orderId: string;
+      status: "cancelled";
+      replayed: boolean;
+      releasedLiveBookingCount?: number;
+      couponReleased?: boolean;
+      cartRestored?: boolean;
+    }>(this.client, "cancel_own_pending_transfer_order", {
+      p_order_id: input.orderId,
       p_idempotency_key: input.idempotencyKey,
     });
   }

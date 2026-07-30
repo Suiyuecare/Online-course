@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 
 type Preferences = {
+  highContrast: boolean;
   largeText: boolean;
   reduceMotion: boolean;
 };
 
 const initialPreferences: Preferences = {
+  highContrast: false,
   largeText: false,
   reduceMotion: false,
 };
@@ -27,6 +29,7 @@ export function LearnerPreferencePanel({ accountId }: { accountId: string }) {
         if (stored && typeof stored === "object") {
           const value = stored as Partial<Preferences>;
           setPreferences({
+            highContrast: value.highContrast === true,
             largeText: value.largeText === true,
             reduceMotion: value.reduceMotion === true,
           });
@@ -47,6 +50,10 @@ export function LearnerPreferencePanel({ accountId }: { accountId: string }) {
     document.documentElement.classList.toggle(
       "learner-pref-reduce-motion",
       preferences.reduceMotion,
+    );
+    document.documentElement.classList.toggle(
+      "learner-pref-high-contrast",
+      preferences.highContrast,
     );
   }, [preferences]);
 
@@ -83,7 +90,20 @@ export function LearnerPreferencePanel({ accountId }: { accountId: string }) {
           type="checkbox"
         />
       </label>
-      <p>這兩項閱讀偏好會保存在目前裝置，不會改變正式學習紀錄。</p>
+      <label>
+        <span>
+          <strong>提高文字與邊界對比</strong>
+          <small>加深文字、連結與表單邊線，讓重要操作更容易辨識。</small>
+        </span>
+        <input
+          checked={preferences.highContrast}
+          onChange={(event) =>
+            update({ ...preferences, highContrast: event.target.checked })
+          }
+          type="checkbox"
+        />
+      </label>
+      <p>這些閱讀偏好會保存在目前裝置，不會改變正式學習紀錄。</p>
     </div>
   );
 }

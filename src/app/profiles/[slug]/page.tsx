@@ -8,7 +8,7 @@ import { serviceSupabase } from "@/infrastructure/supabase/server";
 export const dynamic = "force-dynamic";
 
 const getProfile = cache(async (slug: string) =>
-  readPublicProfessionalProfile(serviceSupabase(), slug).catch(() => null),
+  readPublicProfessionalProfile(serviceSupabase(), slug),
 );
 
 export async function generateMetadata({

@@ -32,6 +32,7 @@ export function SiteFooter() {
           <strong>關於歲悅</strong>
           <a href="https://www.suiyuecare.com">歲悅長照官網</a>
           <Link href="/legal">服務契約與退款</Link>
+          <Link href="/accessibility">無障礙與閱讀協助</Link>
           <Link href="/staff">工作人員入口</Link>
         </div>
         <div className="footer-bottom">

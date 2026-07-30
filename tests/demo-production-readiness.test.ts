@@ -85,13 +85,16 @@ describe("customer demo release path", () => {
     expect(staffDemo).toContain("原始事件與人工更正分開保存");
   });
 
-  it("keeps the classroom demo usable when external video is blocked", () => {
+  it("keeps the classroom demo independent from external video", () => {
     const runner = source("src/components/showcase-course-runner.tsx");
+    const localPreview = source("src/components/local-course-demo-preview.tsx");
 
-    expect(runner).toContain("切換離線展示");
-    expect(runner).toContain("離線展示備援");
-    expect(runner).toContain("不依賴外部影音");
+    expect(runner).toContain("<LocalCourseStoryboard");
+    expect(runner).toContain("本站自製視覺導覽");
+    expect(runner).toContain("不依賴外部影音或現場網路");
     expect(runner).toContain("course.coverImage");
+    expect(runner).not.toContain("youtube-nocookie.com/embed");
+    expect(localPreview).toContain("播放教材視覺導覽");
   });
 });
 
@@ -104,6 +107,10 @@ describe("production worker and demo pulse", () => {
     expect(workflow).toContain('cron: "7,17,27,37,47,57 * * * *"');
     expect(workflow).toContain("SUIYUE_PRODUCTION_CRON_SECRET");
     expect(workflow).toContain("/api/workers/wake");
+    expect(workflow).toContain("/api/health/live");
+    expect(workflow).toContain(
+      '--header "Authorization: Bearer ${CRON_SECRET}"',
+    );
     for (const route of [
       "/ /courses /demo /login /legal",
       "/demo/learner",

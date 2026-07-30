@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { CourseRunnerActivityHeading } from "@/components/course-runner-activity-heading";
@@ -12,6 +11,7 @@ import {
 } from "@/components/course-runner-frame";
 import { ShowcaseQuizPreview } from "@/components/showcase-quiz-preview";
 import { ShowcaseSurveyPreview } from "@/components/showcase-survey-preview";
+import { LocalCourseStoryboard } from "@/components/local-course-demo-preview";
 import { useAccessibleModal } from "@/components/use-accessible-modal";
 import type { ShowcaseCourse } from "@/content/showcase-courses";
 
@@ -93,7 +93,6 @@ export function ShowcaseCourseRunner({
   );
   const [presenceOpen, setPresenceOpen] = useState(false);
   const [presenceConfirmed, setPresenceConfirmed] = useState(false);
-  const [offlineVideo, setOfflineVideo] = useState(false);
   const [quizScore, setQuizScore] = useState<number | null>(null);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   const [liveAttendanceComplete, setLiveAttendanceComplete] = useState(false);
@@ -371,46 +370,15 @@ export function ShowcaseCourseRunner({
         />
         <div className="showcase-classroom-video">
           <div className="viewer-overlay">視覺示範・不計分鐘</div>
-          {offlineVideo ? (
-            <div className="showcase-offline-video">
-              <Image
-                alt=""
-                fill
-                sizes="(max-width: 760px) 100vw, 900px"
-                src={course.coverImage}
-              />
-              <div>
-                <span>離線展示備援</span>
-                <strong>{activeActivity.title}</strong>
-                <p>
-                  即使現場網路封鎖外部影音，仍可繼續示範大綱、在席確認、測驗與滿意度流程。
-                </p>
-              </div>
-            </div>
-          ) : (
-            <iframe
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="strict-origin-when-cross-origin"
-              src={`https://www.youtube-nocookie.com/embed/${course.youtubeId}?rel=0`}
-              title={`${course.youtubeTitle}公開示範影片`}
-            />
-          )}
+          <LocalCourseStoryboard
+            compact
+            posterAlt={course.coverAlt}
+            posterImage={course.coverImage}
+            title={activeActivity.title}
+          />
         </div>
         <div className="showcase-video-switch">
-          <span>
-            {offlineVideo
-              ? "目前使用本站圖片，不依賴外部影音。"
-              : "若現場網路無法播放 YouTube，可立即切換備援。"}
-          </span>
-          <button
-            className="button secondary"
-            onClick={() => setOfflineVideo((current) => !current)}
-            type="button"
-          >
-            {offlineVideo ? "恢復公開影片" : "切換離線展示"}
-          </button>
+          <span>目前使用本站自製視覺導覽，不依賴外部影音或現場網路。</span>
         </div>
         <section className="video-learning-status demo-learning-status">
           <div className="learning-state state-paused">
@@ -561,7 +529,7 @@ export function ShowcaseCourseRunner({
       backHref={`/courses/demo/${course.slug}`}
       confirmedMinutes={confirmedMinutes}
       courseTitle={course.title}
-      demoNotice="公開影片只用來展示教室操作，不保存進度、不進行防掛機，也不產生長照積分。"
+      demoNotice="本站自製教材導覽只用來展示教室操作，不保存進度、不進行防掛機，也不產生長照積分。"
       modules={modules}
       nextActivity={nextActivity}
       onSelectActivity={selectActivity}

@@ -49,6 +49,12 @@ const expectedFiles = [
   "20260730052000_learner_server_cart.sql",
   "20260730053000_fix_course_category_audit_signature.sql",
   "20260730054000_reject_null_learner_cart_operations.sql",
+  "20260730060000_fix_b2b_proof_and_role_isolation.sql",
+  "20260730061000_operations_control_plane_v1.sql",
+  "20260730062000_privacy_rights_support.sql",
+  "20260730063000_admin_review_workflows.sql",
+  "20260730064000_learner_pending_order_cancellation.sql",
+  "20260730065000_operations_control_plane_v2.sql",
 ];
 if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) {
   throw new Error(
@@ -126,6 +132,27 @@ const required = [
   "internal.sync_own_learner_cart",
   "LEARNER_CART_COURSE_UNAVAILABLE",
   "rejectedCourseVersionIds",
+  "internal.require_organization_capability",
+  "ORGANIZATION_TRAINING_NOT_AUTHORIZED",
+  "internal.read_organization_training_report_v3",
+  "upload.promoted_sha256 = content_hash",
+  "security_incident_transition_requests",
+  "INDEPENDENT_INCIDENT_REVIEW_REQUIRED",
+  "DEAD_LETTER_RECONCILIATION_REQUIRED",
+  "internal.read_operations_control_plane",
+  "'externalActionPerformed', false",
+  "internal.read_effective_legal_center",
+  "internal.read_staff_audit_events",
+  "'externalNotificationSent', false",
+  "internal.request_retention_dry_run",
+  "internal.record_retention_dry_run_evidence",
+  "RETENTION_EVIDENCE_RECORD_REQUIRED",
+  "'physicalPurgePerformed', false",
+  "internal.read_organization_application_review",
+  "organization_application_review",
+  "internal.review_course_version_submission",
+  "course_review_decision",
+  "'contentPreserved', true",
 ];
 for (const invariant of required) {
   if (!sql.includes(invariant))
@@ -141,6 +168,7 @@ const publicFunctionBlocks =
 const publicDefinerCapabilities = new Set([
   "public.read_public_course_outline",
   "public.read_public_course_readiness",
+  "public.read_effective_legal_center",
 ]);
 const foundPublicDefinerCapabilities = new Set();
 for (const block of publicFunctionBlocks) {
@@ -154,13 +182,21 @@ for (const block of publicFunctionBlocks) {
       );
     }
     const implementationName = functionName.split(".")[1];
+    const expectedFacade =
+      functionName === "public.read_effective_legal_center"
+        ? new RegExp(
+            `as\\s+\\$\\$\\s*select\\s+internal\\.${implementationName}` +
+              `\\(\\)\\s*\\$\\$;\\s*$`,
+            "i",
+          )
+        : new RegExp(
+            `as\\s+\\$\\$\\s*select\\s+internal\\.${implementationName}` +
+              `\\(p_course_version_id\\)\\s*\\$\\$;\\s*$`,
+            "i",
+          );
     if (
       !/set\s+search_path\s*=\s*pg_catalog,\s*internal/i.test(block) ||
-      !new RegExp(
-        `as\\s+\\$\\$\\s*select\\s+internal\\.${implementationName}` +
-          `\\(p_course_version_id\\)\\s*\\$\\$;\\s*$`,
-        "i",
-      ).test(block)
+      !expectedFacade.test(block)
     ) {
       throw new Error(
         `Public catalog capability is not a fixed internal facade: ${functionName}`,

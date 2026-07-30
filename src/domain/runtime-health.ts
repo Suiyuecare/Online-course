@@ -26,7 +26,9 @@ export type RuntimeHealthSignals = {
   providers: ProviderHealthSignal[];
   workerLastSuccessAt: string | null;
   oldestDueJobCreatedAt: string | null;
-  deadLetterCount: number;
+  oldestDueNotificationCreatedAt: string | null;
+  durableDeadLetterCount: number;
+  notificationDeadLetterCount: number;
 };
 
 const providerFreshnessMs = 15 * 60 * 1000;
@@ -67,9 +69,20 @@ export function evaluateRuntimeHealth(signals: RuntimeHealthSignals) {
     workerFreshnessMs,
   );
   const queue =
-    signals.deadLetterCount === 0 &&
+    signals.durableDeadLetterCount === 0 &&
+    signals.notificationDeadLetterCount === 0 &&
     (!signals.oldestDueJobCreatedAt ||
-      isFresh(signals.oldestDueJobCreatedAt, signals.now, maximumDueJobAgeMs));
+      isFresh(
+        signals.oldestDueJobCreatedAt,
+        signals.now,
+        maximumDueJobAgeMs,
+      )) &&
+    (!signals.oldestDueNotificationCreatedAt ||
+      isFresh(
+        signals.oldestDueNotificationCreatedAt,
+        signals.now,
+        maximumDueJobAgeMs,
+      ));
   const dependencies = {
     configuration,
     database: signals.databaseConnected,

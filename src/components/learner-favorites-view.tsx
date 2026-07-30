@@ -4,9 +4,8 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CourseCard } from "@/components/course-card";
 import { LearnerPortalIcon } from "@/components/learner-portal-icon";
-import { ShowcaseCourseCard } from "@/components/showcase-course-card";
 import { useLearnerPortal } from "@/components/learner-portal-store";
-import type { ShowcaseCourse } from "@/content/showcase-courses";
+import type { CourseFavorite } from "@/application/course-favorites";
 import type { CatalogCourse } from "@/infrastructure/supabase/catalog";
 
 type DeliveryFilter = "all" | CatalogCourse["delivery_type"];
@@ -29,13 +28,15 @@ export function LearnerFavoritesView({
   favoriteCreatedAt,
   favoritesAvailable,
   recommendations,
+  unavailableFavorites,
 }: {
   catalogAvailable: boolean;
   completedCount: number;
   courses: CatalogCourse[];
   favoriteCreatedAt: Record<string, string>;
   favoritesAvailable: boolean;
-  recommendations: ShowcaseCourse[];
+  recommendations: CatalogCourse[];
+  unavailableFavorites: CourseFavorite[];
 }) {
   const { favoriteSlugs } = useLearnerPortal();
   const [deliveryFilter, setDeliveryFilter] = useState<DeliveryFilter>("all");
@@ -68,6 +69,14 @@ export function LearnerFavoritesView({
       );
     });
   }, [courses, favoriteCreatedAt, favoriteSlugSet, sort]);
+  const currentUnavailableFavorites = useMemo(
+    () =>
+      unavailableFavorites.filter(
+        (favorite) =>
+          favorite.slug === null || favoriteSlugSet.has(favorite.slug),
+      ),
+    [favoriteSlugSet, unavailableFavorites],
+  );
 
   const visibleFavorites =
     deliveryFilter === "all"
@@ -93,7 +102,7 @@ export function LearnerFavoritesView({
           <dl className="learner-favorites-stats">
             <div>
               <dt>目前收藏</dt>
-              <dd>{favorites.length}</dd>
+              <dd>{favorites.length + currentUnavailableFavorites.length}</dd>
             </div>
             <div>
               <dt>已完成課程</dt>
@@ -141,66 +150,94 @@ export function LearnerFavoritesView({
               <p>你的收藏仍然保留，課程服務恢復後會重新顯示。</p>
             </div>
           </div>
-        ) : favorites.length > 0 ? (
+        ) : favorites.length > 0 || currentUnavailableFavorites.length > 0 ? (
           <>
-            <section
-              aria-label="收藏篩選與排序"
-              className="learner-favorites-toolbar"
-            >
-              <div className="learner-favorites-filters">
-                {deliveryOptions.map((option) => {
-                  const count =
-                    option.value === "all"
-                      ? favorites.length
-                      : favorites.filter(
-                          (course) => course.delivery_type === option.value,
-                        ).length;
-                  return (
+            {favorites.length > 0 && (
+              <>
+                <section
+                  aria-label="收藏篩選與排序"
+                  className="learner-favorites-toolbar"
+                >
+                  <div className="learner-favorites-filters">
+                    {deliveryOptions.map((option) => {
+                      const count =
+                        option.value === "all"
+                          ? favorites.length
+                          : favorites.filter(
+                              (course) => course.delivery_type === option.value,
+                            ).length;
+                      return (
+                        <button
+                          aria-pressed={deliveryFilter === option.value}
+                          key={option.value}
+                          onClick={() => setDeliveryFilter(option.value)}
+                          type="button"
+                        >
+                          {option.label}
+                          <span>{count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <label>
+                    排序
+                    <select
+                      onChange={(event) =>
+                        setSort(event.target.value as FavoriteSort)
+                      }
+                      value={sort}
+                    >
+                      <option value="recent">最近收藏</option>
+                      <option value="upcoming">即將開課</option>
+                      <option value="title">課程名稱</option>
+                    </select>
+                  </label>
+                </section>
+
+                {visibleFavorites.length > 0 ? (
+                  <div className="course-grid learner-favorites-grid">
+                    {visibleFavorites.map((course) => (
+                      <CourseCard
+                        course={course}
+                        key={course.slug}
+                        learnerMode
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="learner-favorites-filter-empty">
+                    <strong>這個上課形式目前沒有收藏</strong>
+                    <p>切回「全部」就能看到其他已收藏課程。</p>
                     <button
-                      aria-pressed={deliveryFilter === option.value}
-                      key={option.value}
-                      onClick={() => setDeliveryFilter(option.value)}
+                      className="button secondary"
+                      onClick={() => setDeliveryFilter("all")}
                       type="button"
                     >
-                      {option.label}
-                      <span>{count}</span>
+                      查看全部收藏
                     </button>
-                  );
-                })}
-              </div>
-              <label>
-                排序
-                <select
-                  onChange={(event) =>
-                    setSort(event.target.value as FavoriteSort)
-                  }
-                  value={sort}
-                >
-                  <option value="recent">最近收藏</option>
-                  <option value="upcoming">即將開課</option>
-                  <option value="title">課程名稱</option>
-                </select>
-              </label>
-            </section>
+                  </div>
+                )}
+              </>
+            )}
 
-            {visibleFavorites.length > 0 ? (
-              <div className="course-grid learner-favorites-grid">
-                {visibleFavorites.map((course) => (
-                  <CourseCard course={course} key={course.slug} learnerMode />
-                ))}
-              </div>
-            ) : (
-              <div className="learner-favorites-filter-empty">
-                <strong>這個上課形式目前沒有收藏</strong>
-                <p>切回「全部」就能看到其他已收藏課程。</p>
-                <button
-                  className="button secondary"
-                  onClick={() => setDeliveryFilter("all")}
-                  type="button"
-                >
-                  查看全部收藏
-                </button>
-              </div>
+            {currentUnavailableFavorites.length > 0 && (
+              <section
+                aria-label="目前未開放的收藏課程"
+                className="learner-favorites-unavailable"
+                role="status"
+              >
+                <span aria-hidden="true">
+                  <LearnerPortalIcon name="bookmark" size={28} />
+                </span>
+                <div>
+                  <strong>
+                    {currentUnavailableFavorites.length} 門收藏目前未開放
+                  </strong>
+                  <p>
+                    課程可能已下架、停止販售或正在換版；收藏紀錄仍保留，重新開放後會自動恢復課程資訊。
+                  </p>
+                </div>
+              </section>
             )}
           </>
         ) : (
@@ -232,16 +269,20 @@ export function LearnerFavoritesView({
                 <div>
                   <p className="learner-kicker">不知道先看哪一門？</p>
                   <h2 id="favorite-recommendations-title">
-                    先看看這些課程內容示範
+                    先看看這些正式開放課程
                   </h2>
                 </div>
                 <Link href="/learner/catalog">查看完整課程總覽</Link>
               </div>
-              <div className="course-grid">
-                {recommendations.map((course) => (
-                  <ShowcaseCourseCard course={course} key={course.slug} />
-                ))}
-              </div>
+              {recommendations.length > 0 ? (
+                <div className="course-grid">
+                  {recommendations.map((course) => (
+                    <CourseCard course={course} key={course.slug} learnerMode />
+                  ))}
+                </div>
+              ) : (
+                <p>目前沒有其他可推薦的正式課程，之後有新課會顯示在這裡。</p>
+              )}
             </section>
           </>
         )}

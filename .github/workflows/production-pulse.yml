@@ -70,8 +70,30 @@ jobs:
           done
 
       - name: Verify database and queue health
+        env:
+          CRON_SECRET: ${{ secrets.SUIYUE_PRODUCTION_CRON_SECRET }}
         shell: bash
         run: |
+          liveness_file="$(mktemp)"
+          liveness_status="$(
+            curl \
+              --silent \
+              --show-error \
+              --output "${liveness_file}" \
+              --write-out "%{http_code}" \
+              --max-time 30 \
+              --retry 2 \
+              --retry-delay 2 \
+              https://class.suiyuecare.com/api/health/live
+          )"
+          if [[ "${liveness_status}" != "200" ]]; then
+            echo "Liveness endpoint returned HTTP ${liveness_status}."
+            exit 1
+          fi
+          jq -e \
+            '.status == "live" and (keys | length) == 1' \
+            "${liveness_file}" >/dev/null
+
           health_file="$(mktemp)"
           status="$(
             curl \
@@ -82,6 +104,7 @@ jobs:
               --max-time 30 \
               --retry 2 \
               --retry-delay 2 \
+              --header "Authorization: Bearer ${CRON_SECRET}" \
               https://class.suiyuecare.com/api/health
           )"
           if [[ "${status}" != "200" && "${status}" != "503" ]]; then

@@ -45,6 +45,9 @@ export default function RootLayout({
   return (
     <html lang="zh-Hant-TW">
       <body>
+        <a className="skip-link" href="#main-content">
+          跳到主要內容
+        </a>
         <SiteFrame>{children}</SiteFrame>
       </body>
     </html>

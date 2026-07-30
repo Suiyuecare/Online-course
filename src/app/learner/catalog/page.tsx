@@ -12,7 +12,7 @@ import {
   showcaseCourses,
 } from "@/content/showcase-courses";
 import { courseCategoryByCode } from "@/domain/course-taxonomy";
-import { catalogCourseListing } from "@/infrastructure/supabase/catalog";
+import { catalogCourseListingWithReadiness } from "@/infrastructure/supabase/catalog";
 
 export const metadata: Metadata = { title: "課程總覽" };
 
@@ -25,7 +25,7 @@ export default async function LearnerCatalogPage({
   const filters = parseCatalogFilters(resolvedSearchParams);
   const initialCategory =
     courseCategoryByCode(filters.category)?.title ?? "全部課程";
-  const catalog = await catalogCourseListing();
+  const catalog = await catalogCourseListingWithReadiness();
 
   return (
     <div className="learner-catalog-page">
@@ -63,7 +63,7 @@ export default async function LearnerCatalogPage({
               const query = catalogFilterQuery(filters, category.code);
               return (
                 <Link
-                  href={`/learner/catalog?${query}#course-search`}
+                  href={`/learner/catalog?${query}#official-courses`}
                   key={category.title}
                 >
                   <span aria-hidden="true">
@@ -109,6 +109,7 @@ export default async function LearnerCatalogPage({
             <span>展示課不代表已核定或已開放購買</span>
           </div>
           <ShowcaseCourseExplorer
+            anchorId="showcase-course-search"
             courses={showcaseCourses}
             initialCategory={initialCategory}
             key={initialCategory}

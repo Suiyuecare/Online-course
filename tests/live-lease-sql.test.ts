@@ -176,6 +176,7 @@ describe("live join lease provider correlation", () => {
       "zoom_orphan_cleanup",
       "quarantine_scan",
       "profile_media_purge",
+      "sla_escalation_record",
     ]);
 
     const hardenedLeaseStart = apiHardening.lastIndexOf(

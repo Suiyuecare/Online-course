@@ -6,7 +6,7 @@ const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export type CourseFavorite = {
   courseId: string;
-  slug: string;
+  slug: string | null;
   createdAt: string;
 };
 
@@ -28,7 +28,7 @@ export async function readOwnCourseFavorites(
 ): Promise<CourseFavorite[]> {
   const { data, error } = await client
     .from("course_favorites")
-    .select("course_id,created_at,courses!inner(slug)")
+    .select("course_id,created_at,courses(slug)")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error("COURSE_FAVORITES_UNAVAILABLE");
@@ -40,8 +40,7 @@ export async function readOwnCourseFavorites(
       typeof row.course_id !== "string" ||
       !uuidPattern.test(row.course_id) ||
       typeof row.created_at !== "string" ||
-      !Number.isFinite(Date.parse(row.created_at)) ||
-      !slug
+      !Number.isFinite(Date.parse(row.created_at))
     ) {
       return [];
     }

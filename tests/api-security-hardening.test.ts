@@ -76,6 +76,17 @@ describe("API security hardening regressions", () => {
     expect(health).toContain('health.status === "ready" ? 200 : 503');
     expect(health).toContain('"provider_health"');
     expect(health).toContain('"worker_heartbeats"');
+    expect(health).toContain('"notification_outbox"');
+    expect(health).toContain("canReadDetailedReadiness");
+    expect(health).toContain('p_required_role: "platform_admin"');
+    expect(health).toContain('{ status: "protected" }');
+    expect(health).toContain("timingSafeEqual");
+
+    const liveness = source("src/app/api/health/live/route.ts");
+    expect(liveness).toContain('{ status: "live" }');
+    expect(liveness).not.toContain("productionReadiness");
+    expect(liveness).not.toContain("serviceSupabase");
+    expect(liveness).not.toContain("productionReadiness");
   });
 
   it("bounds JSON and webhook request bodies before parsing", () => {

@@ -64,7 +64,9 @@ export default async function LearnerLayout({
       availableCouponCount={coupons?.counts.available ?? 0}
       initialCart={cartResult.cart.items}
       initialCartAvailable={cartResult.available}
-      initialFavoriteSlugs={favorites.map((favorite) => favorite.slug)}
+      initialFavoriteSlugs={favorites.flatMap((favorite) =>
+        favorite.slug ? [favorite.slug] : [],
+      )}
     >
       {children}
     </LearnerPortalShell>

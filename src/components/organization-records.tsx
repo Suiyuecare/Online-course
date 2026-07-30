@@ -42,126 +42,133 @@ export function OrganizationRecords({
 }) {
   return (
     <div className="organization-records">
-      <section>
-        <h2>員工與邀請</h2>
-        <div className="record-list">
-          {details.members.map((member) => (
-            <article key={member.personId}>
-              <strong>{member.displayName}</strong>
-              <span>
-                {roleLabels[member.role] ?? "成員"}・
-                {member.status === "active" ? "有效" : "已離職"}
-              </span>
-              <p>
-                {member.employeeNumber ?? "未填員工編號"}・
-                {member.department ?? "未填部門"}
-              </p>
-            </article>
-          ))}
-          {details.invitations.map((invitation) => (
-            <article key={invitation.invitationId}>
-              <strong>{invitation.maskedPhone}</strong>
-              <span>邀請：{label(invitation.status)}</span>
-              <p>
-                {roleLabels[invitation.role] ?? "員工"}・有效至{" "}
-                {new Date(invitation.expiresAt).toLocaleDateString("zh-TW")}
-              </p>
-            </article>
-          ))}
-          {details.members.length === 0 && details.invitations.length === 0 && (
-            <p className="closed-note">尚無員工或待接受邀請。</p>
-          )}
-        </div>
-      </section>
-      <section>
-        <h2>購點與發票</h2>
-        <div className="record-list">
-          {details.topups.map((topup) => (
-            <article key={topup.topupId}>
-              <strong>{topup.referenceNumber}</strong>
-              <span>{label(topup.status)}</span>
-              <p>
-                {topup.points.toLocaleString("zh-TW")} 點・NT${" "}
-                {topup.amountTwd.toLocaleString("zh-TW")}
-              </p>
-            </article>
-          ))}
-          {details.invoices.map((invoice) => (
-            <article key={invoice.invoiceId}>
-              <strong>{invoice.externalNumber ?? "發票號碼待補"}</strong>
-              <span>{label(invoice.status)}</span>
-              <p>NT$ {invoice.amountTwd.toLocaleString("zh-TW")}</p>
-            </article>
-          ))}
-          {details.topups.length === 0 && details.invoices.length === 0 && (
-            <p className="closed-note">尚無購點或發票紀錄。</p>
-          )}
-        </div>
-      </section>
-      <section>
-        <h2>課程指派與直播</h2>
-        <div className="record-list">
-          {details.assignments.map((assignment) => (
-            <article key={assignment.assignmentId}>
-              <strong>{assignment.courseTitle}</strong>
-              <span>{label(assignment.status)}</span>
-              <p>
-                {assignment.memberLabel}・{assignment.points} 點
-              </p>
-              {assignment.completionDueAt && (
-                <p>
-                  完成期限：
-                  {new Date(assignment.completionDueAt).toLocaleString(
-                    "zh-TW",
-                    { timeZone: "Asia/Taipei" },
+      {details.capabilities.canViewTraining && (
+        <>
+          <section>
+            <h2>員工與邀請</h2>
+            <div className="record-list">
+              {details.members.map((member) => (
+                <article key={member.personId}>
+                  <strong>{member.displayName}</strong>
+                  <span>
+                    {roleLabels[member.role] ?? "成員"}・
+                    {member.status === "active" ? "有效" : "已離職"}
+                  </span>
+                  <p>
+                    {member.employeeNumber ?? "未填員工編號"}・
+                    {member.department ?? "未填部門"}
+                  </p>
+                </article>
+              ))}
+              {details.invitations.map((invitation) => (
+                <article key={invitation.invitationId}>
+                  <strong>{invitation.maskedPhone}</strong>
+                  <span>邀請：{label(invitation.status)}</span>
+                  <p>
+                    {roleLabels[invitation.role] ?? "員工"}・有效至{" "}
+                    {new Date(invitation.expiresAt).toLocaleDateString("zh-TW")}
+                  </p>
+                </article>
+              ))}
+              {details.members.length === 0 &&
+                details.invitations.length === 0 && (
+                  <p className="closed-note">尚無員工或待接受邀請。</p>
+                )}
+            </div>
+          </section>
+          <section>
+            <h2>課程指派與直播</h2>
+            <div className="record-list">
+              {details.assignments.map((assignment) => (
+                <article key={assignment.assignmentId}>
+                  <strong>{assignment.courseTitle}</strong>
+                  <span>{label(assignment.status)}</span>
+                  <p>
+                    {assignment.memberLabel}・{assignment.points} 點
+                  </p>
+                  {assignment.completionDueAt && (
+                    <p>
+                      完成期限：
+                      {new Date(assignment.completionDueAt).toLocaleString(
+                        "zh-TW",
+                        { timeZone: "Asia/Taipei" },
+                      )}
+                    </p>
                   )}
-                </p>
+                </article>
+              ))}
+              {details.liveBookings.map((booking) => (
+                <article key={booking.bookingId}>
+                  <strong>{booking.sessionTitle}</strong>
+                  <span>{label(booking.status)}</span>
+                  <p>
+                    {booking.memberLabel}・
+                    {new Date(booking.startsAt).toLocaleString("zh-TW")}
+                  </p>
+                </article>
+              ))}
+              {details.assignments.length === 0 &&
+                details.liveBookings.length === 0 && (
+                  <p className="closed-note">尚無課程指派或直播選場。</p>
+                )}
+            </div>
+          </section>
+          <section>
+            <h2>員工學習成果</h2>
+            <div className="record-list">
+              {details.outcomes.map((outcome) => {
+                const accreditation = presentStatus(
+                  "enrollment",
+                  outcome.accreditationStatus,
+                );
+                return (
+                  <article key={outcome.assignmentId}>
+                    <strong>{outcome.courseTitle}</strong>
+                    <span>{accreditation.label}</span>
+                    <p>
+                      {outcome.memberLabel}・進度 {outcome.progressPercent}
+                      %・有效 {outcome.validMinutes} 分鐘
+                      {outcome.quizScore === null
+                        ? ""
+                        : `・測驗 ${outcome.quizScore} 分`}
+                    </p>
+                  </article>
+                );
+              })}
+              {details.outcomes.length === 0 && (
+                <p className="closed-note">尚無可顯示的機構出資課程成果。</p>
               )}
-            </article>
-          ))}
-          {details.liveBookings.map((booking) => (
-            <article key={booking.bookingId}>
-              <strong>{booking.sessionTitle}</strong>
-              <span>{label(booking.status)}</span>
-              <p>
-                {booking.memberLabel}・
-                {new Date(booking.startsAt).toLocaleString("zh-TW")}
-              </p>
-            </article>
-          ))}
-          {details.assignments.length === 0 &&
-            details.liveBookings.length === 0 && (
-              <p className="closed-note">尚無課程指派或直播選場。</p>
-            )}
-        </div>
-      </section>
-      <section>
-        <h2>員工學習成果</h2>
-        <div className="record-list">
-          {details.outcomes.map((outcome) => {
-            const accreditation = presentStatus(
-              "enrollment",
-              outcome.accreditationStatus,
-            );
-            return (
-              <article key={outcome.assignmentId}>
-                <strong>{outcome.courseTitle}</strong>
-                <span>{accreditation.label}</span>
+            </div>
+          </section>
+        </>
+      )}
+      {details.capabilities.canViewFinance && (
+        <section>
+          <h2>購點與發票</h2>
+          <div className="record-list">
+            {details.topups.map((topup) => (
+              <article key={topup.topupId}>
+                <strong>{topup.referenceNumber}</strong>
+                <span>{label(topup.status)}</span>
                 <p>
-                  {outcome.memberLabel}・進度 {outcome.progressPercent}%・有效{" "}
-                  {outcome.validMinutes} 分鐘
-                  {outcome.quizScore === null
-                    ? ""
-                    : `・測驗 ${outcome.quizScore} 分`}
+                  {topup.points.toLocaleString("zh-TW")} 點・NT${" "}
+                  {topup.amountTwd.toLocaleString("zh-TW")}
                 </p>
               </article>
-            );
-          })}
-          {details.outcomes.length === 0 && (
-            <p className="closed-note">尚無可顯示的機構出資課程成果。</p>
-          )}
-        </div>
-      </section>
+            ))}
+            {details.invoices.map((invoice) => (
+              <article key={invoice.invoiceId}>
+                <strong>{invoice.externalNumber ?? "發票號碼待補"}</strong>
+                <span>{label(invoice.status)}</span>
+                <p>NT$ {invoice.amountTwd.toLocaleString("zh-TW")}</p>
+              </article>
+            ))}
+            {details.topups.length === 0 && details.invoices.length === 0 && (
+              <p className="closed-note">尚無購點或發票紀錄。</p>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

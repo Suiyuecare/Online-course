@@ -166,7 +166,15 @@ describe("professional learner profile", () => {
     expect(view).toContain("data.isInstructor");
     expect(view).toContain("我開的課");
     expect(publicPage).toContain("robots: { index: false, follow: false }");
+    expect(publicPage).not.toContain(".catch(() => null)");
     expect(previewPage).toContain('mode="preview"');
+    expect(previewPage).toContain("目前無法安全預覽個人檔案");
+    expect(previewPage).not.toContain(
+      "readLearnerCenterRows(supabase).catch(() => [])",
+    );
+    expect(previewPage).not.toContain(
+      "readInstructorDashboard(supabase).catch(() => null)",
+    );
   });
 
   it("never presents sensitive learning or legal identity on the public view", () => {

@@ -24,6 +24,7 @@ const kindLabels: Record<string, string> = {
   order: "訂單與匯款狀態",
   organization: "機構培訓",
   account: "帳號登入",
+  privacy: "個資與帳號權利",
   other: "其他",
 };
 

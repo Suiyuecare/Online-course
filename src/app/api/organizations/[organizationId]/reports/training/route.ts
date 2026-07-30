@@ -44,7 +44,7 @@ export async function GET(
     });
     const { supabase } = await requireUser();
     const { data, error } = await supabase.rpc(
-      "read_organization_training_report_v2",
+      "read_organization_training_report_v3",
       {
         p_organization_id: organizationId,
         p_course_version_id: query.courseVersionId,

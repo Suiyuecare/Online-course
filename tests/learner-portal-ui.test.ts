@@ -34,7 +34,8 @@ describe("logged-in learner portal", () => {
 
     expect(shell).toContain("learnerCourseTaxonomy");
     expect(shell).toContain('<details className="learner-explore-menu">');
-    expect(shell).toContain('action="/learner/catalog#course-search"');
+    expect(shell).toContain('action="/learner/catalog#official-courses"');
+    expect(shell).not.toContain("/learner/catalog#course-search");
     expect(shell).toContain('method="get"');
     expect(shell).toContain('name="q"');
     expect(shell).toContain('type="search"');
@@ -105,6 +106,9 @@ describe("logged-in learner portal", () => {
     expect(dashboard).toContain("Asia/Taipei");
     expect(dashboard).toContain("readLearnerCenterRows");
     expect(dashboard).toContain("readOwnOrders");
+    expect(dashboard).toContain("rankCatalogRecommendations");
+    expect(dashboard).toContain("catalogCourseListingWithReadiness");
+    expect(dashboard).not.toContain("<ShowcaseCourseCard");
     expect(dashboard).toContain("部分學習資料暫時無法讀取");
     expect(dashboard).toContain(
       "/api/catalog/courses/${encodeURIComponent(row.course_version_id)}/cover",
@@ -138,5 +142,20 @@ describe("logged-in learner portal", () => {
     expect(favorites).toContain("readOwnCourseFavorites");
     expect(favoriteView).toContain("收藏不等於購買");
     expect(favoriteView).toContain("換手機登入");
+    expect(favoriteView).toContain("收藏目前未開放");
+    expect(favoriteView).not.toContain("<ShowcaseCourseCard");
+  });
+
+  it("only exposes cart actions after the sale readiness check passes", () => {
+    const card = source("src/components/course-card.tsx");
+    const catalog = source("src/infrastructure/supabase/catalog.ts");
+
+    expect(card).toContain("course.purchase_readiness?.purchaseReady === true");
+    expect(card).toContain(
+      "purchaseReady && <AddOfficialCourseToCart course={course} />",
+    );
+    expect(card).toContain("!learnerMode && purchaseReady");
+    expect(catalog).toContain("catalogCourseListingWithReadiness");
+    expect(catalog).toContain('"read_public_course_readiness"');
   });
 });

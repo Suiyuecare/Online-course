@@ -53,11 +53,13 @@ export function filterShowcaseCourses(
 }
 
 export function ShowcaseCourseExplorer({
+  anchorId = "course-search",
   courses,
   initialCategory = "全部課程",
   initialQuery = "",
   learnerMode = false,
 }: {
+  anchorId?: string;
   courses: ShowcaseCourse[];
   initialCategory?: (typeof showcaseCategories)[number];
   initialQuery?: string;
@@ -80,7 +82,7 @@ export function ShowcaseCourseExplorer({
 
   return (
     <div className="course-explorer">
-      <div className="course-filter-panel" id="course-search">
+      <div className="course-filter-panel" id={anchorId}>
         <label>
           搜尋課程
           <input

@@ -107,6 +107,21 @@ describe("server emergency closures", () => {
         "/api/staff/certificates/revocations/request-id/decision",
       ),
     ).toBeNull();
+    expect(
+      emergencyClosureCode(
+        closed,
+        "/api/staff/operations/incidents/incident-id",
+      ),
+    ).toBeNull();
+    expect(
+      emergencyClosureCode(
+        closed,
+        "/api/staff/operations/dead-letters/durable_job/job-id",
+      ),
+    ).toBeNull();
+    expect(
+      emergencyClosureCode(closed, "/api/staff/operations/evidence"),
+    ).toBeNull();
   });
 
   it("closes new payment and proof operations but preserves refunds", () => {

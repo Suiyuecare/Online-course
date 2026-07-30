@@ -11,14 +11,14 @@ export async function POST(
   context: { params: Promise<{ organizationId: string }> },
 ) {
   return mutation(request, async () => {
-    requireIdempotencyKey(request);
+    const idempotencyKey = requireIdempotencyKey(request);
     const { organizationId } = await context.params;
     z.uuid().parse(organizationId);
     const input = await readJson(
       request,
       z.object({
         decision: z.enum(["approve", "reject"]),
-        reason: z.string().trim().min(3).max(1000),
+        reason: z.string().trim().min(10).max(1000),
       }),
     );
     const { supabase } = await requireUser();
@@ -28,6 +28,7 @@ export async function POST(
         p_organization_id: organizationId,
         p_decision: input.decision,
         p_reason: input.reason,
+        p_idempotency_key: idempotencyKey,
       },
     );
     if (error) throw new Error(`DATABASE_REJECTED:${error.message}`);

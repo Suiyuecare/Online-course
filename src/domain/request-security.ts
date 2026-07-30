@@ -43,6 +43,9 @@ const emergencyRemediationPatterns = [
   /^\/api\/staff\/organizations\/point-refunds(?:\/.*)?$/,
   /^\/api\/staff\/certificates\/revocations(?:\/.*)?$/,
   /^\/api\/staff\/identity\/recoveries(?:\/.*)?$/,
+  /^\/api\/staff\/operations\/incidents(?:\/.*)?$/,
+  /^\/api\/staff\/operations\/dead-letters(?:\/.*)?$/,
+  /^\/api\/staff\/operations\/evidence$/,
 ];
 
 const paymentMutationPatterns = [
