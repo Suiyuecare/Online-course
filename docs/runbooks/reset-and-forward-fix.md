@@ -66,8 +66,8 @@ alter database postgres reset app.suiyue_legacy_fingerprint;
 
 ## Post-check
 
-- 12 migration versions present in order: ten clean-baseline migrations plus
-  the provider-operation and API-security forward fixes.
+- Every migration version committed under `supabase/migrations` is present in
+  order and its checksum matches the reviewed repository state.
 - All public tables have RLS, explicit grants, and no unexpected policies.
 - Security Advisor reviewed.
 - Feature switches all disabled.

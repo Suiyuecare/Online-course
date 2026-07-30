@@ -17,6 +17,8 @@ const purposeSchema = z.enum([
   "course_material",
   "organization_roster",
   "bank_statement",
+  "profile_avatar",
+  "profile_cover",
 ]);
 const allowedMime = new Set([
   "image/jpeg",
@@ -73,6 +75,13 @@ export async function POST(request: Request) {
       file.size > 10_000_000
     ) {
       throw new Error("UPLOAD_TYPE_OR_SIZE_REJECTED");
+    }
+    if (
+      ["profile_avatar", "profile_cover"].includes(purpose) &&
+      (!["image/jpeg", "image/png"].includes(file.type) ||
+        file.size > 5_000_000)
+    ) {
+      throw new Error("PROFILE_IMAGE_TYPE_OR_SIZE_REJECTED");
     }
     const bytes = new Uint8Array(await file.arrayBuffer());
     if (!magicMatches(bytes, file.type)) {

@@ -149,6 +149,7 @@ export default async function OrganizationWorkspace() {
           .filter((member) => member.status === "active")
           .map((member) => ({
             personId: member.personId,
+            displayName: member.displayName,
             employeeNumber: member.employeeNumber,
             department: member.department,
           }))}
@@ -158,6 +159,13 @@ export default async function OrganizationWorkspace() {
             id: course.course_version_id,
             title: course.title,
             points: course.organization_point_price ?? 0,
+            deliveryType: course.delivery_type,
+            liveSessions: course.live_sessions.map((session) => ({
+              id: session.id,
+              title: session.title,
+              startsAt: session.startsAt,
+              bookingCloseAt: session.bookingCloseAt,
+            })),
           }))}
         details={details}
       />

@@ -1,15 +1,27 @@
+import { learnerCourseTaxonomy } from "@/domain/course-taxonomy";
+
+export { learnerCourseTaxonomy } from "@/domain/course-taxonomy";
+
 export type ShowcaseDeliveryType = "recorded" | "live" | "hybrid";
+export type ShowcaseCreditType =
+  | "專業課程"
+  | "專業品質"
+  | "專業倫理"
+  | "專業法規";
 
 export type ShowcaseCourse = {
   slug: string;
   title: string;
   summary: string;
   category: string;
+  creditType: ShowcaseCreditType;
   deliveryType: ShowcaseDeliveryType;
   durationMinutes: number;
   lessonCount: number;
   displayPriceTwd: number;
   accreditationLabel: string;
+  coverImage: string;
+  coverAlt: string;
   youtubeId: string;
   youtubeTitle: string;
   youtubePublisher: string;
@@ -27,14 +39,15 @@ export type ShowcaseCourse = {
 
 export const showcaseCategories = [
   "全部課程",
-  "失智照護",
-  "長照政策",
-  "社區照顧",
-  "營養吞嚥",
-  "復能活動",
-  "家屬溝通",
-  "健康評估",
-  "感染管制",
+  ...learnerCourseTaxonomy.map((category) => category.title),
+] as const;
+
+export const showcaseCreditTypes = [
+  "全部積分屬性",
+  "專業課程",
+  "專業品質",
+  "專業倫理",
+  "專業法規",
 ] as const;
 
 export const showcaseCourses: ShowcaseCourse[] = [
@@ -43,12 +56,15 @@ export const showcaseCourses: ShowcaseCourse[] = [
     title: "失智症照護：從理解行為到安心陪伴",
     summary:
       "從常見行為、情緒反應到日常陪伴，練習用更安全、更有尊嚴的方式回應失智長輩。",
-    category: "失智照護",
+    category: "失智、身障與特殊需求",
+    creditType: "專業課程",
     deliveryType: "recorded",
     durationMinutes: 95,
     lessonCount: 7,
     displayPriceTwd: 680,
     accreditationLabel: "積分資格待正式核定",
+    coverImage: "/images/suiyue-original/course-dementia-care.jpg",
+    coverAlt: "照護工作者陪伴失智長者進行記憶卡活動",
     youtubeId: "qimRv1gJblQ",
     youtubeTitle: "失智的第一堂課：愛的陪伴，失智的溫柔處方",
     youtubePublisher: "中華民國衛生福利部",
@@ -82,12 +98,15 @@ export const showcaseCourses: ShowcaseCourse[] = [
     title: "照顧不孤單：長照資源與家庭支持",
     summary:
       "認識長照服務、喘息安排與家庭分工，協助第一線人員用簡單的話陪家屬找到下一步。",
-    category: "家屬溝通",
+    category: "倫理、人權與文化安全",
+    creditType: "專業倫理",
     deliveryType: "recorded",
     durationMinutes: 70,
     lessonCount: 6,
     displayPriceTwd: 520,
     accreditationLabel: "積分資格待正式核定",
+    coverImage: "/images/suiyue-original/course-family-support.jpg",
+    coverAlt: "照顧協調員與家庭討論長照支持安排",
     youtubeId: "vGoGa-IZNJg",
     youtubeTitle: "有您真好，讓照顧不必孤軍奮戰",
     youtubePublisher: "中華民國衛生福利部",
@@ -121,12 +140,15 @@ export const showcaseCourses: ShowcaseCourse[] = [
     title: "長照政策與服務資源入門",
     summary:
       "用生活化方式認識長照服務架構、申請流程與常見資源，協助第一線工作者清楚回應服務對象。",
-    category: "長照政策",
+    category: "政策法規與職場權益",
+    creditType: "專業法規",
     deliveryType: "recorded",
     durationMinutes: 65,
     lessonCount: 6,
     displayPriceTwd: 480,
     accreditationLabel: "積分資格待正式核定",
+    coverImage: "/images/suiyue-original/course-long-term-care-policy.jpg",
+    coverAlt: "社區照顧人員向長者說明長照服務資源",
     youtubeId: "nL3fz7w42b8",
     youtubeTitle: "【長照政策簡介影片】中文簡版",
     youtubePublisher: "中華民國衛生福利部",
@@ -160,12 +182,15 @@ export const showcaseCourses: ShowcaseCourse[] = [
     title: "社區日照與老幼共融實務",
     summary:
       "從日間照顧的服務設計出發，認識活動安排、世代互動與安全界線，打造有參與感的社區照顧。",
-    category: "社區照顧",
+    category: "溝通、督導與服務管理",
+    creditType: "專業課程",
     deliveryType: "hybrid",
     durationMinutes: 90,
     lessonCount: 7,
     displayPriceTwd: 720,
     accreditationLabel: "積分資格待正式核定",
+    coverImage: "/images/suiyue-original/course-community-day-care.jpg",
+    coverAlt: "長者與孩子在日照中心一起完成共融活動",
     youtubeId: "G_3NbxHjhY0",
     youtubeTitle: "校舍活化轉日照：老幼共融新樂園",
     youtubePublisher: "中華民國衛生福利部",
@@ -199,12 +224,15 @@ export const showcaseCourses: ShowcaseCourse[] = [
     title: "高齡吞嚥與進食安全：從觀察到正確協助",
     summary:
       "認識吞嚥困難警訊、進食姿勢與照護觀察，降低嗆咳與不安全餵食的風險。",
-    category: "營養吞嚥",
+    category: "日常照護與專業技能",
+    creditType: "專業課程",
     deliveryType: "hybrid",
     durationMinutes: 105,
     lessonCount: 8,
     displayPriceTwd: 920,
     accreditationLabel: "積分資格待正式核定",
+    coverImage: "/images/suiyue-original/course-swallowing-safety.jpg",
+    coverAlt: "專業人員示範高齡進食與吞嚥安全協助",
     youtubeId: "siMWhAyQ5Co",
     youtubeTitle: "吞嚥復健系列 1－認識吞嚥障礙",
     youtubePublisher: "臺大醫院 NTU Hospital",
@@ -238,12 +266,15 @@ export const showcaseCourses: ShowcaseCourse[] = [
     title: "中風後痙攣照護與居家復健",
     summary:
       "認識中風後痙攣的照護重點、居家運動與停止警訊，把復健原則安全地帶進每天生活。",
-    category: "復能活動",
+    category: "復能、居家醫療與善終",
+    creditType: "專業課程",
     deliveryType: "recorded",
     durationMinutes: 80,
     lessonCount: 7,
     displayPriceTwd: 590,
     accreditationLabel: "積分資格待正式核定",
+    coverImage: "/images/suiyue-original/course-stroke-rehab.jpg",
+    coverAlt: "治療人員陪伴中風長者進行居家復能活動",
     youtubeId: "uOhzqAkW7SI",
     youtubeTitle: "中風後痙攣照護：居家復健運動",
     youtubePublisher: "臺大醫院 NTU Hospital",
@@ -277,12 +308,15 @@ export const showcaseCourses: ShowcaseCourse[] = [
     title: "長者六力與整合式健康評估",
     summary:
       "從認知、行動、營養、視力、聽力與憂鬱六個面向，練習觀察變化並連結後續支持。",
-    category: "健康評估",
+    category: "入門、資格與職涯進階",
+    creditType: "專業課程",
     deliveryType: "live",
     durationMinutes: 120,
     lessonCount: 5,
     displayPriceTwd: 880,
     accreditationLabel: "積分資格待正式核定",
+    coverImage: "/images/suiyue-original/course-icope-assessment.jpg",
+    coverAlt: "照護團隊陪伴長者進行起身與健康評估",
     youtubeId: "A4rVWXvP2j4",
     youtubeTitle: "什麼是長者健康整合式評估（ICOPE）",
     youtubePublisher: "國民健康署健康九九",
@@ -316,12 +350,15 @@ export const showcaseCourses: ShowcaseCourse[] = [
     title: "長照機構手部衛生與感染管制",
     summary:
       "從照護現場常見接觸情境出發，建立手部衛生時機、正確步驟與群聚異常回報觀念。",
-    category: "感染管制",
+    category: "品質、安全與感染管制",
+    creditType: "專業品質",
     deliveryType: "recorded",
     durationMinutes: 120,
     lessonCount: 8,
     displayPriceTwd: 760,
     accreditationLabel: "積分資格待正式核定",
+    coverImage: "/images/suiyue-original/course-infection-control.jpg",
+    coverAlt: "長照工作人員一起練習正確手部衛生步驟",
     youtubeId: "Awg6uDbbFvI",
     youtubeTitle: "長期照護機構因應 COVID-19 手部衛生實務介紹",
     youtubePublisher: "衛生福利部疾病管制署",
@@ -354,8 +391,4 @@ export const showcaseCourses: ShowcaseCourse[] = [
 
 export function showcaseCourse(slug: string) {
   return showcaseCourses.find((course) => course.slug === slug) ?? null;
-}
-
-export function youtubeThumbnail(youtubeId: string) {
-  return `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`;
 }

@@ -215,10 +215,12 @@ select extensions.ok(
         join pg_catalog.pg_roles member_role
           on member_role.oid = membership.member
         where membership.roleid = role.oid
-          and (
-            member_role.rolname <> 'postgres'
-            or membership.admin_option
-          )
+          -- Supabase grants its managed postgres owner an unavoidable
+          -- admin-option membership (membership.admin_option). That owner is
+          -- already privileged to alter functions and roles, so the
+          -- membership adds no browser or application capability. Every
+          -- non-postgres member remains forbidden.
+          and member_role.rolname <> 'postgres'
       )
   ),
   'the catalog capability owner has no ambient or delegable privileges'

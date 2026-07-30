@@ -1,10 +1,11 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   showcaseCategories,
   showcaseCourses,
 } from "@/content/showcase-courses";
+import { filterShowcaseCourses } from "@/components/showcase-course-explorer";
 
 function source(path: string) {
   return readFileSync(resolve(process.cwd(), path), "utf8");
@@ -34,9 +35,21 @@ describe("public showcase courses", () => {
     expect(new Set(showcaseCourses.map((course) => course.youtubeId))).toEqual(
       verifiedEmbeddableVideos,
     );
+    expect(
+      new Set(showcaseCourses.map((course) => course.coverImage)).size,
+    ).toBe(8);
 
     for (const course of showcaseCourses) {
       expect(course.youtubeId).toMatch(/^[A-Za-z0-9_-]{11}$/);
+      expect(course.coverImage).toMatch(
+        /^\/images\/suiyue-original\/course-[a-z-]+\.jpg$/,
+      );
+      expect(
+        existsSync(
+          resolve(process.cwd(), "public", course.coverImage.slice(1)),
+        ),
+      ).toBe(true);
+      expect(course.coverAlt.length).toBeGreaterThan(12);
       expect(course.learningObjectives.length).toBeGreaterThanOrEqual(3);
       expect(course.audience.length).toBeGreaterThanOrEqual(3);
       expect(
@@ -70,11 +83,24 @@ describe("public showcase courses", () => {
     expect(formalRoute).not.toContain("showcaseCourse");
   });
 
-  it("allows only the exact showcase media hosts", () => {
+  it("keeps showcase imagery self-hosted and stock-library free", () => {
     const config = source("next.config.ts");
+    const home = source("src/app/page.tsx");
+    const card = source("src/components/showcase-course-card.tsx");
+    const preview = source("src/components/youtube-demo-preview.tsx");
+    const heroPath = resolve(
+      process.cwd(),
+      "public/images/suiyue-original/home-hero-learning-wide-v2.jpg",
+    );
+
     expect(config).toContain("https://www.youtube-nocookie.com");
-    expect(config).toContain('hostname: "i.ytimg.com"');
-    expect(config).toContain('hostname: "images.unsplash.com"');
+    expect(config).not.toContain("i.ytimg.com");
+    expect(config).not.toContain("images.unsplash.com");
+    expect(home).not.toMatch(/unsplash|pexels|pixabay/i);
+    expect(home).toContain("home-hero-learning-wide-v2.jpg");
+    expect(existsSync(heroPath)).toBe(true);
+    expect(card).toContain("course.coverImage");
+    expect(preview).toContain("posterImage");
     expect(config).not.toContain("https://*.youtube.com");
   });
 
@@ -82,9 +108,31 @@ describe("public showcase courses", () => {
     const home = source("src/app/page.tsx");
     const explorer = source("src/components/showcase-course-explorer.tsx");
 
-    expect(home).toContain("encodeURIComponent(title)");
+    expect(home).toContain("category=${category.code}");
     expect(explorer).toContain("initialCategory");
     expect(explorer).toContain('aria-live="polite"');
     expect(explorer).toContain('role="status"');
+  });
+
+  it("carries public header GET searches into the catalog results", () => {
+    const header = source("src/components/site-header.tsx");
+    const catalog = source("src/app/courses/page.tsx");
+
+    expect(header).toContain("learnerCourseTaxonomy");
+    expect(header).toContain('<details className="site-explore-menu">');
+    expect(header).toContain('action="/courses"');
+    expect(header).toContain('method="get"');
+    expect(header).toContain('name="q"');
+    expect(catalog).toContain("parseCatalogFilters(resolvedSearchParams)");
+    expect(catalog).toContain("initialQuery={initialQuery}");
+
+    const results = filterShowcaseCourses(showcaseCourses, {
+      query: "吞嚥",
+      category: "全部課程",
+      deliveryType: "all",
+      creditType: "全部積分屬性",
+    });
+    expect(results).toHaveLength(1);
+    expect(results[0]?.title).toContain("吞嚥");
   });
 });

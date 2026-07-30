@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
+import Image from "next/image";
+import {
+  filterCatalogCourses,
+  parseCatalogFilters,
+} from "@/application/catalog-filtering";
 import { CourseCard } from "@/components/course-card";
 import { ShowcaseCourseExplorer } from "@/components/showcase-course-explorer";
-import {
-  showcaseCategories,
-  showcaseCourses,
-} from "@/content/showcase-courses";
+import { showcaseCourses } from "@/content/showcase-courses";
+import { courseCategoryByCode } from "@/domain/course-taxonomy";
 import { catalogCourseListing } from "@/infrastructure/supabase/catalog";
 
 export const metadata: Metadata = { title: "找課程" };
@@ -12,24 +15,37 @@ export const metadata: Metadata = { title: "找課程" };
 export default async function CoursesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string | string[] }>;
+  searchParams: Promise<{
+    category?: string | string[];
+    q?: string | string[];
+  }>;
 }) {
-  const requestedCategory = (await searchParams).category;
+  const resolvedSearchParams = await searchParams;
+  const filters = parseCatalogFilters(resolvedSearchParams);
+  const initialQuery = filters.query;
   const initialCategory =
-    typeof requestedCategory === "string" &&
-    showcaseCategories.some((category) => category === requestedCategory)
-      ? (requestedCategory as (typeof showcaseCategories)[number])
-      : "全部課程";
+    courseCategoryByCode(filters.category)?.title ?? "全部課程";
   const catalog = await catalogCourseListing();
-  const courses = catalog.courses;
+  const courses = filterCatalogCourses(catalog.courses, filters);
+  const selectedCategory = courseCategoryByCode(filters.category);
   return (
     <>
       <section className="course-catalog-hero">
+        <Image
+          alt="社區照顧人員向長者說明長照服務資源"
+          className="course-catalog-hero-image"
+          fill
+          loading="eager"
+          priority
+          sizes="100vw"
+          src="/images/suiyue-original/course-long-term-care-policy.jpg"
+        />
+        <div aria-hidden="true" className="course-catalog-hero-scrim" />
         <div className="shell">
-          <p className="eyebrow">歲悅學苑課程庫</p>
-          <h1>找一門今天就想學的照護課</h1>
+          <p className="eyebrow">SUIYUECARE COURSE CATALOG</p>
+          <h1>今天想學哪一堂？</h1>
           <p>
-            依主題與課程形式搜尋。下方目前為網站功能示範，正式核定與報名狀態會清楚標示。
+            從每天真的會遇到的照護情境開始，依主題與課程形式找到適合你的長照進修課。
           </p>
           <div className="catalog-hero-facts">
             <span>錄播：自己安排時間</span>
@@ -45,20 +61,35 @@ export default async function CoursesPage({
             <p>請稍後重新整理；下方仍可查看網站功能與公開影片示範。</p>
           </div>
         )}
-        {courses.length > 0 && (
+        {catalog.courses.length > 0 && (
           <div className="official-course-list">
             <div className="section-heading horizontal">
               <div>
                 <p className="eyebrow">正式開放課程</p>
-                <h2>已完成發布與販售檢查</h2>
+                <h2>
+                  {initialQuery
+                    ? `「${initialQuery}」的正式課程`
+                    : selectedCategory
+                      ? selectedCategory.title
+                      : "已完成發布與販售檢查"}
+                </h2>
               </div>
-              <span>{courses.length} 門可報名</span>
+              <span>
+                {courses.length} 門{initialQuery ? "符合搜尋" : "可報名"}
+              </span>
             </div>
-            <div className="course-grid">
-              {courses.map((course) => (
-                <CourseCard course={course} key={course.slug} />
-              ))}
-            </div>
+            {courses.length > 0 ? (
+              <div className="course-grid">
+                {courses.map((course) => (
+                  <CourseCard course={course} key={course.slug} />
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <h3>正式課程目前沒有符合這個關鍵字</h3>
+                <p>你仍可查看下方內容示範，或清除關鍵字重新搜尋。</p>
+              </div>
+            )}
           </div>
         )}
         <div
@@ -74,7 +105,8 @@ export default async function CoursesPage({
         <ShowcaseCourseExplorer
           courses={showcaseCourses}
           initialCategory={initialCategory}
-          key={initialCategory}
+          initialQuery={initialQuery}
+          key={`${initialCategory}:${initialQuery}`}
         />
       </section>
     </>

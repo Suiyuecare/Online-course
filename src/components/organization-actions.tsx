@@ -2,18 +2,11 @@
 
 import { useEffect, useState } from "react";
 import type { OrganizationWorkspaceDetails } from "@/application/workspace";
-
-type Member = {
-  personId: string;
-  employeeNumber: string | null;
-  department: string | null;
-};
-
-type Course = {
-  id: string;
-  title: string;
-  points: number;
-};
+import {
+  OrganizationBatchAssignment,
+  type OrganizationAssignmentCourse,
+  type OrganizationAssignmentMember,
+} from "@/components/organization-batch-assignment";
 
 async function deviceHash() {
   const digest = await crypto.subtle.digest(
@@ -117,8 +110,8 @@ export function OrganizationActions({
 }: {
   organizationId: string;
   role: string;
-  members: Member[];
-  courses: Course[];
+  members: OrganizationAssignmentMember[];
+  courses: OrganizationAssignmentCourse[];
   details: OrganizationWorkspaceDetails | null;
 }) {
   const [message, setMessage] = useState("");
@@ -531,55 +524,11 @@ export function OrganizationActions({
 
       {["owner", "training_manager"].includes(role) && (
         <>
-          <form
-            className="single-step-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const form = new FormData(event.currentTarget);
-              void post(`/api/organizations/${organizationId}/assignments`, {
-                memberPersonId: form.get("memberPersonId"),
-                courseVersionId: form.get("courseVersionId"),
-              })
-                .then((result) =>
-                  setMessage(
-                    `已保留 ${result.reservedPoints} 點並完成課程指派。`,
-                  ),
-                )
-                .catch(() =>
-                  setMessage(
-                    "指派未完成；錢包不足、重複指派或開關關閉時不會扣點。",
-                  ),
-                );
-            }}
-          >
-            <h2>指派課程</h2>
-            <label>
-              員工
-              <select name="memberPersonId" required>
-                <option value="">請選擇</option>
-                {members.map((member) => (
-                  <option key={member.personId} value={member.personId}>
-                    {member.employeeNumber || "未填員編"}－
-                    {member.department || "未填部門"}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              課程
-              <select name="courseVersionId" required>
-                <option value="">請選擇</option>
-                {courses.map((course) => (
-                  <option key={course.id} value={course.id}>
-                    {course.title}－{course.points} 點
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button className="button secondary" type="submit">
-              鎖定錢包並指派
-            </button>
-          </form>
+          <OrganizationBatchAssignment
+            courses={courses}
+            members={members}
+            organizationId={organizationId}
+          />
           <form
             className="single-step-form"
             onSubmit={(event) => {

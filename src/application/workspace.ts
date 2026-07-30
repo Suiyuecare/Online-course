@@ -1,12 +1,24 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { courseCategoryCodeSchema } from "@/domain/course-taxonomy";
 
 const nullableString = z.string().nullable();
+
+const learnerCompletionSchema = z.object({
+  confirmedValidSeconds: z.number().int().nonnegative().default(0),
+  requiredWatchSeconds: z.number().int().nonnegative().default(0),
+  quizPassed: z.boolean().default(false),
+  surveyCompleted: z.boolean().default(false),
+  identityVerified: z.boolean().default(false),
+  allLiveQualified: z.boolean().default(false),
+});
 
 export const learnerWorkspaceSchema = z.object({
   courseTitle: z.string(),
   deliveryType: z.enum(["recorded", "live", "hybrid"]),
   enrollmentStatus: z.string(),
+  contentAvailableAt: nullableString.default(null),
+  contentAvailable: z.boolean().default(true),
   accreditationStatus: z.string().nullable(),
   identity: z
     .object({
@@ -80,7 +92,7 @@ export const learnerWorkspaceSchema = z.object({
         .default([]),
     }),
   ),
-  completion: z.record(z.string(), z.unknown()),
+  completion: learnerCompletionSchema,
   certificate: z
     .object({
       id: z.string().uuid(),
@@ -104,6 +116,255 @@ export const ownOrderSchema = z.object({
 });
 
 export type OwnOrderSummary = z.infer<typeof ownOrderSchema>;
+
+export const learnerOrderHistoryCategorySchema = z.enum([
+  "all",
+  "action_required",
+  "reviewing",
+  "completed",
+  "closed_refund",
+]);
+
+export type LearnerOrderHistoryCategory = z.infer<
+  typeof learnerOrderHistoryCategorySchema
+>;
+
+const learnerOrderHistoryItemSchema = z
+  .object({
+    courseVersionId: z.string().uuid(),
+    courseSlug: z.string().min(1),
+    courseTitle: z.string().min(1),
+    deliveryType: z.enum(["recorded", "live", "hybrid"]),
+    amountTwd: z.number().int().nonnegative(),
+    hasCover: z.boolean(),
+    enrollmentId: z.string().uuid().nullable(),
+    enrollmentStatus: z.string().nullable(),
+    entitlementStatus: z.string().nullable(),
+  })
+  .strict();
+
+const learnerOrderRefundCaseSchema = z
+  .object({
+    refundCaseId: z.string().uuid(),
+    status: z.enum([
+      "submitted",
+      "reviewing",
+      "approved",
+      "rejected",
+      "disbursing",
+      "partially_disbursed",
+      "completed",
+      "failed",
+    ]),
+    requestedAmountTwd: z.number().int().nonnegative(),
+    disbursedAmountTwd: z.number().int().nonnegative(),
+    submittedAt: z.string(),
+    decidedAt: z.string().nullable(),
+    completedAt: z.string().nullable(),
+  })
+  .strict();
+
+const learnerOrderHistoryOrderSchema = z
+  .object({
+    orderId: z.string().uuid(),
+    orderNumber: z.string().min(1),
+    status: z.string(),
+    effectiveStatus: z.string(),
+    displayCategory: learnerOrderHistoryCategorySchema.exclude(["all"]),
+    paymentMethod: z.literal("manual_bank_transfer"),
+    subtotalTwd: z.number().int().positive(),
+    discountTwd: z.number().int().nonnegative(),
+    amountDueTwd: z.number().int().nonnegative(),
+    amountPaidTwd: z.number().int().nonnegative(),
+    transferDueAt: z.string(),
+    paidAt: z.string().nullable(),
+    createdAt: z.string(),
+    items: z.array(learnerOrderHistoryItemSchema).min(1),
+    refundCases: z.array(learnerOrderRefundCaseSchema),
+    coupon: z
+      .object({
+        title: z.string().min(1),
+        status: z.enum(["reserved", "redeemed", "released"]),
+        discountTwd: z.number().int().positive(),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+
+export const learnerOrderHistorySchema = z
+  .object({
+    orders: z.array(learnerOrderHistoryOrderSchema),
+    counts: z
+      .object({
+        all: z.number().int().nonnegative(),
+        actionRequired: z.number().int().nonnegative(),
+        reviewing: z.number().int().nonnegative(),
+        completed: z.number().int().nonnegative(),
+        closedRefund: z.number().int().nonnegative(),
+      })
+      .strict(),
+    hasMore: z.boolean(),
+    nextCursor: z
+      .object({
+        createdAt: z.string(),
+        orderId: z.string().uuid(),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+
+export type LearnerOrderHistory = z.infer<typeof learnerOrderHistorySchema>;
+export type LearnerOrderHistoryOrder = z.infer<
+  typeof learnerOrderHistoryOrderSchema
+>;
+
+export const learnerCouponCategorySchema = z.enum([
+  "available",
+  "reserved",
+  "used",
+  "expired",
+]);
+
+export type LearnerCouponCategory = z.infer<typeof learnerCouponCategorySchema>;
+
+const couponBenefitKindSchema = z.enum(["percent_off", "fixed_twd"]);
+
+const couponCourseSchema = z
+  .object({
+    courseVersionId: z.string().uuid(),
+    title: z.string().min(1),
+    slug: z.string().min(1),
+  })
+  .strict();
+
+const learnerCouponSchema = z
+  .object({
+    claimId: z.string().uuid(),
+    campaignId: z.string().uuid(),
+    title: z.string().min(1),
+    description: z.string().min(1),
+    benefitKind: couponBenefitKindSchema,
+    percentOffBps: z.number().int().positive().nullable(),
+    fixedDiscountTwd: z.number().int().positive().nullable(),
+    maxDiscountTwd: z.number().int().positive().nullable(),
+    minimumSubtotalTwd: z.number().int().nonnegative(),
+    validFrom: z.string(),
+    validUntil: z.string(),
+    scopeType: z.enum(["all_b2c", "specific_course_versions"]),
+    codeHint: z.string().nullable(),
+    status: learnerCouponCategorySchema,
+    claimedAt: z.string(),
+    reservation: z
+      .object({
+        orderId: z.string().uuid(),
+        orderNumber: z.string().min(1),
+        discountTwd: z.number().int().positive(),
+        amountDueTwd: z.number().int().positive(),
+        transferDueAt: z.string(),
+        redeemedAt: z.string().nullable(),
+      })
+      .strict()
+      .nullable(),
+    applicableCourses: z.array(couponCourseSchema),
+  })
+  .strict();
+
+export const learnerCouponWalletSchema = z
+  .object({
+    coupons: z.array(learnerCouponSchema),
+    counts: z
+      .object({
+        available: z.number().int().nonnegative(),
+        reserved: z.number().int().nonnegative(),
+        used: z.number().int().nonnegative(),
+        expired: z.number().int().nonnegative(),
+      })
+      .strict(),
+    hasMore: z.boolean(),
+    nextCursor: z
+      .object({
+        claimedAt: z.string(),
+        claimId: z.string().uuid(),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+
+export type LearnerCouponWallet = z.infer<typeof learnerCouponWalletSchema>;
+export type LearnerCoupon = z.infer<typeof learnerCouponSchema>;
+
+export const checkoutCouponOptionSchema = z
+  .object({
+    eligible: z.literal(true),
+    reason: z.null(),
+    claimId: z.string().uuid(),
+    campaignId: z.string().uuid(),
+    title: z.string().min(1),
+    benefitKind: couponBenefitKindSchema,
+    percentOffBps: z.number().int().positive().nullable(),
+    fixedDiscountTwd: z.number().int().positive().nullable(),
+    minimumSubtotalTwd: z.number().int().nonnegative(),
+    validUntil: z.string(),
+    listPriceTwd: z.number().int().positive(),
+    discountTwd: z.number().int().positive(),
+    amountDueTwd: z.number().int().positive(),
+  })
+  .strict();
+
+export type CheckoutCouponOption = z.infer<typeof checkoutCouponOptionSchema>;
+
+const couponAdminCampaignSchema = z
+  .object({
+    campaignId: z.string().uuid(),
+    title: z.string().min(1),
+    description: z.string().min(1),
+    status: z.enum(["draft", "active", "paused", "ended"]),
+    benefitKind: couponBenefitKindSchema,
+    percentOffBps: z.number().int().positive().nullable(),
+    fixedDiscountTwd: z.number().int().positive().nullable(),
+    maxDiscountTwd: z.number().int().positive().nullable(),
+    minimumSubtotalTwd: z.number().int().nonnegative(),
+    validFrom: z.string(),
+    validUntil: z.string(),
+    totalClaimLimit: z.number().int().positive(),
+    totalRedemptionLimit: z.number().int().positive(),
+    scopeType: z.enum(["all_b2c", "specific_course_versions"]),
+    codeHint: z.string().min(4),
+    createdAt: z.string(),
+    createdByMe: z.boolean(),
+    claimCount: z.number().int().nonnegative(),
+    reservedCount: z.number().int().nonnegative(),
+    redeemedCount: z.number().int().nonnegative(),
+    courses: z.array(
+      z
+        .object({
+          courseVersionId: z.string().uuid(),
+          title: z.string().min(1),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export const couponAdminWorkspaceSchema = z
+  .object({
+    campaigns: z.array(couponAdminCampaignSchema),
+    courseOptions: z.array(
+      z
+        .object({
+          courseVersionId: z.string().uuid(),
+          title: z.string().min(1),
+          status: z.enum(["published", "sale_stopped"]),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export type CouponAdminWorkspace = z.infer<typeof couponAdminWorkspaceSchema>;
 
 export const organizationApplicationSchema = z.object({
   organizationId: z.string().uuid(),
@@ -178,6 +439,7 @@ export const organizationWorkspaceDetailsSchema = z.object({
       liveComponentId: z.string().uuid().nullable(),
       status: z.string(),
       points: z.number().int().nonnegative(),
+      completionDueAt: z.string().nullable(),
       canRelease: z.boolean(),
       eligibleLiveSessions: z.array(organizationLiveSessionSchema),
     }),
@@ -444,9 +706,17 @@ export type StaffLiveSessionContext = z.infer<
 >;
 
 const optionSchema = z.object({ id: z.string().uuid(), label: z.string() });
+const courseCategoryOptionSchema = z.object({
+  code: courseCategoryCodeSchema,
+  title: z.string(),
+  description: z.string(),
+  shortLabel: z.string(),
+  sortOrder: z.number().int().nonnegative(),
+});
 const courseDraftSchema = optionSchema.extend({
   deliveryType: z.enum(["recorded", "live", "hybrid"]),
   metadata: z.object({
+    categoryCode: courseCategoryCodeSchema.nullable().default(null),
     title: z.string(),
     summary: z.string(),
     description: z.string(),
@@ -523,6 +793,7 @@ const courseDraftSchema = optionSchema.extend({
 });
 export const platformPrerequisiteOptionsSchema = z.object({
   courses: z.array(optionSchema),
+  courseCategories: z.array(courseCategoryOptionSchema).default([]),
   courseDrafts: z.array(courseDraftSchema),
   liveCourseVersions: z.array(
     optionSchema.extend({
@@ -557,6 +828,16 @@ export const platformPrerequisiteOptionsSchema = z.object({
 export type PlatformPrerequisiteOptions = z.infer<
   typeof platformPrerequisiteOptionsSchema
 >;
+
+const courseCategoryWorkspaceSchema = z.object({
+  categories: z.array(courseCategoryOptionSchema).length(8),
+  assignments: z.array(
+    z.object({
+      courseVersionId: z.string().uuid(),
+      categoryCode: courseCategoryCodeSchema.nullable(),
+    }),
+  ),
+});
 
 export const launchControlWorkspaceSchema = z.object({
   settings: z.array(
@@ -764,6 +1045,8 @@ export async function readLearnerWorkspace(
           ),
         }),
       ),
+      contentAvailableAt: z.string().nullable(),
+      contentAvailable: z.boolean(),
     })
     .safeParse(gateData);
   if (!gates.success) throw new Error("LEARNER_RUNTIME_GATES_INVALID");
@@ -778,6 +1061,8 @@ export async function readLearnerWorkspace(
   );
   return {
     ...parsed.data,
+    contentAvailableAt: gates.data.contentAvailableAt,
+    contentAvailable: gates.data.contentAvailable,
     components: parsed.data.components.map((component) => ({
       ...component,
       ...(componentGates.get(component.id) ?? {
@@ -832,7 +1117,9 @@ export async function readLearnerWorkspaceWithSafeFallback(
   const [{ data: access }, { data: enrollment }] = await Promise.all([
     client
       .from("learner_course_access")
-      .select("course_title,delivery_type,enrollment_status")
+      .select(
+        "course_title,delivery_type,enrollment_status,content_available_at",
+      )
       .eq("enrollment_id", enrollmentId)
       .maybeSingle(),
     client
@@ -842,6 +1129,9 @@ export async function readLearnerWorkspaceWithSafeFallback(
       .maybeSingle(),
   ]);
   if (!access || !enrollment) return null;
+  const contentAvailable =
+    !access.content_available_at ||
+    Date.parse(access.content_available_at) <= Date.now();
   const { data: moduleRows, error: moduleError } = await client
     .from("modules")
     .select("id,title,sort_order")
@@ -886,9 +1176,10 @@ export async function readLearnerWorkspaceWithSafeFallback(
       componentId: null,
       completed: false,
       resumeSeconds: 0,
-      locked: access.delivery_type === "hybrid",
-      lockReason:
-        access.delivery_type === "hybrid"
+      locked: access.delivery_type === "hybrid" || !contentAvailable,
+      lockReason: !contentAvailable
+        ? "課程尚未開放，請依開課倒數時間再回來"
+        : access.delivery_type === "hybrid"
           ? "先修條件暫時無法確認，為保護積分紀錄已鎖定"
           : null,
     });
@@ -900,6 +1191,8 @@ export async function readLearnerWorkspaceWithSafeFallback(
       courseTitle: access.course_title,
       deliveryType: access.delivery_type,
       enrollmentStatus: enrollment.status,
+      contentAvailableAt: access.content_available_at,
+      contentAvailable,
       accreditationStatus: null,
       identity: null,
       modules: (moduleRows ?? []).map((module) => ({
@@ -910,7 +1203,14 @@ export async function readLearnerWorkspaceWithSafeFallback(
       materials: [],
       components: [],
       liveBookings: [],
-      completion: {},
+      completion: {
+        confirmedValidSeconds: 0,
+        requiredWatchSeconds: 0,
+        quizPassed: false,
+        surveyCompleted: false,
+        identityVerified: false,
+        allLiveQualified: false,
+      },
       certificate: null,
     },
   };
@@ -930,6 +1230,108 @@ export async function readOwnOrders(
   return parsed.data;
 }
 
+export async function readOwnOrderHistory(
+  client: SupabaseClient,
+  input: {
+    category?: LearnerOrderHistoryCategory;
+    limit?: number;
+    before?: { createdAt: string; orderId: string } | null;
+  } = {},
+): Promise<LearnerOrderHistory> {
+  const category = learnerOrderHistoryCategorySchema.parse(
+    input.category ?? "all",
+  );
+  const limit = z
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .parse(input.limit ?? 20);
+  const before = input.before
+    ? z
+        .object({
+          createdAt: z.string(),
+          orderId: z.string().uuid(),
+        })
+        .strict()
+        .parse(input.before)
+    : null;
+  const { data, error } = await client.rpc("read_own_order_history", {
+    p_category: category,
+    p_limit: limit,
+    p_before_created_at: before?.createdAt ?? null,
+    p_before_order_id: before?.orderId ?? null,
+  });
+  if (error) throw new Error(`ORDER_HISTORY_UNAVAILABLE:${error.message}`);
+  const parsed = learnerOrderHistorySchema.safeParse(data);
+  if (!parsed.success) throw new Error("ORDER_HISTORY_INVALID");
+  return parsed.data;
+}
+
+export async function readMyCoupons(
+  client: SupabaseClient,
+  input: {
+    category?: LearnerCouponCategory;
+    limit?: number;
+    before?: { claimedAt: string; claimId: string } | null;
+  } = {},
+): Promise<LearnerCouponWallet> {
+  const category = learnerCouponCategorySchema.parse(
+    input.category ?? "available",
+  );
+  const limit = z
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .parse(input.limit ?? 12);
+  const before = input.before
+    ? z
+        .object({
+          claimedAt: z.string(),
+          claimId: z.string().uuid(),
+        })
+        .strict()
+        .parse(input.before)
+    : null;
+  const { data, error } = await client.rpc("read_my_coupons", {
+    p_category: category,
+    p_limit: limit,
+    p_before_claimed_at: before?.claimedAt ?? null,
+    p_before_claim_id: before?.claimId ?? null,
+  });
+  if (error) throw new Error(`COUPON_WALLET_UNAVAILABLE:${error.message}`);
+  const parsed = learnerCouponWalletSchema.safeParse(data);
+  if (!parsed.success) throw new Error("COUPON_WALLET_INVALID");
+  return parsed.data;
+}
+
+export async function readCheckoutCouponOptions(
+  client: SupabaseClient,
+  courseVersionId: string,
+): Promise<CheckoutCouponOption[]> {
+  const id = z.string().uuid().parse(courseVersionId);
+  const { data, error } = await client.rpc("read_checkout_coupon_options", {
+    p_course_version_id: id,
+  });
+  if (error) throw new Error(`COUPON_OPTIONS_UNAVAILABLE:${error.message}`);
+  const parsed = z.array(checkoutCouponOptionSchema).safeParse(data);
+  if (!parsed.success) throw new Error("COUPON_OPTIONS_INVALID");
+  return parsed.data;
+}
+
+export async function readCouponAdminWorkspace(
+  client: SupabaseClient,
+): Promise<CouponAdminWorkspace> {
+  const { data, error } = await client.rpc("read_coupon_admin_workspace");
+  if (error) {
+    throw new Error(`COUPON_ADMIN_WORKSPACE_UNAVAILABLE:${error.message}`);
+  }
+  const parsed = couponAdminWorkspaceSchema.safeParse(data);
+  if (!parsed.success) throw new Error("COUPON_ADMIN_WORKSPACE_INVALID");
+  return parsed.data;
+}
+
 export async function readOwnOrganizationApplication(client: SupabaseClient) {
   const { data, error } = await client.rpc("read_own_organization_application");
   if (error) throw new Error("ORGANIZATION_APPLICATION_UNAVAILABLE");
@@ -943,7 +1345,7 @@ export async function readOrganizationWorkspaceDetails(
   client: SupabaseClient,
   organizationId: string,
 ): Promise<OrganizationWorkspaceDetails> {
-  const { data, error } = await client.rpc("read_organization_workspace_v2", {
+  const { data, error } = await client.rpc("read_organization_workspace_v3", {
     p_organization_id: organizationId,
   });
   if (error) throw new Error("ORGANIZATION_WORKSPACE_UNAVAILABLE");
@@ -1057,12 +1459,16 @@ export async function readStaffLiveSessionContext(
 export async function readPlatformPrerequisiteOptions(
   client: SupabaseClient,
 ): Promise<PlatformPrerequisiteOptions> {
-  const [{ data, error }, { data: controls, error: controlsError }] =
-    await Promise.all([
-      client.rpc("read_platform_prerequisite_options"),
-      client.rpc("read_course_product_controls"),
-    ]);
-  if (error || controlsError) {
+  const [
+    { data, error },
+    { data: controls, error: controlsError },
+    { data: categoryData, error: categoryError },
+  ] = await Promise.all([
+    client.rpc("read_platform_prerequisite_options"),
+    client.rpc("read_course_product_controls"),
+    client.rpc("read_course_category_workspace"),
+  ]);
+  if (error || controlsError || categoryError) {
     throw new Error("PLATFORM_PREREQUISITES_UNAVAILABLE");
   }
   const controlResult = z
@@ -1091,10 +1497,15 @@ export async function readPlatformPrerequisiteOptions(
   if (!controlResult.success) {
     throw new Error("COURSE_PRODUCT_CONTROLS_INVALID");
   }
+  const categoryResult = courseCategoryWorkspaceSchema.safeParse(categoryData);
+  if (!categoryResult.success) {
+    throw new Error("COURSE_CATEGORY_WORKSPACE_INVALID");
+  }
   const raw =
     data && typeof data === "object"
       ? {
           ...(data as Record<string, unknown>),
+          courseCategories: categoryResult.data.categories,
           courseLifecycleVersions: controlResult.data.lifecycleVersions,
         }
       : data;
@@ -1104,6 +1515,12 @@ export async function readPlatformPrerequisiteOptions(
     controlResult.data.hybridConfigurations.map((configuration) => [
       configuration.courseVersionId,
       configuration,
+    ]),
+  );
+  const categoryAssignments = new Map(
+    categoryResult.data.assignments.map((assignment) => [
+      assignment.courseVersionId,
+      assignment.categoryCode,
     ]),
   );
   return {
@@ -1126,6 +1543,7 @@ export async function readPlatformPrerequisiteOptions(
         ...draft,
         metadata: {
           ...draft.metadata,
+          categoryCode: categoryAssignments.get(draft.id) ?? null,
           hybridComponents: draft.metadata.hybridComponents.map(
             (component) => ({
               ...component,

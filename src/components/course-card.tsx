@@ -1,6 +1,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { CatalogCourse } from "@/infrastructure/supabase/catalog";
+import {
+  AddOfficialCourseToCart,
+  AddPublicCourseToCart,
+  ToggleOfficialCourseFavorite,
+} from "@/components/learner-course-actions";
 
 const deliveryLabels = {
   recorded: "錄播",
@@ -8,7 +13,13 @@ const deliveryLabels = {
   hybrid: "錄播＋直播",
 };
 
-export function CourseCard({ course }: { course: CatalogCourse }) {
+export function CourseCard({
+  course,
+  learnerMode = false,
+}: {
+  course: CatalogCourse;
+  learnerMode?: boolean;
+}) {
   return (
     <article className="course-card">
       <div className="course-visual" aria-hidden="true">
@@ -30,7 +41,9 @@ export function CourseCard({ course }: { course: CatalogCourse }) {
         {course.accreditation_status === "applying" && (
           <p className="warning">積分申請中、尚未核定，不保證取得點數</p>
         )}
-        <p className="eyebrow">{deliveryLabels[course.delivery_type]}</p>
+        <p className="eyebrow">
+          {course.category_title}・{deliveryLabels[course.delivery_type]}
+        </p>
         <h3>{course.title}</h3>
         <p>{course.summary}</p>
         <div className="course-meta">
@@ -41,9 +54,18 @@ export function CourseCard({ course }: { course: CatalogCourse }) {
               : "積分依核定結果"}
           </span>
         </div>
-        <Link className="button secondary" href={`/courses/${course.slug}`}>
-          查看課程
-        </Link>
+        <div className="learner-course-card-actions">
+          <Link className="button secondary" href={`/courses/${course.slug}`}>
+            查看課程
+          </Link>
+          {learnerMode && (
+            <>
+              <ToggleOfficialCourseFavorite course={course} />
+              <AddOfficialCourseToCart course={course} />
+            </>
+          )}
+          {!learnerMode && <AddPublicCourseToCart course={course} />}
+        </div>
       </div>
     </article>
   );

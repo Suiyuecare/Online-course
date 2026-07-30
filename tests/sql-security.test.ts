@@ -11,8 +11,8 @@ const migrations = migrationFiles
   .join("\n");
 
 describe("clean migration chain", () => {
-  it("has the ten responsibility-separated migrations and thirteen forward hardening migrations", () => {
-    expect(migrationFiles).toHaveLength(23);
+  it("has the ten responsibility-separated migrations and thirty-three forward hardening migrations", () => {
+    expect(migrationFiles).toHaveLength(43);
     expect(migrationFiles.map((file) => file.replace(/^\d+_/, ""))).toEqual([
       "reset_legacy_application.sql",
       "identity_rbac_legal.sql",
@@ -37,6 +37,26 @@ describe("clean migration chain", () => {
       "runtime_lint_org_accreditation.sql",
       "runtime_lint_course_instructor.sql",
       "fix_public_catalog_capabilities.sql",
+      "professional_learner_profiles.sql",
+      "learner_course_favorites.sql",
+      "learner_account_settings.sql",
+      "fix_request_person_id_rls_capability.sql",
+      "fix_audit_owner_digest_capability.sql",
+      "lock_learner_account_settings_server_write.sql",
+      "learner_order_history.sql",
+      "learner_order_history_indexes.sql",
+      "order_history_safety_fixes.sql",
+      "b2c_coupon_wallet.sql",
+      "fix_learner_dashboard_and_org_rls_capabilities.sql",
+      "organization_batch_assignments_with_deadlines.sql",
+      "question_draft_batch_import.sql",
+      "organization_lifecycle_controls.sql",
+      "staff_directory_video_backup_workspace.sql",
+      "course_content_release_gates.sql",
+      "course_category_taxonomy.sql",
+      "learner_server_cart.sql",
+      "fix_course_category_audit_signature.sql",
+      "reject_null_learner_cart_operations.sql",
     ]);
   });
 
@@ -211,6 +231,75 @@ describe("RLS, GRANT, and function proof", () => {
   });
 });
 
+describe("controlled formal course taxonomy", () => {
+  const categoryMigration = readFileSync(
+    join(migrationDirectory, "20260730051000_course_category_taxonomy.sql"),
+    "utf8",
+  );
+  const categoryAuditFix = readFileSync(
+    join(
+      migrationDirectory,
+      "20260730053000_fix_course_category_audit_signature.sql",
+    ),
+    "utf8",
+  );
+
+  it("stores exactly the stable eight category codes behind RLS", () => {
+    for (const code of [
+      "career_foundations",
+      "daily_care_skills",
+      "complex_care_needs",
+      "rehabilitation_home_end_of_life",
+      "quality_safety_infection",
+      "communication_supervision_management",
+      "ethics_rights_cultural_safety",
+      "policy_law_workplace_rights",
+    ]) {
+      expect(categoryMigration).toContain(`'${code}'`);
+    }
+    expect(categoryMigration).toContain(
+      "alter table public.course_categories enable row level security",
+    );
+    expect(categoryMigration).toContain(
+      "alter table public.course_categories force row level security",
+    );
+    expect(categoryMigration).toContain(
+      "course_versions_published_category_check",
+    );
+    expect(categoryMigration).not.toMatch(
+      /grant\s+(?:insert|update|delete|all)\b[\s\S]*?public\.course_categories[\s\S]*?\bto\s+(?:anon|authenticated)\b/i,
+    );
+  });
+
+  it("routes create and edit through category-aware audited capabilities", () => {
+    expect(categoryMigration).toContain(
+      "internal.create_course_draft_with_category",
+    );
+    expect(categoryMigration).toContain(
+      "internal.author_course_structure_with_category",
+    );
+    expect(categoryMigration).toContain("COURSE_CATEGORY_INVALID");
+    expect(categoryMigration).toContain("course.category_assigned");
+    expect(categoryMigration).toContain("course.category_changed");
+    expect(categoryMigration).toContain("read_course_category_workspace");
+    expect(categoryMigration).toContain("category.code as category_code");
+    expect(categoryMigration).toContain("category.title as category_title");
+  });
+
+  it("uses the current append-only audit contract for category changes", () => {
+    expect(categoryAuditFix).toContain(
+      "create or replace function internal.author_course_structure_with_category",
+    );
+    expect(categoryAuditFix).toMatch(
+      /'controlled taxonomy category changed on draft',\s*null,\s*jsonb_build_object\(/,
+    );
+    expect(categoryAuditFix).toContain(
+      "'previousCategoryCode', previous_category",
+    );
+    expect(categoryAuditFix).toContain("'categoryCode', category");
+  });
+});
+
 describe("authority and exact provider claims", () => {
   it("keeps proof submission separate from payment finalization", () => {
     expect(migrations).toContain(
@@ -274,6 +363,39 @@ describe("authority and exact provider claims", () => {
     expect(migrations).toContain("grant_row.action = required_action");
     expect(migrations).toContain("grant_row.target = required_target");
     expect(migrations).toContain("grant_row.consumed_at is null");
+  });
+
+  it("guards organization suspension and reactivation with exact transitions", () => {
+    expect(migrations).toContain("internal.change_organization_status");
+    expect(migrations).toContain("ORGANIZATION_STATUS_TRANSITION_REJECTED");
+    expect(migrations).toContain(
+      "perform internal.consume_step_up_grant(\n    'emergency_suspend',\n    target_organization::text",
+    );
+    expect(migrations).toContain("'organization.suspended'");
+    expect(migrations).toContain("'organization.reactivated'");
+    expect(migrations).toContain(
+      "'organization_status_change', idempotency, canonical_hash",
+    );
+    expect(migrations).toContain(
+      "internal.read_organization_lifecycle_controls",
+    );
+  });
+
+  it("projects staff candidates and pending video backups without broad table grants", () => {
+    expect(migrations).toContain("internal.read_staff_role_candidates");
+    expect(migrations).toContain("'maskedPhone'");
+    expect(migrations).toContain("'maskedEmail'");
+    expect(migrations).toContain("internal.read_video_master_backup_worklist");
+    expect(migrations).toContain("'masterBackupVerified'");
+    expect(migrations).toContain(
+      "version.status = 'draft'\n      and asset.status in",
+    );
+    expect(migrations).toContain(
+      "revoke all on function public.read_staff_role_candidates",
+    );
+    expect(migrations).toContain(
+      "revoke all on function public.read_video_master_backup_worklist",
+    );
   });
 
   it("invalidates pre-fence JWTs after role or identity changes", () => {

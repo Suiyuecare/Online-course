@@ -44,7 +44,7 @@ const zoomClassroomCsp = [
 
 const securityHeaders = [
   { key: "Content-Security-Policy", value: learnerCsp },
-  { key: "Referrer-Policy", value: "no-referrer" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   {
@@ -59,20 +59,6 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "i.ytimg.com",
-        pathname: "/vi/**",
-      },
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-        pathname: "/**",
-      },
-    ],
-  },
   poweredByHeader: false,
   reactStrictMode: true,
   serverExternalPackages: ["exceljs"],

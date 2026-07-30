@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ShowcaseCourse } from "@/content/showcase-courses";
-import { youtubeThumbnail } from "@/content/showcase-courses";
 
 const deliveryLabels = {
   recorded: "錄播",
@@ -9,7 +8,13 @@ const deliveryLabels = {
   hybrid: "錄播＋直播",
 };
 
-export function ShowcaseCourseCard({ course }: { course: ShowcaseCourse }) {
+export function ShowcaseCourseCard({
+  course,
+  learnerMode = false,
+}: {
+  course: ShowcaseCourse;
+  learnerMode?: boolean;
+}) {
   return (
     <article className="course-card showcase-course-card">
       <Link
@@ -18,10 +23,10 @@ export function ShowcaseCourseCard({ course }: { course: ShowcaseCourse }) {
         href={`/courses/demo/${course.slug}`}
       >
         <Image
-          alt={`${course.title}的官方公開影片預覽畫面`}
+          alt={course.coverAlt}
           fill
           sizes="(max-width: 760px) 100vw, (max-width: 1100px) 50vw, 33vw"
-          src={youtubeThumbnail(course.youtubeId)}
+          src={course.coverImage}
         />
         <span className="showcase-label">網站功能示範</span>
         <div>
@@ -38,7 +43,7 @@ export function ShowcaseCourseCard({ course }: { course: ShowcaseCourse }) {
         <ul className="course-facts" aria-label="課程資訊">
           <li>{course.durationMinutes} 分鐘</li>
           <li>{course.lessonCount} 個單元</li>
-          <li>{deliveryLabels[course.deliveryType]}</li>
+          <li>{course.creditType}</li>
         </ul>
         <div className="course-meta">
           <strong>
@@ -47,12 +52,17 @@ export function ShowcaseCourseCard({ course }: { course: ShowcaseCourse }) {
           </strong>
           <span>尚未開放報名</span>
         </div>
-        <Link
-          className="button secondary"
-          href={`/courses/demo/${course.slug}`}
-        >
-          看課程示範
-        </Link>
+        <div className="learner-course-card-actions">
+          <Link
+            className="button secondary"
+            href={`/courses/demo/${course.slug}`}
+          >
+            看課程示範
+          </Link>
+          {learnerMode && (
+            <span className="showcase-save-note">正式開放後可收藏</span>
+          )}
+        </div>
       </div>
     </article>
   );

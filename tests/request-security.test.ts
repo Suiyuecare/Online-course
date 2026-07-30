@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { assertExpectedAccount } from "@/app/api/_shared/route-helpers";
 import {
   emergencyClosureCode,
   highFrequencyRateLimitPlan,
@@ -59,6 +60,30 @@ describe("exact same-origin mutation protection", () => {
         "same-origin",
       ),
     ).toBe(false);
+  });
+});
+
+describe("authenticated page version binding", () => {
+  const accountId = "a1000000-0000-4000-8000-000000000001";
+
+  it("requires the rendered account id to match the current session", () => {
+    expect(() =>
+      assertExpectedAccount(
+        new Request("https://class.suiyuecare.com/api/orders", {
+          headers: { "x-suiyue-account-id": accountId },
+        }),
+        accountId,
+      ),
+    ).not.toThrow();
+    for (const header of [null, "a1000000-0000-4000-8000-000000000002"]) {
+      const request = new Request(
+        "https://class.suiyuecare.com/api/orders",
+        header ? { headers: { "x-suiyue-account-id": header } } : undefined,
+      );
+      expect(() => assertExpectedAccount(request, accountId)).toThrow(
+        "LEARNER_ACCOUNT_VERSION_CONFLICT",
+      );
+    }
   });
 });
 

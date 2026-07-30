@@ -1,6 +1,7 @@
 "use client";
 
 import Script from "next/script";
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { presentErrorCode } from "@/domain/presentation";
 
@@ -13,6 +14,7 @@ export function PhoneLogin({
   localTestMode?: boolean;
   turnstileSiteKey?: string;
 }) {
+  const loginAvailable = Boolean(turnstileSiteKey) || localTestMode;
   const [stage, setStage] = useState<Stage>("phone");
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
@@ -119,13 +121,38 @@ export function PhoneLogin({
         />
       )}
       <div className="step-chip">
-        {stage === "phone" ? "步驟 1 / 2" : "步驟 2 / 2"}
+        {!loginAvailable
+          ? "封閉展示階段"
+          : stage === "phone"
+            ? "步驟 1 / 2"
+            : "步驟 2 / 2"}
       </div>
-      <h1>{stage === "phone" ? "用手機號碼登入" : "輸入 6 位驗證碼"}</h1>
+      <h1>
+        {!loginAvailable
+          ? "先用免登入導覽體驗完整平台"
+          : stage === "phone"
+            ? "用手機號碼登入"
+            : "輸入 6 位驗證碼"}
+      </h1>
       <p>
-        不需要密碼。驗證碼只證明你目前能使用這個門號；系統可能要求再次確認舊資料。
+        {loginAvailable
+          ? "不需要密碼。驗證碼只證明你目前能使用這個門號；系統可能要求再次確認舊資料。"
+          : "為避免展示期間建立正式帳號或誤發簡訊，手機登入維持安全關閉；課程、教室、機構工作台與管理後台仍可直接完整操作。"}
       </p>
-      {stage === "phone" ? (
+      {!loginAvailable ? (
+        <div className="demo-login-bridge">
+          <div className="closed-note">
+            <strong>這是預期的安全狀態，不是網站故障。</strong>
+            <span>正式簡訊供應商完成驗收後，才會開放學員建立帳號。</span>
+          </div>
+          <Link className="button" href="/demo">
+            開始免登入功能導覽
+          </Link>
+          <Link className="button secondary" href="/courses">
+            先瀏覽長照課程
+          </Link>
+        </div>
+      ) : stage === "phone" ? (
         <form onSubmit={requestOtp}>
           <label htmlFor="phone">台灣手機號碼</label>
           <input
@@ -148,15 +175,8 @@ export function PhoneLogin({
             <div className="closed-note">
               本機測試門號：0900 000 000；驗證碼：246810。
             </div>
-          ) : (
-            <div className="closed-note">
-              驗證服務尚未設定，登入功能目前安全關閉。
-            </div>
-          )}
-          <button
-            className="button"
-            disabled={busy || (!turnstileSiteKey && !localTestMode)}
-          >
+          ) : null}
+          <button className="button" disabled={busy}>
             {busy ? "正在寄送…" : "傳送簡訊驗證碼"}
           </button>
         </form>

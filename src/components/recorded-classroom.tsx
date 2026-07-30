@@ -1,7 +1,14 @@
 "use client";
 
 import { Stream, type StreamPlayerApi } from "@cloudflare/stream-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { playbackTokenRefreshDelayMs } from "@/domain/playback";
 import {
   type HeartbeatDeliveryResult,
@@ -59,6 +66,145 @@ type RecordedHeartbeatStateOverride = Partial<
   Pick<RecordedHeartbeatSnapshot, "playing" | "visible" | "online">
 >;
 
+type LearningSyncState =
+  | "ready"
+  | "counting"
+  | "paused"
+  | "buffering"
+  | "offline"
+  | "error";
+
+type ModalEscapeBehavior = "dismiss" | "block";
+
+type ModalKeyboardAction =
+  | { type: "none" }
+  | { type: "dismiss" }
+  | { type: "block-escape" }
+  | { type: "focus-dialog" }
+  | { type: "focus-item"; index: number };
+
+const MODAL_FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  '[tabindex]:not([tabindex="-1"])',
+].join(",");
+
+export function modalKeyboardAction({
+  key,
+  shiftKey,
+  activeIndex,
+  focusableCount,
+  escapeBehavior,
+}: {
+  key: string;
+  shiftKey: boolean;
+  activeIndex: number;
+  focusableCount: number;
+  escapeBehavior: ModalEscapeBehavior;
+}): ModalKeyboardAction {
+  if (key === "Escape") {
+    return escapeBehavior === "dismiss"
+      ? { type: "dismiss" }
+      : { type: "block-escape" };
+  }
+  if (key !== "Tab") return { type: "none" };
+  if (focusableCount === 0) return { type: "focus-dialog" };
+  if (shiftKey && activeIndex <= 0) {
+    return { type: "focus-item", index: focusableCount - 1 };
+  }
+  if (!shiftKey && (activeIndex < 0 || activeIndex >= focusableCount - 1)) {
+    return { type: "focus-item", index: 0 };
+  }
+  return { type: "none" };
+}
+
+function useModalFocus({
+  dialogRef,
+  escapeBehavior,
+  initialFocusRef,
+  onDismiss,
+  open,
+}: {
+  dialogRef: RefObject<HTMLDivElement | null>;
+  escapeBehavior: ModalEscapeBehavior;
+  initialFocusRef: RefObject<HTMLButtonElement | null>;
+  onDismiss?: () => void;
+  open: boolean;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const previouslyFocused =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+
+    (initialFocusRef.current ?? dialog).focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const focusableItems = Array.from(
+        dialog.querySelectorAll<HTMLElement>(MODAL_FOCUSABLE_SELECTOR),
+      ).filter(
+        (element) =>
+          !element.hasAttribute("disabled") &&
+          element.getAttribute("aria-hidden") !== "true",
+      );
+      const activeIndex = focusableItems.indexOf(
+        document.activeElement as HTMLElement,
+      );
+      const action = modalKeyboardAction({
+        key: event.key,
+        shiftKey: event.shiftKey,
+        activeIndex,
+        focusableCount: focusableItems.length,
+        escapeBehavior,
+      });
+
+      if (action.type === "none") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      if (action.type === "dismiss") {
+        onDismiss?.();
+        return;
+      }
+      if (action.type === "focus-item") {
+        focusableItems[action.index]?.focus();
+        return;
+      }
+      if (action.type === "focus-dialog") {
+        dialog.focus();
+        return;
+      }
+      (initialFocusRef.current ?? dialog).focus();
+    };
+
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown, true);
+      if (previouslyFocused?.isConnected) previouslyFocused.focus();
+    };
+  }, [dialogRef, escapeBehavior, initialFocusRef, onDismiss, open]);
+}
+
+function formatPlaybackTime(seconds: number): string {
+  const safeSeconds = Number.isFinite(seconds)
+    ? Math.max(0, Math.floor(seconds))
+    : 0;
+  const hours = Math.floor(safeSeconds / 3_600);
+  const minutes = Math.floor((safeSeconds % 3_600) / 60);
+  const remainder = safeSeconds % 60;
+  return hours > 0
+    ? `${hours}:${minutes.toString().padStart(2, "0")}:${remainder
+        .toString()
+        .padStart(2, "0")}`
+    : `${minutes}:${remainder.toString().padStart(2, "0")}`;
+}
+
 function challengeOriginFrom(payload: {
   challengeOriginLessonId?: string | null;
   challengeOriginVideoVersionId?: string | null;
@@ -99,10 +245,14 @@ export function RecordedClassroom({
   enrollmentId,
   lessonVideoVersionId,
   customerCode,
+  initialConfirmedSeconds = 0,
+  requiredSeconds = 0,
 }: {
   enrollmentId: string;
   lessonVideoVersionId: string;
   customerCode?: string;
+  initialConfirmedSeconds?: number;
+  requiredSeconds?: number;
 }) {
   const [session, setSession] = useState<PlaybackSession | null>(null);
   const [error, setError] = useState("");
@@ -112,6 +262,24 @@ export function RecordedClassroom({
     useState<ChallengeOrigin | null>(null);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [duration, setDuration] = useState(0);
+  const [displayPosition, setDisplayPosition] = useState(0);
+  const [candidateSeconds, setCandidateSeconds] = useState(0);
+  const [confirmedSeconds, setConfirmedSeconds] = useState(
+    initialConfirmedSeconds,
+  );
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const [syncState, setSyncState] = useState<LearningSyncState>("ready");
+  const [takeoverPromptOpen, setTakeoverPromptOpen] = useState(false);
+  const takeoverDialogRef = useRef<HTMLDivElement | null>(null);
+  const takeoverCancelButtonRef = useRef<HTMLButtonElement | null>(null);
+  const presenceDialogRef = useRef<HTMLDivElement | null>(null);
+  const presenceConfirmButtonRef = useRef<HTMLButtonElement | null>(null);
+  const takeoverTitleId = useId();
+  const takeoverDescriptionId = useId();
+  const presenceTitleId = useId();
+  const presenceDescriptionId = useId();
   const mediaPosition = useRef(0);
   const actuallyPlaying = useRef(false);
   const player = useRef<StreamPlayerApi | undefined>(undefined);
@@ -121,6 +289,7 @@ export function RecordedClassroom({
   const activeSessionId = useRef<string | null>(null);
   const playbackAuthorized = useRef(false);
   const startInFlight = useRef(false);
+  const fullscreenRoot = useRef<HTMLDivElement | null>(null);
   const refreshing = useRef(false);
   const resumeAfterRefresh = useRef(false);
   const ignorePlayerErrorUntil = useRef(0);
@@ -132,6 +301,25 @@ export function RecordedClassroom({
   >(async () => "stop");
   const heartbeatQueue =
     useRef<SequentialHeartbeatQueue<RecordedHeartbeatSnapshot> | null>(null);
+  const closeTakeoverPrompt = useCallback(
+    () => setTakeoverPromptOpen(false),
+    [],
+  );
+  const presencePromptOpen = challengeToken !== null;
+
+  useModalFocus({
+    dialogRef: takeoverDialogRef,
+    escapeBehavior: "dismiss",
+    initialFocusRef: takeoverCancelButtonRef,
+    onDismiss: closeTakeoverPrompt,
+    open: takeoverPromptOpen,
+  });
+  useModalFocus({
+    dialogRef: presenceDialogRef,
+    escapeBehavior: "block",
+    initialFocusRef: presenceConfirmButtonRef,
+    open: presencePromptOpen,
+  });
 
   const ensureHeartbeatQueue = useCallback(() => {
     if (!heartbeatQueue.current) {
@@ -149,6 +337,7 @@ export function RecordedClassroom({
     player.current?.pause();
     actuallyPlaying.current = false;
     setPlaying(false);
+    setSyncState((current) => (current === "error" ? current : "paused"));
   }, []);
 
   const applyChallengeTimeout = useCallback(
@@ -230,17 +419,17 @@ export function RecordedClassroom({
     [ensureHeartbeatQueue],
   );
 
-  async function start() {
+  function start() {
+    if (startInFlight.current) return;
+    setTakeoverPromptOpen(true);
+  }
+
+  async function authorizeStart() {
     if (startInFlight.current) return;
     setError("");
-    if (
-      !window.confirm(
-        "開始播放後，若這個帳號正在其他分頁或裝置上課，舊畫面會停止計時。要由這個畫面接管嗎？",
-      )
-    ) {
-      return;
-    }
+    setTakeoverPromptOpen(false);
     startInFlight.current = true;
+    setSyncState("ready");
     let response: Response;
     try {
       response = await fetch("/api/playback/token", {
@@ -253,6 +442,7 @@ export function RecordedClassroom({
       });
     } catch {
       startInFlight.current = false;
+      setSyncState("offline");
       setError("目前無法連線驗證課程，請確認網路後再試。");
       return;
     }
@@ -275,6 +465,7 @@ export function RecordedClassroom({
       payload.data.enrollmentId !== enrollmentId
     ) {
       startInFlight.current = false;
+      setSyncState("error");
       setError("目前無法開啟影片。請確認付款、積分核定與課程開放狀態。");
       return;
     }
@@ -304,6 +495,7 @@ export function RecordedClassroom({
     sessionRef.current = payload.data;
     playbackAuthorized.current = true;
     setSession(payload.data);
+    setDisplayPosition(mediaPosition.current);
     startInFlight.current = false;
   }
 
@@ -472,6 +664,8 @@ export function RecordedClassroom({
       }
       const payload = (await response.json().catch(() => null)) as {
         data?: {
+          candidateSeconds?: number;
+          confirmedSeconds?: number;
           challengeRequired?: boolean;
           challengeToken?: string;
           challengeTimedOut?: boolean;
@@ -488,9 +682,24 @@ export function RecordedClassroom({
       if (!response.ok) {
         playbackAuthorized.current = false;
         pausePlayer();
+        setSyncState("error");
         setError("觀看資格或連線已失效，已停止計時。請重新載入課程後再開始。");
         return "stop";
       }
+      setCandidateSeconds((current) =>
+        Math.max(0, payload?.data?.candidateSeconds ?? current),
+      );
+      setConfirmedSeconds((current) =>
+        Math.max(0, payload?.data?.confirmedSeconds ?? current),
+      );
+      setLastSyncedAt(new Date());
+      setSyncState(
+        snapshot.playing && snapshot.visible && snapshot.online
+          ? "counting"
+          : snapshot.online
+            ? "paused"
+            : "offline",
+      );
       const origin = payload?.data ? challengeOriginFrom(payload.data) : null;
       if (payload?.data?.challengeTimedOut) {
         ensureHeartbeatQueue().clearPending();
@@ -539,12 +748,25 @@ export function RecordedClassroom({
 
   useEffect(() => {
     const reportVisibility = () => {
+      setSyncState(
+        document.visibilityState === "visible" &&
+          actuallyPlaying.current &&
+          navigator.onLine
+          ? "counting"
+          : "paused",
+      );
       enqueueHeartbeat({
         visible: document.visibilityState === "visible",
       });
     };
-    const reportOnline = () => enqueueHeartbeat({ online: true });
-    const reportOffline = () => enqueueHeartbeat({ online: false });
+    const reportOnline = () => {
+      setSyncState(actuallyPlaying.current ? "counting" : "paused");
+      enqueueHeartbeat({ online: true });
+    };
+    const reportOffline = () => {
+      setSyncState("offline");
+      enqueueHeartbeat({ online: false });
+    };
     document.addEventListener("visibilitychange", reportVisibility);
     window.addEventListener("online", reportOnline);
     window.addEventListener("offline", reportOffline);
@@ -605,11 +827,19 @@ export function RecordedClassroom({
       setError("確認連線中斷，這一段暫不計入；請恢復網路後重新驗證。");
       return;
     }
+    const payload = (await response.json().catch(() => null)) as {
+      data?: { confirmedSeconds?: number };
+    } | null;
     if (!response.ok) {
       pausePlayer();
       setError("確認已逾時，這一段需要重新觀看。");
       applyChallengeTimeout(challengeOrigin);
     } else {
+      if (typeof payload?.data?.confirmedSeconds === "number") {
+        setConfirmedSeconds(Math.max(0, payload.data.confirmedSeconds));
+      }
+      setCandidateSeconds(0);
+      setLastSyncedAt(new Date());
       updateChallengeToken(null);
       setChallengeOrigin(null);
       if (player.current) {
@@ -629,12 +859,72 @@ export function RecordedClassroom({
   if (!session) {
     return (
       <div className="classroom-start">
-        <h2>準備開始錄播課</h2>
-        <p>影片固定 1 倍速。背景分頁、暫停、斷線不會計入有效時間。</p>
-        <button className="button" onClick={start}>
-          驗證資格並開始
-        </button>
-        <p aria-live="polite">{error}</p>
+        <div
+          aria-hidden="true"
+          className="classroom-start-visual"
+          inert={takeoverPromptOpen ? true : undefined}
+        >
+          <span>▶</span>
+        </div>
+        <div
+          aria-hidden={takeoverPromptOpen ? true : undefined}
+          inert={takeoverPromptOpen ? true : undefined}
+        >
+          <p className="eyebrow">安全播放</p>
+          <h2>準備開始這個單元</h2>
+          <p>影片固定 1 倍速。背景分頁、暫停、緩衝與斷線不會計入有效時間。</p>
+          <ul>
+            <li>每 10 分鐘會暫停並確認你仍在上課</li>
+            <li>同一帳號同時間只會有一個畫面計時</li>
+            <li>有效分鐘由伺服器保存，不依賴這台裝置</li>
+          </ul>
+          <button className="button" onClick={start}>
+            驗證資格並開始上課
+          </button>
+        </div>
+        {takeoverPromptOpen && (
+          <div
+            aria-describedby={takeoverDescriptionId}
+            aria-labelledby={takeoverTitleId}
+            aria-modal="true"
+            className="takeover-dialog"
+            ref={takeoverDialogRef}
+            role="dialog"
+            tabIndex={-1}
+          >
+            <div>
+              <p className="eyebrow">播放裝置確認</p>
+              <h2 id={takeoverTitleId}>要在這個畫面開始計時嗎？</h2>
+              <p id={takeoverDescriptionId}>
+                如果同一帳號正在其他分頁或裝置上課，舊畫面將停止計時，但已確認的有效分鐘不會消失。
+              </p>
+              <div className="page-actions">
+                <button
+                  className="button secondary"
+                  onClick={closeTakeoverPrompt}
+                  ref={takeoverCancelButtonRef}
+                  type="button"
+                >
+                  先不要
+                </button>
+                <button
+                  className="button"
+                  onClick={() => void authorizeStart()}
+                  type="button"
+                >
+                  在這裡開始
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        <p
+          aria-hidden={takeoverPromptOpen ? true : undefined}
+          aria-live="polite"
+          inert={takeoverPromptOpen ? true : undefined}
+        >
+          {error}
+        </p>
       </div>
     );
   }
@@ -643,87 +933,187 @@ export function RecordedClassroom({
 
   return (
     <div className="video-shell">
-      <div className="viewer-overlay">{session.overlay}</div>
       {code ? (
         <>
-          <Stream
-            key={session.playbackToken}
-            controls={false}
-            customerCode={code}
-            muted={muted}
-            onCanPlay={() => {
-              if (!player.current) return;
-              player.current.playbackRate = 1;
-              if (!playbackAuthorized.current) return;
-              if (resumeAfterRefresh.current && !challengeToken) {
-                resumeAfterRefresh.current = false;
-                void player.current.play().catch(() => {
-                  setError("播放權限已更新，請按「1 倍速繼續播放」接續上課。");
-                });
-              }
-            }}
-            onEnded={() => {
-              pausePlayer();
-              enqueueHeartbeat({ playing: false });
-            }}
-            onError={() => {
-              pausePlayer();
-              if (Date.now() >= ignorePlayerErrorUntil.current) {
-                void refreshPlayback();
-              }
-              setError("安全播放連結正在重新驗證，驗證完成前不會計時。");
-            }}
-            onPause={() => {
-              pausePlayer();
-              enqueueHeartbeat({ playing: false });
-            }}
-            onPlay={() => {
-              if (player.current) player.current.playbackRate = 1;
-              if (!playbackAuthorized.current) pausePlayer();
-            }}
-            onPlaying={() => {
-              if (!playbackAuthorized.current) {
-                pausePlayer();
-                return;
-              }
-              if (player.current) player.current.playbackRate = 1;
-              actuallyPlaying.current = true;
-              setPlaying(true);
-              enqueueHeartbeat({ playing: true });
-            }}
-            onRateChange={() => {
-              if (player.current && player.current.playbackRate !== 1) {
-                player.current.playbackRate = 1;
-                setError("積分課程固定使用 1 倍速播放。");
-              }
-            }}
-            onSeeking={() => {
-              actuallyPlaying.current = false;
-              setPlaying(false);
-              if (player.current) {
-                mediaPosition.current = player.current.currentTime;
-              }
-              enqueueHeartbeat({ playing: false });
-            }}
-            onTimeUpdate={() => {
-              if (player.current) {
-                mediaPosition.current = player.current.currentTime;
-              }
-            }}
-            onWaiting={() => {
-              actuallyPlaying.current = false;
-              setPlaying(false);
-              enqueueHeartbeat({ playing: false });
-            }}
-            playbackRate={1}
-            preload="metadata"
-            primaryColor="#EA880C"
-            src={session.playbackToken}
-            startTime={session.rewindToSeconds ?? session.resumeAtSeconds ?? 0}
-            streamRef={player}
-            title="歲悅學苑課程影片"
-          />
-          <div aria-label="影片控制" className="video-controls" role="group">
+          <div className="video-stage" ref={fullscreenRoot}>
+            <div
+              aria-hidden={presencePromptOpen ? true : undefined}
+              inert={presencePromptOpen ? true : undefined}
+              style={{ width: "100%" }}
+            >
+              <div className="viewer-overlay">{session.overlay}</div>
+              <Stream
+                key={session.playbackToken}
+                controls={false}
+                customerCode={code}
+                muted={muted}
+                onCanPlay={() => {
+                  if (!player.current) return;
+                  player.current.playbackRate = 1;
+                  setDuration(
+                    Number.isFinite(player.current.duration)
+                      ? player.current.duration
+                      : 0,
+                  );
+                  if (!playbackAuthorized.current) return;
+                  if (resumeAfterRefresh.current && !challengeToken) {
+                    resumeAfterRefresh.current = false;
+                    void player.current.play().catch(() => {
+                      setError(
+                        "播放權限已更新，請按「1 倍速繼續播放」接續上課。",
+                      );
+                    });
+                  }
+                }}
+                onDurationChange={() => {
+                  if (
+                    player.current &&
+                    Number.isFinite(player.current.duration)
+                  ) {
+                    setDuration(player.current.duration);
+                  }
+                }}
+                onEnded={() => {
+                  pausePlayer();
+                  enqueueHeartbeat({ playing: false });
+                }}
+                onError={() => {
+                  pausePlayer();
+                  setSyncState("error");
+                  if (Date.now() >= ignorePlayerErrorUntil.current) {
+                    void refreshPlayback();
+                  }
+                  setError("安全播放連結正在重新驗證，驗證完成前不會計時。");
+                }}
+                onLoadedMetaData={() => {
+                  if (!player.current) return;
+                  setDuration(
+                    Number.isFinite(player.current.duration)
+                      ? player.current.duration
+                      : 0,
+                  );
+                  setDisplayPosition(player.current.currentTime);
+                }}
+                onPause={() => {
+                  pausePlayer();
+                  enqueueHeartbeat({ playing: false });
+                }}
+                onPlay={() => {
+                  if (player.current) player.current.playbackRate = 1;
+                  if (!playbackAuthorized.current) pausePlayer();
+                }}
+                onPlaying={() => {
+                  if (!playbackAuthorized.current) {
+                    pausePlayer();
+                    return;
+                  }
+                  if (player.current) player.current.playbackRate = 1;
+                  actuallyPlaying.current = true;
+                  setPlaying(true);
+                  setSyncState("counting");
+                  enqueueHeartbeat({ playing: true });
+                }}
+                onRateChange={() => {
+                  if (player.current && player.current.playbackRate !== 1) {
+                    player.current.playbackRate = 1;
+                    setError("積分課程固定使用 1 倍速播放。");
+                  }
+                }}
+                onSeeking={() => {
+                  actuallyPlaying.current = false;
+                  setPlaying(false);
+                  if (player.current) {
+                    mediaPosition.current = player.current.currentTime;
+                    setDisplayPosition(player.current.currentTime);
+                  }
+                  enqueueHeartbeat({ playing: false });
+                }}
+                onTimeUpdate={() => {
+                  if (player.current) {
+                    mediaPosition.current = player.current.currentTime;
+                    setDisplayPosition(player.current.currentTime);
+                  }
+                }}
+                onWaiting={() => {
+                  actuallyPlaying.current = false;
+                  setPlaying(false);
+                  setSyncState("buffering");
+                  enqueueHeartbeat({ playing: false });
+                }}
+                playbackRate={1}
+                preload="metadata"
+                primaryColor="#EA880C"
+                src={session.playbackToken}
+                startTime={
+                  session.rewindToSeconds ?? session.resumeAtSeconds ?? 0
+                }
+                streamRef={player}
+                title="歲悅學苑課程影片"
+                volume={volume}
+              />
+            </div>
+            {challengeToken && (
+              <div
+                aria-describedby={presenceDescriptionId}
+                aria-labelledby={presenceTitleId}
+                aria-modal="true"
+                className="presence-dialog"
+                ref={presenceDialogRef}
+                role="alertdialog"
+                tabIndex={-1}
+              >
+                <div>
+                  <p className="eyebrow">在席確認</p>
+                  <h2 id={presenceTitleId}>你還在上課嗎？</h2>
+                  <p id={presenceDescriptionId}>
+                    請在{" "}
+                    <span aria-live="off" role="timer">
+                      {challengeSeconds}
+                    </span>{" "}
+                    秒內按下確認，上一個區塊才會計入。此視窗不能用 Escape 關閉。
+                  </p>
+                  <button
+                    className="button"
+                    onClick={confirmPresence}
+                    ref={presenceConfirmButtonRef}
+                    type="button"
+                  >
+                    我還在上課
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          <div
+            aria-hidden={presencePromptOpen ? true : undefined}
+            className="video-timeline"
+            inert={presencePromptOpen ? true : undefined}
+          >
+            <span>{formatPlaybackTime(displayPosition)}</span>
+            <input
+              aria-label="影片進度"
+              max={Math.max(duration, 1)}
+              min={0}
+              onChange={(event) => {
+                if (!player.current) return;
+                const nextPosition = Number(event.currentTarget.value);
+                player.current.currentTime = nextPosition;
+                mediaPosition.current = nextPosition;
+                setDisplayPosition(nextPosition);
+              }}
+              step={1}
+              type="range"
+              value={Math.min(displayPosition, Math.max(duration, 1))}
+            />
+            <span>{formatPlaybackTime(duration)}</span>
+          </div>
+          <div
+            aria-hidden={presencePromptOpen ? true : undefined}
+            aria-label="影片控制"
+            className="video-controls"
+            inert={presencePromptOpen ? true : undefined}
+            role="group"
+          >
             <button className="button secondary" onClick={rewindPlayer}>
               倒退 15 秒
             </button>
@@ -746,25 +1136,103 @@ export function RecordedClassroom({
             >
               {muted ? "開啟聲音" : "靜音"}
             </button>
+            <label className="video-volume">
+              <span className="visually-hidden">音量</span>
+              <input
+                aria-label="音量"
+                max={1}
+                min={0}
+                onChange={(event) => {
+                  const nextVolume = Number(event.currentTarget.value);
+                  setVolume(nextVolume);
+                  setMuted(nextVolume === 0);
+                  if (player.current) {
+                    player.current.volume = nextVolume;
+                    player.current.muted = nextVolume === 0;
+                  }
+                }}
+                step={0.1}
+                type="range"
+                value={muted ? 0 : volume}
+              />
+            </label>
+            <button
+              className="button secondary"
+              onClick={() => void fullscreenRoot.current?.requestFullscreen()}
+              type="button"
+            >
+              全螢幕
+            </button>
           </div>
         </>
       ) : (
-        <div className="closed-note">Cloudflare 播放識別尚未設定。</div>
-      )}
-      <p>{session.capabilityNotice}</p>
-      {challengeToken && (
-        <div aria-modal="true" className="presence-dialog" role="dialog">
-          <div>
-            <p className="eyebrow">在席確認</p>
-            <h2>你還在上課嗎？</h2>
-            <p>請在 {challengeSeconds} 秒內按下確認，上一個區塊才會計入。</p>
-            <button className="button" onClick={confirmPresence}>
-              我還在上課
-            </button>
-          </div>
+        <div
+          aria-hidden={presencePromptOpen ? true : undefined}
+          className="closed-note"
+          inert={presencePromptOpen ? true : undefined}
+        >
+          Cloudflare 播放識別尚未設定。
         </div>
       )}
-      <p aria-live="polite">{error}</p>
+      <section
+        aria-hidden={presencePromptOpen ? true : undefined}
+        aria-live="polite"
+        className="video-learning-status"
+        inert={presencePromptOpen ? true : undefined}
+      >
+        <div className={`learning-state state-${syncState}`}>
+          <span aria-hidden="true" />
+          <div>
+            <strong>
+              {syncState === "counting"
+                ? "正在累積候選分鐘"
+                : syncState === "buffering"
+                  ? "影片緩衝中，暫不計時"
+                  : syncState === "offline"
+                    ? "網路中斷，已停止計時"
+                    : syncState === "error"
+                      ? "計時驗證暫停"
+                      : syncState === "ready"
+                        ? "播放資格已確認"
+                        : "目前暫停計時"}
+            </strong>
+            <small>
+              {lastSyncedAt
+                ? `最後同步 ${lastSyncedAt.toLocaleTimeString("zh-TW", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                  })}`
+                : "開始播放後每 15 秒同步"}
+            </small>
+          </div>
+        </div>
+        <div>
+          <span>已確認有效觀看</span>
+          <strong>
+            {Math.floor(confirmedSeconds / 60)}／
+            {requiredSeconds > 0 ? Math.ceil(requiredSeconds / 60) : "—"} 分鐘
+          </strong>
+        </div>
+        <div>
+          <span>本區塊待確認</span>
+          <strong>{Math.floor(candidateSeconds / 60)} 分鐘</strong>
+        </div>
+      </section>
+      <p
+        aria-hidden={presencePromptOpen ? true : undefined}
+        className="video-capability-notice"
+        inert={presencePromptOpen ? true : undefined}
+      >
+        {session.capabilityNotice}
+      </p>
+      <p
+        aria-hidden={presencePromptOpen ? true : undefined}
+        aria-live="polite"
+        inert={presencePromptOpen ? true : undefined}
+      >
+        {error}
+      </p>
     </div>
   );
 }

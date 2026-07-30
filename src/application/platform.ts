@@ -2,6 +2,24 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 type RpcResult<T> = { data: T | null; error: { message: string } | null };
 
+export type OrganizationBatchAssignmentResult = {
+  requestedCount: number;
+  succeededCount: number;
+  failedCount: number;
+  reservedPoints: number;
+  courseVersionId: string;
+  liveSessionId: string | null;
+  completionDueAt: string | null;
+  results: {
+    memberPersonId: string;
+    status: "assigned" | "failed";
+    assignmentId: string | null;
+    liveBookingId: string | null;
+    reservedPoints: number;
+    errorCode: string | null;
+  }[];
+};
+
 async function rpc<T>(
   client: SupabaseClient,
   name: string,
@@ -56,6 +74,9 @@ export class PlatformApplication {
       orderId: string;
       orderNumber: string;
       status: string;
+      effectiveStatus: string;
+      subtotalTwd: number;
+      discountTwd: number;
       amountDueTwd: number;
       amountPaidTwd: number;
       transferDueAt: string;
@@ -67,6 +88,28 @@ export class PlatformApplication {
       accountName: string;
       accountNumber: string;
       maskedAccount: string;
+      coupon: {
+        title: string;
+        status: "reserved" | "redeemed" | "released";
+        discountTwd: number;
+      } | null;
+      refundCases: {
+        refundCaseId: string;
+        status:
+          | "submitted"
+          | "reviewing"
+          | "approved"
+          | "rejected"
+          | "disbursing"
+          | "partially_disbursed"
+          | "completed"
+          | "failed";
+        requestedAmountTwd: number;
+        disbursedAmountTwd: number;
+        submittedAt: string;
+        decidedAt: string | null;
+        completedAt: string | null;
+      }[];
       refundableScopes?: {
         scopeType: "whole_order" | "recorded" | "live_component";
         scopeId: string | null;
@@ -158,6 +201,28 @@ export class PlatformApplication {
     );
   }
 
+  batchAssignOrganizationCourse(input: {
+    organizationId: string;
+    memberPersonIds: string[];
+    courseVersionId: string;
+    liveSessionId: string | null;
+    completionDueAt: string | null;
+    idempotencyKey: string;
+  }) {
+    return rpc<OrganizationBatchAssignmentResult>(
+      this.client,
+      "batch_assign_organization_course",
+      {
+        p_organization_id: input.organizationId,
+        p_member_person_ids: input.memberPersonIds,
+        p_course_version_id: input.courseVersionId,
+        p_live_session_id: input.liveSessionId,
+        p_completion_due_at: input.completionDueAt,
+        p_idempotency_key: input.idempotencyKey,
+      },
+    );
+  }
+
   createPointTopup(input: {
     organizationId: string;
     points: number;
@@ -233,15 +298,105 @@ export class PlatformApplication {
     courseVersionId: string;
     legalAcceptanceId: string;
     liveSelections: Record<string, string>;
+    couponClaimId: string | null;
     idempotencyKey: string;
   }) {
-    return rpc<{ orderId: string; orderNumber: string; expiresAt: string }>(
+    return rpc<{
+      orderId: string;
+      orderNumber: string;
+      expiresAt: string;
+      subtotalTwd: number;
+      discountTwd: number;
+      amountDueTwd: number;
+      couponReservationId?: string;
+    }>(this.client, "create_b2c_order_with_coupon", {
+      p_course_version_id: input.courseVersionId,
+      p_legal_acceptance_id: input.legalAcceptanceId,
+      p_live_selections: input.liveSelections,
+      p_coupon_claim_id: input.couponClaimId,
+      p_idempotency_key: input.idempotencyKey,
+    });
+  }
+
+  claimCoupon(input: { code: string; idempotencyKey: string }) {
+    return rpc<{
+      claimId: string;
+      status: "claimed";
+      alreadyClaimed: boolean;
+    }>(this.client, "claim_coupon_code", {
+      p_code: input.code,
+      p_idempotency_key: input.idempotencyKey,
+    });
+  }
+
+  createCouponCampaign(input: {
+    title: string;
+    description: string;
+    code: string;
+    benefitKind: "percent_off" | "fixed_twd";
+    percentOffBps: number | null;
+    fixedDiscountTwd: number | null;
+    maxDiscountTwd: number | null;
+    minimumSubtotalTwd: number;
+    validFrom: string;
+    validUntil: string;
+    totalClaimLimit: number;
+    totalRedemptionLimit: number;
+    courseVersionIds: string[];
+    idempotencyKey: string;
+  }) {
+    return rpc<{
+      campaignId: string;
+      status: "draft";
+      couponCode: string | null;
+      replayed: boolean;
+    }>(this.client, "create_coupon_campaign", {
+      p_title: input.title,
+      p_description: input.description,
+      p_code: input.code,
+      p_benefit_kind: input.benefitKind,
+      p_percent_off_bps: input.percentOffBps,
+      p_fixed_discount_twd: input.fixedDiscountTwd,
+      p_max_discount_twd: input.maxDiscountTwd,
+      p_minimum_subtotal_twd: input.minimumSubtotalTwd,
+      p_valid_from: input.validFrom,
+      p_valid_until: input.validUntil,
+      p_total_claim_limit: input.totalClaimLimit,
+      p_total_redemption_limit: input.totalRedemptionLimit,
+      p_course_version_ids: input.courseVersionIds,
+      p_idempotency_key: input.idempotencyKey,
+    });
+  }
+
+  approveCouponCampaign(input: {
+    campaignId: string;
+    reason: string;
+    idempotencyKey: string;
+  }) {
+    return rpc<{ campaignId: string; status: string }>(
       this.client,
-      "create_b2c_order",
+      "approve_coupon_campaign",
       {
-        p_course_version_id: input.courseVersionId,
-        p_legal_acceptance_id: input.legalAcceptanceId,
-        p_live_selections: input.liveSelections,
+        p_campaign_id: input.campaignId,
+        p_reason: input.reason,
+        p_idempotency_key: input.idempotencyKey,
+      },
+    );
+  }
+
+  changeCouponCampaignStatus(input: {
+    campaignId: string;
+    action: "pause" | "resume" | "end";
+    reason: string;
+    idempotencyKey: string;
+  }) {
+    return rpc<{ campaignId: string; status: string }>(
+      this.client,
+      "change_coupon_campaign_status",
+      {
+        p_campaign_id: input.campaignId,
+        p_action: input.action,
+        p_reason: input.reason,
         p_idempotency_key: input.idempotencyKey,
       },
     );

@@ -4,6 +4,7 @@ import {
   readJson,
   requireIdempotencyKey,
 } from "@/app/api/_shared/route-helpers";
+import { courseCategoryCodeSchema } from "@/domain/course-taxonomy";
 import { requireUser } from "@/infrastructure/supabase/server";
 
 const lesson = z.object({
@@ -32,6 +33,7 @@ const schema = z
     summary: z.string().trim().min(10).max(500),
     description: z.string().trim().min(20).max(10_000),
     learningObjectives: z.array(z.string().trim().min(2).max(300)).min(1),
+    categoryCode: courseCategoryCodeSchema,
     deliveryType: z.enum(["recorded", "live", "hybrid"]),
     priceTwd: z.number().int().min(0),
     organizationPointPrice: z.number().int().positive(),

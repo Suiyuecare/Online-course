@@ -15,6 +15,22 @@ const qualityFixture = readFileSync(
   ),
   "utf8",
 );
+const favoriteFixture = readFileSync(
+  join(process.cwd(), "supabase", "tests", "course_favorites.test.sql"),
+  "utf8",
+);
+const accountSettingsFixture = readFileSync(
+  join(process.cwd(), "supabase", "tests", "learner_account_settings.test.sql"),
+  "utf8",
+);
+const learnerCartFixture = readFileSync(
+  join(process.cwd(), "supabase", "tests", "learner_server_cart.test.sql"),
+  "utf8",
+);
+const courseCategoryFixture = readFileSync(
+  join(process.cwd(), "supabase", "tests", "course_category_taxonomy.test.sql"),
+  "utf8",
+);
 
 describe("Supabase pgTAP role matrix fixture", () => {
   it("is transaction-scoped with a matching pgTAP plan", () => {
@@ -92,6 +108,117 @@ describe("quality and preview pgTAP privilege fixture", () => {
     );
     expect(qualityFixture).toContain(
       "'public.read_survey_investigation(uuid,text)'",
+    );
+  });
+});
+
+describe("course favorite pgTAP privilege fixture", () => {
+  it("is transaction-scoped with a matching ten-assertion plan", () => {
+    expect(favoriteFixture.trimStart().startsWith("begin;")).toBe(true);
+    expect(favoriteFixture.trimEnd().endsWith("rollback;")).toBe(true);
+    expect(favoriteFixture).toContain("select extensions.plan(10);");
+    const assertions = (
+      favoriteFixture.match(
+        /select extensions.(?:ok|results_eq|throws_ok|is)\(/g,
+      ) ?? []
+    ).length;
+    expect(assertions).toBe(10);
+  });
+
+  it("proves owner isolation, narrow privileges, and draft rejection", () => {
+    expect(favoriteFixture).toContain(
+      "a learner reads only their own favorite",
+    );
+    expect(favoriteFixture).toContain(
+      "a draft course cannot be added through the favorite RPC",
+    );
+    expect(favoriteFixture).toContain("does not touch another learner");
+  });
+});
+
+describe("learner account settings pgTAP privilege fixture", () => {
+  it("is transaction-scoped with a matching twenty-six-assertion plan", () => {
+    expect(accountSettingsFixture.trimStart().startsWith("begin;")).toBe(true);
+    expect(accountSettingsFixture.trimEnd().endsWith("rollback;")).toBe(true);
+    expect(accountSettingsFixture).toContain("select extensions.plan(26);");
+    const assertions = (
+      accountSettingsFixture.match(
+        /select extensions.(?:ok|results_eq|throws_ok|is)\(/g,
+      ) ?? []
+    ).length;
+    expect(assertions).toBe(26);
+  });
+
+  it("covers owner isolation, PII capability separation and anonymization", () => {
+    expect(accountSettingsFixture).toContain(
+      "a learner reads only their own account settings",
+    );
+    expect(accountSettingsFixture).toContain(
+      "authenticated learners cannot read account PII ciphertext",
+    );
+    expect(accountSettingsFixture).toContain(
+      "a stale edit cannot overwrite newer learner settings",
+    );
+    expect(accountSettingsFixture).toContain(
+      "encrypted optional profile data is purged on anonymization",
+    );
+    expect(accountSettingsFixture).toContain(
+      "an anonymized learner cannot recreate account settings",
+    );
+  });
+});
+
+describe("learner server cart pgTAP privilege fixture", () => {
+  it("is transaction-scoped with a matching eighteen-assertion plan", () => {
+    expect(learnerCartFixture.trimStart().startsWith("begin;")).toBe(true);
+    expect(learnerCartFixture.trimEnd().endsWith("rollback;")).toBe(true);
+    expect(learnerCartFixture).toContain("select extensions.plan(18);");
+    const assertions = (
+      learnerCartFixture.match(
+        /select extensions.(?:ok|results_eq|throws_ok|is)\(/g,
+      ) ?? []
+    ).length;
+    expect(assertions).toBe(18);
+  });
+
+  it("proves owner isolation, server pricing and anonymous separation", () => {
+    expect(learnerCartFixture).toContain(
+      "a learner cannot read another learner cart",
+    );
+    expect(learnerCartFixture).toContain(
+      "cart price is rebuilt from the authoritative course version",
+    );
+    expect(learnerCartFixture).toContain(
+      "anonymous visitors cannot execute account cart synchronization",
+    );
+    expect(learnerCartFixture).toContain(
+      "a missing operation cannot fall through to an implicit merge",
+    );
+  });
+});
+
+describe("course category pgTAP privilege fixture", () => {
+  it("is transaction-scoped with a matching twenty-assertion plan", () => {
+    expect(courseCategoryFixture.trimStart().startsWith("begin;")).toBe(true);
+    expect(courseCategoryFixture.trimEnd().endsWith("rollback;")).toBe(true);
+    expect(courseCategoryFixture).toContain("select extensions.plan(20);");
+    const assertions = (
+      courseCategoryFixture.match(
+        /select extensions.(?:ok|results_eq|throws_ok|is)\(/g,
+      ) ?? []
+    ).length;
+    expect(assertions).toBe(20);
+  });
+
+  it("proves the fixed taxonomy, narrow grants, and publish constraint", () => {
+    expect(courseCategoryFixture).toContain(
+      "the controlled taxonomy contains exactly eight active categories",
+    );
+    expect(courseCategoryFixture).toContain(
+      "anonymous catalog visitors can resolve only category presentation columns",
+    );
+    expect(courseCategoryFixture).toContain(
+      "a published course version cannot omit its category",
     );
   });
 });

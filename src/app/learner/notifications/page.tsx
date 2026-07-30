@@ -23,9 +23,14 @@ export default async function NotificationPage() {
     redirect("/login");
   }
   return (
-    <section className="page-shell narrow shell">
-      <p className="eyebrow">權威通知紀錄</p>
-      <h1>通知中心</h1>
+    <section className="learner-portal-page learner-portal-shell-width learner-narrow-page">
+      <header className="learner-page-heading">
+        <div>
+          <p className="learner-kicker">通知中心</p>
+          <h1>重要進度都在這裡</h1>
+          <p>付款、上課、審核與證明狀態會保留在網站內。</p>
+        </div>
+      </header>
       {notifications.length ? (
         <div className="notification-list">
           {notifications.map((item) => (

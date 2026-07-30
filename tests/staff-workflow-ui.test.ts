@@ -74,6 +74,8 @@ describe("staff workflow UI safety", () => {
 
   it("mounts a label-driven course editor through the full review path", () => {
     const editor = source("src/components/course-editor.tsx");
+    const editorPage = source("src/app/staff/courses/editor/page.tsx");
+    const preview = source("src/components/course-draft-learner-preview.tsx");
     const queuePage = source("src/app/staff/[queue]/page.tsx");
     const unsafeIdInput =
       /<input\b[^>]*\bname="(?:courseVersionId|moduleId|lessonId|videoAssetId|legalDocumentId|retentionPolicyRevisionId|accreditationRevisionId)"/;
@@ -87,6 +89,12 @@ describe("staff workflow UI safety", () => {
     expect(editor).toContain("/questions");
     expect(editor).toContain("/submit");
     expect(editor).toContain("<CourseDraftStructureManager");
+    expect(editor).toContain("<CourseDraftLearnerPreview");
+    expect(editor).toContain("用學員視角預覽");
+    expect(editorPage).toContain('previewMode={preview === "1"}');
+    expect(preview).toContain("尚未發布、不接受購買");
+    expect(preview).toContain("預覽模式無法購買");
+    expect(preview).toContain("不會建立觀看或學習紀錄");
     const manager = source("src/components/course-draft-structure-manager.tsx");
     for (const operation of [
       "module_update",
@@ -118,6 +126,7 @@ describe("staff workflow UI safety", () => {
     const learningPage = source(
       "src/app/learner/courses/[enrollmentId]/page.tsx",
     );
+    const courseRunner = source("src/components/learner-course-runner.tsx");
 
     expect(catalog).toContain("has_cover");
     expect(catalog).not.toContain("cover_path");
@@ -127,7 +136,8 @@ describe("staff workflow UI safety", () => {
     expect(material).toContain('"read_learner_course_material_reference"');
     expect(material).toContain("resolveActivePerson");
     expect(material).toContain("COURSE_MATERIAL_INTEGRITY_FAILED");
-    expect(learningPage).toContain("<CourseMaterialDownloadButton");
+    expect(learningPage).toContain("<LearnerCourseRunner");
+    expect(courseRunner).toContain("<CourseMaterialDownloadButton");
   });
 
   it("serves the exact approved legal text and verifies every contract hash", () => {

@@ -30,6 +30,16 @@ export function assertSameOrigin(request: Request): void {
   }
 }
 
+export function assertExpectedAccount(
+  request: Request,
+  authenticatedUserId: string,
+): void {
+  const expectedAccountId = request.headers.get("x-suiyue-account-id");
+  if (!expectedAccountId || expectedAccountId !== authenticatedUserId) {
+    throw new Error("LEARNER_ACCOUNT_VERSION_CONFLICT");
+  }
+}
+
 export function assertEmergencyCapability(
   request: Request,
   explicitCapability?: EmergencyCapability,
@@ -151,13 +161,15 @@ export async function mutation(
     const status =
       code === "AUTHENTICATION_REQUIRED"
         ? 401
-        : code === "REQUEST_BODY_TOO_LARGE"
-          ? 413
-          : code.includes("CONFIGURATION") ||
-              code.includes("UNAVAILABLE") ||
-              code.includes("EMERGENCY_CLOSED")
-            ? 503
-            : 400;
+        : code.endsWith("_VERSION_CONFLICT")
+          ? 409
+          : code === "REQUEST_BODY_TOO_LARGE"
+            ? 413
+            : code.includes("CONFIGURATION") ||
+                code.includes("UNAVAILABLE") ||
+                code.includes("EMERGENCY_CLOSED")
+              ? 503
+              : 400;
     return NextResponse.json(
       { ok: false, error: code },
       { status, headers: { "cache-control": "no-store" } },

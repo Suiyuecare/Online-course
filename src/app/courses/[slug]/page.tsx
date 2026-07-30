@@ -4,10 +4,18 @@ import Image from "next/image";
 import { CoursePreviewPlayer } from "@/components/course-preview-player";
 import { RefundAllocationDisclosure } from "@/components/refund-allocation-disclosure";
 import {
+  AddPublicCourseToCart,
+  CourseDetailFavoriteAction,
+} from "@/components/learner-course-actions";
+import { readOwnCourseFavorites } from "@/application/course-favorites";
+import {
   catalogCourse,
   courseOutline,
   coursePurchaseReadiness,
 } from "@/infrastructure/supabase/catalog";
+import { userSupabase } from "@/infrastructure/supabase/server";
+
+export const dynamic = "force-dynamic";
 
 function durationLabel(durationSeconds: number | null) {
   if (!durationSeconds) return "時間依單元內容";
@@ -24,6 +32,23 @@ function lessonTypeLabel(type: "video" | "material" | "quiz" | "survey") {
   }[type];
 }
 
+async function favoriteState(slug: string) {
+  try {
+    const supabase = await userSupabase();
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) {
+      return { authenticated: false, favorited: false };
+    }
+    const favorites = await readOwnCourseFavorites(supabase);
+    return {
+      authenticated: true,
+      favorited: favorites.some((favorite) => favorite.slug === slug),
+    };
+  } catch {
+    return { authenticated: false, favorited: false };
+  }
+}
+
 export default async function CoursePage({
   params,
 }: {
@@ -32,9 +57,10 @@ export default async function CoursePage({
   const { slug } = await params;
   const course = await catalogCourse(slug);
   if (!course) notFound();
-  const [readiness, outline] = await Promise.all([
+  const [readiness, outline, favorite] = await Promise.all([
     coursePurchaseReadiness(course.course_version_id),
     courseOutline(course.course_version_id),
+    favoriteState(slug),
   ]);
   return (
     <section className="page-shell shell course-detail">
@@ -176,9 +202,15 @@ export default async function CoursePage({
           <li>實際入帳確認後才會開通。</li>
         </ol>
         {readiness.purchaseReady ? (
-          <Link className="button" href={`/courses/${slug}/contract`}>
-            開始契約審閱
-          </Link>
+          <>
+            <AddPublicCourseToCart
+              className="button secondary"
+              course={course}
+            />
+            <Link className="button" href={`/courses/${slug}/contract`}>
+              開始契約審閱
+            </Link>
+          </>
         ) : (
           <div className="closed-note">
             <strong>目前暫不開放購買</strong>
@@ -189,6 +221,11 @@ export default async function CoursePage({
             </ul>
           </div>
         )}
+        <CourseDetailFavoriteAction
+          authenticated={favorite.authenticated}
+          initialFavorited={favorite.favorited}
+          slug={slug}
+        />
       </aside>
     </section>
   );

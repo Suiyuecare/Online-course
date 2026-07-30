@@ -35,7 +35,7 @@ export async function GET(
     if (courseError || !course?.cover_path) return unavailable();
     const { data: upload, error: uploadError } = await service
       .from("upload_quarantine")
-      .select("detected_mime,content_sha256,status")
+      .select("detected_mime,promoted_sha256,status")
       .eq("promoted_object_path", course.cover_path)
       .eq("purpose", "course_material")
       .eq("status", "promoted")
@@ -47,7 +47,7 @@ export async function GET(
     ) {
       return unavailable();
     }
-    const etag = `"${upload.content_sha256}"`;
+    const etag = `"${upload.promoted_sha256}"`;
     if (request.headers.get("if-none-match") === etag) {
       return new Response(null, {
         status: 304,
@@ -60,7 +60,8 @@ export async function GET(
     if (downloadError || !object) return unavailable();
     const bytes = Buffer.from(await object.arrayBuffer());
     if (
-      createHash("sha256").update(bytes).digest("hex") !== upload.content_sha256
+      createHash("sha256").update(bytes).digest("hex") !==
+      upload.promoted_sha256
     ) {
       return unavailable(503);
     }

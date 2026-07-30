@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import type { CourseCategoryCode } from "@/domain/course-taxonomy";
 import { publicConfig } from "@/infrastructure/config";
 
 export type CatalogCourse = {
@@ -9,6 +10,8 @@ export type CatalogCourse = {
   summary: string;
   description: string;
   learning_objectives: string[];
+  category_code: CourseCategoryCode;
+  category_title: string;
   delivery_type: "recorded" | "live" | "hybrid";
   price_twd: number;
   recorded_refund_allocation_twd: number;
@@ -64,7 +67,7 @@ export async function catalogCourseListing(): Promise<CatalogCourseListing> {
     const { data, error } = await client
       .from("published_course_catalog")
       .select(
-        "slug,course_version_id,title,summary,description,learning_objectives,delivery_type,price_twd,recorded_refund_allocation_twd,live_refund_allocations,organization_point_price,accreditation_status,accreditation_points,has_cover,equipment_requirements,instructors,first_live_starts_at,legal_document_id,legal_document_sha256,live_sessions",
+        "slug,course_version_id,title,summary,description,learning_objectives,category_code,category_title,delivery_type,price_twd,recorded_refund_allocation_twd,live_refund_allocations,organization_point_price,accreditation_status,accreditation_points,has_cover,equipment_requirements,instructors,first_live_starts_at,legal_document_id,legal_document_sha256,live_sessions",
       )
       .order("title")
       .abortSignal(controller.signal);

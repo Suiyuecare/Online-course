@@ -1,10 +1,31 @@
 import { notFound } from "next/navigation";
+import { readCheckoutCouponOptions } from "@/application/workspace";
 import { ContractPurchaseFlow } from "@/components/contract-purchase-flow";
 import { RefundAllocationDisclosure } from "@/components/refund-allocation-disclosure";
 import {
   catalogCourse,
   coursePurchaseReadiness,
 } from "@/infrastructure/supabase/catalog";
+import { userSupabase } from "@/infrastructure/supabase/server";
+
+async function checkoutContext(courseVersionId: string) {
+  try {
+    const supabase = await userSupabase();
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) return { accountId: null, coupons: [] };
+    const accountId = data.user.id;
+    try {
+      return {
+        accountId,
+        coupons: await readCheckoutCouponOptions(supabase, courseVersionId),
+      };
+    } catch {
+      return { accountId, coupons: [] };
+    }
+  } catch {
+    return { accountId: null, coupons: [] };
+  }
+}
 
 export default async function ContractPage({
   params,
@@ -14,7 +35,10 @@ export default async function ContractPage({
   const { slug } = await params;
   const course = await catalogCourse(slug);
   if (!course) notFound();
-  const readiness = await coursePurchaseReadiness(course.course_version_id);
+  const [readiness, checkout] = await Promise.all([
+    coursePurchaseReadiness(course.course_version_id),
+    checkoutContext(course.course_version_id),
+  ]);
   return (
     <section className="page-shell narrow shell">
       <p className="eyebrow">單堂購買</p>
@@ -30,7 +54,11 @@ export default async function ContractPage({
       )}
       <RefundAllocationDisclosure course={course} />
       {readiness.purchaseReady ? (
-        <ContractPurchaseFlow course={course} />
+        <ContractPurchaseFlow
+          accountId={checkout.accountId}
+          coupons={checkout.coupons}
+          course={course}
+        />
       ) : (
         <div className="warning-panel">
           <strong>目前暫不接受新訂單</strong>
