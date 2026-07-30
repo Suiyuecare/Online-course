@@ -40,9 +40,83 @@ const auditEvents = [
   },
 ];
 
+const paymentCases = [
+  {
+    id: "PAY-240730-021",
+    amount: "NT$ 1,200",
+    payer: "陳○芬",
+    lastFive: "90418",
+    uploadedAt: "10:42",
+    course: "失智症照顧溝通",
+    bankAmount: "NT$ 1,200",
+    match: true,
+  },
+  {
+    id: "PAY-240730-018",
+    amount: "NT$ 6,000",
+    payer: "安心居護所",
+    lastFive: "無法辨識",
+    uploadedAt: "09:16",
+    course: "機構點數 6,000 點",
+    bankAmount: "尚未自動配對",
+    match: false,
+  },
+] as const;
+
+const attendanceCases = [
+  {
+    ref: "ATT-0730-07",
+    learner: "林○惠",
+    issue: "錄播在席確認逾時",
+    evidence: "有效 106 / 120 分鐘・最後心跳 14:06",
+    state: "待處理",
+    rawEvents: [
+      "13:56:12　頁面前景・播放器播放中",
+      "14:06:03　最後一筆有效 heartbeat",
+      "14:16:03　在席確認逾時・停止計分",
+    ],
+  },
+  {
+    ref: "ATT-0729-11",
+    learner: "許○明",
+    issue: "直播斷線 7 分鐘",
+    evidence: "鏡頭 82%・簽到退完整・Zoom 事件延遲",
+    state: "建議人工覆核",
+    rawEvents: [
+      "09:00:18　完成簽到與設備檢查",
+      "10:42:06　SDK heartbeat 中斷",
+      "10:49:11　Zoom participant joined・重新連線",
+      "12:01:42　完成簽退",
+    ],
+  },
+  {
+    ref: "ATT-0729-03",
+    learner: "吳○玲",
+    issue: "漏簽退",
+    evidence: "鏡頭 91%・會議離開事件完整",
+    state: "等待學員補件",
+    rawEvents: [
+      "13:00:10　完成簽到",
+      "15:58:44　Zoom participant left",
+      "16:00:00　場次結束",
+      "16:30:00　簽退窗口關閉・未收到簽退",
+    ],
+  },
+] as const;
+
 export function StaffDemo() {
   const [active, setActive] = useState<Panel>("course");
   const [videoReady, setVideoReady] = useState(false);
+  const [selectedPaymentId, setSelectedPaymentId] = useState<string>(
+    paymentCases[0].id,
+  );
+  const [paymentReviewStage, setPaymentReviewStage] = useState<
+    "pending" | "first-review" | "approved"
+  >("pending");
+  const [selectedAttendanceRef, setSelectedAttendanceRef] = useState<
+    string | null
+  >(null);
+  const [attendanceReason, setAttendanceReason] = useState("");
   const [message, setMessage] = useState(
     "可切換工作區並操作按鈕；所有結果只保留在這個瀏覽器畫面。",
   );
@@ -61,6 +135,11 @@ export function StaffDemo() {
     [videoReady],
   );
   const readyCount = readiness.filter((item) => item.ready).length;
+  const selectedPayment =
+    paymentCases.find((item) => item.id === selectedPaymentId) ??
+    paymentCases[0];
+  const selectedAttendance =
+    attendanceCases.find((item) => item.ref === selectedAttendanceRef) ?? null;
 
   function simulate(label: string) {
     setMessage(`${label}已完成示範；正式資料沒有被修改。`);
@@ -266,55 +345,120 @@ export function StaffDemo() {
           </div>
           <div className={styles.reviewGrid}>
             <div className={styles.queue}>
-              <button className={styles.selectedCase} type="button">
-                <span>PAY-240730-021</span>
-                <strong>NT$ 1,200</strong>
-                <small>陳○芬・末五碼 90418・10:42 上傳</small>
-              </button>
-              <button type="button">
-                <span>PAY-240730-018</span>
-                <strong>NT$ 6,000</strong>
-                <small>安心居護所・末五碼不清楚・09:16 上傳</small>
-              </button>
+              {paymentCases.map((payment) => (
+                <button
+                  aria-pressed={selectedPayment.id === payment.id}
+                  className={
+                    selectedPayment.id === payment.id
+                      ? styles.selectedCase
+                      : undefined
+                  }
+                  key={payment.id}
+                  onClick={() => {
+                    setSelectedPaymentId(payment.id);
+                    setPaymentReviewStage("pending");
+                    setMessage(`已切換至 ${payment.id}，尚未修改付款狀態。`);
+                  }}
+                  type="button"
+                >
+                  <span>{payment.id}</span>
+                  <strong>{payment.amount}</strong>
+                  <small>
+                    {payment.payer}・末五碼 {payment.lastFive}・
+                    {payment.uploadedAt} 上傳
+                  </small>
+                </button>
+              ))}
             </div>
             <article className={styles.proofCard}>
               <div className={styles.fakeProof} aria-label="合成匯款證明預覽">
                 <span>示範用匯款證明</span>
-                <strong>NT$ 1,200</strong>
-                <small>2026 / 07 / 30　帳號末五碼 90418</small>
+                <strong>{selectedPayment.amount}</strong>
+                <small>
+                  2026 / 07 / 30　帳號末五碼 {selectedPayment.lastFive}
+                </small>
               </div>
               <dl>
                 <div>
                   <dt>訂單應付</dt>
-                  <dd>NT$ 1,200</dd>
+                  <dd>{selectedPayment.amount}</dd>
                 </div>
                 <div>
                   <dt>銀行入帳</dt>
-                  <dd>NT$ 1,200</dd>
+                  <dd>{selectedPayment.bankAmount}</dd>
                 </div>
                 <div>
                   <dt>課程</dt>
-                  <dd>失智症照顧溝通</dd>
+                  <dd>{selectedPayment.course}</dd>
                 </div>
                 <div>
                   <dt>自動比對</dt>
-                  <dd className={styles.good}>金額與末五碼相符</dd>
+                  <dd
+                    className={
+                      selectedPayment.match ? styles.good : styles.caution
+                    }
+                  >
+                    {selectedPayment.match
+                      ? "金額與末五碼相符"
+                      : "資料不足，應要求補正"}
+                  </dd>
                 </div>
               </dl>
+              <div
+                aria-live="polite"
+                className={`${styles.reviewState} ${
+                  paymentReviewStage === "approved" ? styles.reviewApproved : ""
+                }`}
+              >
+                <strong>
+                  {paymentReviewStage === "pending"
+                    ? "尚未覆核"
+                    : paymentReviewStage === "first-review"
+                      ? "第一位財務人員已確認，等待第二人覆核"
+                      : "兩位不同財務人員已完成模擬覆核"}
+                </strong>
+                <span>
+                  {paymentReviewStage === "approved"
+                    ? "正式流程此時才會建立點數或課程權限。"
+                    : "付款結果頁本身不會開通任何權限。"}
+                </span>
+              </div>
               <div className={styles.actions}>
                 <button
                   className={styles.secondaryButton}
-                  onClick={() => simulate("補正通知")}
+                  onClick={() => {
+                    setPaymentReviewStage("pending");
+                    simulate(`${selectedPayment.id} 補正通知`);
+                  }}
                   type="button"
                 >
                   要求補正
                 </button>
                 <button
                   className={styles.primaryButton}
-                  onClick={() => simulate("第一階段付款覆核")}
+                  disabled={
+                    !selectedPayment.match || paymentReviewStage === "approved"
+                  }
+                  onClick={() => {
+                    if (paymentReviewStage === "pending") {
+                      setPaymentReviewStage("first-review");
+                      setMessage(
+                        "第一位財務人員已完成模擬確認；仍需另一位具權限人員覆核。",
+                      );
+                    } else {
+                      setPaymentReviewStage("approved");
+                      setMessage(
+                        "第二位財務人員已完成模擬核准；正式資料仍未修改。",
+                      );
+                    }
+                  }}
                   type="button"
                 >
-                  確認資料相符
+                  {paymentReviewStage === "first-review"
+                    ? "模擬第二人覆核"
+                    : paymentReviewStage === "approved"
+                      ? "模擬覆核完成"
+                      : "確認資料相符"}
                 </button>
               </div>
             </article>
@@ -337,29 +481,7 @@ export function StaffDemo() {
             </div>
           </div>
           <div className={styles.exceptionList}>
-            {[
-              {
-                ref: "ATT-0730-07",
-                learner: "林○惠",
-                issue: "錄播在席確認逾時",
-                evidence: "有效 106 / 120 分鐘・最後心跳 14:06",
-                state: "待處理",
-              },
-              {
-                ref: "ATT-0729-11",
-                learner: "許○明",
-                issue: "直播斷線 7 分鐘",
-                evidence: "鏡頭 82%・簽到退完整・Zoom 事件延遲",
-                state: "建議人工覆核",
-              },
-              {
-                ref: "ATT-0729-03",
-                learner: "吳○玲",
-                issue: "漏簽退",
-                evidence: "鏡頭 91%・會議離開事件完整",
-                state: "等待學員補件",
-              },
-            ].map((item) => (
+            {attendanceCases.map((item) => (
               <article key={item.ref}>
                 <div>
                   <span>{item.ref}</span>
@@ -371,7 +493,13 @@ export function StaffDemo() {
                 <div className={styles.exceptionAction}>
                   <b>{item.state}</b>
                   <button
-                    onClick={() => simulate(`${item.ref} 人工覆核`)}
+                    onClick={() => {
+                      setSelectedAttendanceRef(item.ref);
+                      setAttendanceReason("");
+                      setMessage(
+                        `已開啟 ${item.ref} 的合成原始證據；尚未做人工判定。`,
+                      );
+                    }}
                     type="button"
                   >
                     查看證據
@@ -380,6 +508,71 @@ export function StaffDemo() {
               </article>
             ))}
           </div>
+          {selectedAttendance ? (
+            <aside
+              aria-label={`${selectedAttendance.ref} 證據與人工覆核`}
+              className={styles.evidenceDrawer}
+            >
+              <div className={styles.evidenceHeading}>
+                <div>
+                  <p className={styles.kicker}>原始事件與人工更正分開保存</p>
+                  <h3>
+                    {selectedAttendance.ref}・{selectedAttendance.learner}
+                  </h3>
+                  <span>{selectedAttendance.issue}</span>
+                </div>
+                <button
+                  aria-label="關閉證據"
+                  onClick={() => setSelectedAttendanceRef(null)}
+                  type="button"
+                >
+                  ×
+                </button>
+              </div>
+              <ol className={styles.rawEvidenceList}>
+                {selectedAttendance.rawEvents.map((event) => (
+                  <li key={event}>{event}</li>
+                ))}
+              </ol>
+              <label className={styles.reviewReason}>
+                人工判定原因（必填）
+                <textarea
+                  onChange={(event) => setAttendanceReason(event.target.value)}
+                  placeholder="例如：比對 Zoom 離開事件與 SDK 心跳後，確認斷線區段未重複計入。"
+                  rows={3}
+                  value={attendanceReason}
+                />
+              </label>
+              <div className={styles.actions}>
+                <button
+                  className={styles.secondaryButton}
+                  disabled={!attendanceReason.trim()}
+                  onClick={() => {
+                    simulate(`${selectedAttendance.ref} 維持不合格`);
+                    setSelectedAttendanceRef(null);
+                  }}
+                  type="button"
+                >
+                  維持不合格
+                </button>
+                <button
+                  className={styles.primaryButton}
+                  disabled={!attendanceReason.trim()}
+                  onClick={() => {
+                    simulate(`${selectedAttendance.ref} 人工補正`);
+                    setSelectedAttendanceRef(null);
+                  }}
+                  type="button"
+                >
+                  新增人工補正紀錄
+                </button>
+              </div>
+              <p className={styles.evidenceNote}>
+                Demo
+                只展示流程；正式系統不允許刪除或覆寫上方原始事件，並會記錄操作者、時間與原因。
+              </p>
+            </aside>
+          ) : null}
         </section>
       ) : null}
 

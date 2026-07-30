@@ -7,6 +7,7 @@ import {
   anonymousLearnerCartStorageKey,
   learnerCartCacheStorageKey,
   legacyLearnerPortalStorageKey,
+  notifyLearnerCartChanged,
   parseLearnerCartStorage,
   serializeLearnerCartStorage,
 } from "@/domain/learner-cart";
@@ -61,6 +62,7 @@ function removeOrderedCourseFromLocalCart(
         window.localStorage.removeItem(key);
       }
     }
+    notifyLearnerCartChanged();
   } catch {
     // The order is already authoritative. Browser preference cleanup must
     // never hide or roll back a successfully created payment instruction.

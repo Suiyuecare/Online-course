@@ -1,0 +1,93 @@
+name: Production worker and demo pulse
+
+on:
+  schedule:
+    - cron: "7,17,27,37,47,57 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-worker-and-demo-pulse
+  cancel-in-progress: false
+
+jobs:
+  pulse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Require the production worker secret
+        env:
+          CRON_SECRET: ${{ secrets.SUIYUE_PRODUCTION_CRON_SECRET }}
+        shell: bash
+        run: test -n "${CRON_SECRET}"
+
+      - name: Wake the durable worker
+        env:
+          CRON_SECRET: ${{ secrets.SUIYUE_PRODUCTION_CRON_SECRET }}
+        shell: bash
+        run: |
+          response_file="$(mktemp)"
+          status="$(
+            curl \
+              --silent \
+              --show-error \
+              --output "${response_file}" \
+              --write-out "%{http_code}" \
+              --max-time 50 \
+              --retry 2 \
+              --retry-delay 2 \
+              --retry-connrefused \
+              --header "Authorization: Bearer ${CRON_SECRET}" \
+              https://class.suiyuecare.com/api/workers/wake
+          )"
+          if [[ "${status}" != "200" ]]; then
+            echo "Production worker returned HTTP ${status}."
+            head -c 1000 "${response_file}"
+            exit 1
+          fi
+
+      - name: Verify public demo routes
+        shell: bash
+        run: |
+          for path in / /courses /demo /login /legal /demo/learner /demo/organization /demo/staff /courses/demo/dementia-compassionate-care/classroom; do
+            status="$(
+              curl \
+                --silent \
+                --show-error \
+                --output /dev/null \
+                --write-out "%{http_code}" \
+                --max-time 30 \
+                --retry 2 \
+                --retry-delay 2 \
+                "https://class.suiyuecare.com${path}"
+            )"
+            if [[ "${status}" != "200" ]]; then
+              echo "${path} returned HTTP ${status}."
+              exit 1
+            fi
+          done
+
+      - name: Verify database and queue health
+        shell: bash
+        run: |
+          health_file="$(mktemp)"
+          status="$(
+            curl \
+              --silent \
+              --show-error \
+              --output "${health_file}" \
+              --write-out "%{http_code}" \
+              --max-time 30 \
+              --retry 2 \
+              --retry-delay 2 \
+              https://class.suiyuecare.com/api/health
+          )"
+          if [[ "${status}" != "200" && "${status}" != "503" ]]; then
+            echo "Health endpoint returned unexpected HTTP ${status}."
+            exit 1
+          fi
+          jq -e \
+            '.dependencies.database == true and .dependencies.queue == true' \
+            "${health_file}" >/dev/null

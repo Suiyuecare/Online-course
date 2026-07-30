@@ -17,6 +17,7 @@ export function SiteFooter() {
         </div>
         <div className="footer-group">
           <strong>開始學習</strong>
+          <Link href="/demo">功能操作導覽</Link>
           <Link href="/courses">課程總覽</Link>
           <Link href="/learner">我的學習</Link>
           <Link href="/login">手機登入</Link>

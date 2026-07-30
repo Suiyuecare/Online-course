@@ -17,6 +17,7 @@ import {
   learnerCartResponseSchema,
   legacyLearnerPortalStorageKey,
   mergeLearnerCartItems,
+  notifyLearnerCartChanged,
   parseLearnerCartStorage,
   serializeLearnerCartStorage,
   type LearnerCartItem,
@@ -133,6 +134,7 @@ export function LearnerPortalProvider({
         cacheStorageKey,
         serializeLearnerCartStorage(cart),
       );
+      notifyLearnerCartChanged();
     },
     [cacheStorageKey],
   );

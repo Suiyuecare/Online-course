@@ -15,6 +15,7 @@ import {
   demoPointEvents,
   type DemoEmployee,
 } from "./data";
+import { publicSupportDefaults } from "@/content/public-support";
 import styles from "./organization-demo.module.css";
 
 type DemoView = "overview" | "members" | "assignment" | "reports";
@@ -317,7 +318,7 @@ export function OrganizationDemo() {
           <div className={styles.helpCard}>
             <strong>需要協助？</strong>
             <p>正式環境可由客服協助核對點數、名單與異常紀錄。</p>
-            <span>客服專線 (02) 7751-9076</span>
+            <span>客服專線 {publicSupportDefaults.phone}</span>
           </div>
         </nav>
 
@@ -333,7 +334,9 @@ export function OrganizationDemo() {
             </span>
           </div>
 
-          {view === "overview" && <Overview onNavigate={setView} />}
+          {view === "overview" && (
+            <Overview onNavigate={setView} onNotice={showNotice} />
+          )}
           {view === "members" && (
             <Members
               filteredEmployees={filteredEmployees}
@@ -411,7 +414,18 @@ export function OrganizationDemo() {
   );
 }
 
-function Overview({ onNavigate }: { onNavigate: (view: DemoView) => void }) {
+function Overview({
+  onNavigate,
+  onNotice,
+}: {
+  onNavigate: (view: DemoView) => void;
+  onNotice: (text: string, tone?: "success" | "info") => void;
+}) {
+  const pointPackages = [10_000, 30_000, 50_000] as const;
+  const [pointPackage, setPointPackage] = useState<number>(30_000);
+  const [purchaseStage, setPurchaseStage] = useState<
+    "select" | "instructions" | "submitted"
+  >("select");
   const usedPercent = Math.round(
     ((demoOrganization.consumedPoints + demoOrganization.reservedPoints) /
       demoOrganization.totalPurchasedPoints) *
@@ -445,6 +459,136 @@ function Overview({ onNavigate }: { onNavigate: (view: DemoView) => void }) {
           label="已完成"
           value={`${demoOrganization.completedLearners} 人次`}
         />
+      </section>
+
+      <section className={`${styles.panel} ${styles.pointPurchasePanel}`}>
+        <div className={styles.panelHeading}>
+          <div>
+            <p className={styles.kicker}>機構點數購買</p>
+            <h3>先建立訂單，再依專屬資訊完成帳號匯款</h3>
+          </div>
+          <StatusPill tone={purchaseStage === "submitted" ? "warning" : "info"}>
+            {purchaseStage === "submitted" ? "等待財務核對" : "NT$1＝1 點"}
+          </StatusPill>
+        </div>
+
+        {purchaseStage === "select" && (
+          <div className={styles.pointPurchaseGrid}>
+            <div className={styles.pointPackageChoices}>
+              <span>選擇購買點數</span>
+              <div>
+                {pointPackages.map((amount) => (
+                  <button
+                    aria-pressed={pointPackage === amount}
+                    className={
+                      pointPackage === amount ? styles.selectedPackage : ""
+                    }
+                    key={amount}
+                    onClick={() => setPointPackage(amount)}
+                    type="button"
+                  >
+                    <strong>{amount.toLocaleString("zh-TW")} 點</strong>
+                    <small>NT$ {amount.toLocaleString("zh-TW")}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className={styles.pointOrderSummary}>
+              <dl>
+                <div>
+                  <dt>購買機構</dt>
+                  <dd>{demoOrganization.name}</dd>
+                </div>
+                <div>
+                  <dt>本次點數</dt>
+                  <dd>{pointPackage.toLocaleString("zh-TW")} 點</dd>
+                </div>
+                <div>
+                  <dt>應付金額</dt>
+                  <dd>NT$ {pointPackage.toLocaleString("zh-TW")}</dd>
+                </div>
+              </dl>
+              <p>
+                正式流程會保存訂單與匯款識別碼；財務雙人覆核後，點數才會入帳。
+              </p>
+              <button
+                className={styles.primaryButton}
+                onClick={() => {
+                  setPurchaseStage("instructions");
+                  onNotice(
+                    "已建立模擬點數訂單；畫面沒有產生正式款項或匯款帳號。",
+                    "info",
+                  );
+                }}
+                type="button"
+              >
+                建立模擬匯款訂單
+              </button>
+            </div>
+          </div>
+        )}
+
+        {purchaseStage === "instructions" && (
+          <div className={styles.transferInstructions}>
+            <span className={styles.transferIcon}>
+              <Icon name="wallet" size={28} />
+            </span>
+            <div>
+              <small>模擬訂單 ORG-DEMO-0730</small>
+              <h4>
+                應匯 NT$ {pointPackage.toLocaleString("zh-TW")}・識別碼 73052
+              </h4>
+              <p>
+                正式站只會在訂單成立後顯示經核准的收款帳號；這個 Demo
+                不顯示真實銀行資料，也不會要求客戶實際匯款。
+              </p>
+            </div>
+            <div className={styles.transferActions}>
+              <button
+                className={styles.secondaryButton}
+                onClick={() => setPurchaseStage("select")}
+                type="button"
+              >
+                返回修改
+              </button>
+              <button
+                className={styles.primaryButton}
+                onClick={() => {
+                  setPurchaseStage("submitted");
+                  onNotice(
+                    "操作示範完成：已送出模擬匯款回報，現在等待財務雙人覆核。",
+                  );
+                }}
+                type="button"
+              >
+                模擬回報已匯款
+              </button>
+            </div>
+          </div>
+        )}
+
+        {purchaseStage === "submitted" && (
+          <div className={styles.purchaseSubmitted} role="status">
+            <span>
+              <Icon name="clock" size={27} />
+            </span>
+            <div>
+              <small>付款狀態</small>
+              <h4>已回報匯款，等待財務雙人覆核</h4>
+              <p>
+                核對成功後才增加 {pointPackage.toLocaleString("zh-TW")}
+                點；付款結果頁本身不能開通點數。
+              </p>
+            </div>
+            <button
+              className={styles.secondaryButton}
+              onClick={() => setPurchaseStage("select")}
+              type="button"
+            >
+              重新操作
+            </button>
+          </div>
+        )}
       </section>
 
       <div className={styles.twoColumns}>

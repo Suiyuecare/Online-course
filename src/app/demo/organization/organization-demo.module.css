@@ -371,6 +371,157 @@
   margin: 0;
 }
 
+.pointPurchasePanel {
+  background:
+    radial-gradient(circle at 92% 6%, rgb(255 255 255 / 78%), transparent 27%),
+    linear-gradient(135deg, #fffdf9, #fff1dd);
+}
+
+.pointPurchaseGrid {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(310px, 0.6fr);
+  margin-top: 22px;
+}
+
+.pointPackageChoices > span {
+  color: var(--demo-muted);
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 9px;
+}
+
+.pointPackageChoices > div {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pointPackageChoices button {
+  background: #fff;
+  border: 1px solid #ddc8ae;
+  border-radius: 15px;
+  color: var(--demo-ink);
+  cursor: pointer;
+  min-height: 86px;
+  padding: 14px;
+  text-align: left;
+}
+
+.pointPackageChoices button strong,
+.pointPackageChoices button small {
+  display: block;
+}
+
+.pointPackageChoices button strong {
+  font-size: 16px;
+}
+
+.pointPackageChoices button small {
+  color: var(--demo-muted);
+  margin-top: 4px;
+}
+
+.pointPackageChoices button.selectedPackage {
+  background: #fff4e4;
+  border-color: var(--demo-orange);
+  box-shadow: inset 0 0 0 2px rgb(184 91 20 / 13%);
+  color: var(--demo-orange-deep);
+}
+
+.pointOrderSummary {
+  border-left: 1px solid var(--demo-line);
+  padding-left: 24px;
+}
+
+.pointOrderSummary dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.pointOrderSummary dl > div {
+  align-items: baseline;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.pointOrderSummary dt {
+  color: var(--demo-muted);
+  font-size: 12px;
+}
+
+.pointOrderSummary dd {
+  font-size: 14px;
+  font-weight: 900;
+  margin: 0;
+  text-align: right;
+}
+
+.pointOrderSummary p,
+.transferInstructions p,
+.purchaseSubmitted p {
+  color: var(--demo-muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.pointOrderSummary .primaryButton {
+  width: 100%;
+}
+
+.transferInstructions,
+.purchaseSubmitted {
+  align-items: center;
+  background: rgb(255 255 255 / 78%);
+  border: 1px solid var(--demo-line);
+  border-radius: 18px;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  margin-top: 22px;
+  padding: 20px;
+}
+
+.transferIcon,
+.purchaseSubmitted > span {
+  align-items: center;
+  background: var(--demo-apricot);
+  border-radius: 15px;
+  color: var(--demo-orange-deep);
+  display: flex;
+  height: 54px;
+  justify-content: center;
+  width: 54px;
+}
+
+.transferInstructions small,
+.purchaseSubmitted small {
+  color: var(--demo-orange-deep);
+  display: block;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.transferInstructions h4,
+.purchaseSubmitted h4 {
+  font-size: 17px;
+  margin: 4px 0;
+}
+
+.transferInstructions p,
+.purchaseSubmitted p {
+  margin: 0;
+}
+
+.transferActions {
+  display: grid;
+  gap: 8px;
+}
+
 .pill {
   border: 1px solid transparent;
   border-radius: 999px;
@@ -1251,8 +1402,16 @@
   }
 
   .twoColumns,
-  .assignmentLayout {
+  .assignmentLayout,
+  .pointPurchaseGrid {
     grid-template-columns: 1fr;
+  }
+
+  .pointOrderSummary {
+    border-left: 0;
+    border-top: 1px solid var(--demo-line);
+    padding-left: 0;
+    padding-top: 20px;
   }
 }
 
@@ -1368,6 +1527,21 @@
     align-items: flex-start;
     display: grid;
     gap: 10px;
+  }
+
+  .pointPackageChoices > div,
+  .transferInstructions,
+  .purchaseSubmitted {
+    grid-template-columns: 1fr;
+  }
+
+  .pointPackageChoices button {
+    min-height: 72px;
+  }
+
+  .transferActions,
+  .purchaseSubmitted .secondaryButton {
+    width: 100%;
   }
 
   .inviteForm {

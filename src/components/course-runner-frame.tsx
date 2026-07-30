@@ -65,7 +65,9 @@ export function CourseRunnerFrame({
   nextActivity,
   onSelectActivity,
   previousActivity,
+  progressLabel,
   progressPercent,
+  progressSummary,
   requiredMinutes,
   syncLabel,
   tasks,
@@ -80,7 +82,9 @@ export function CourseRunnerFrame({
   nextActivity: NeighborActivity;
   onSelectActivity: (activityId: string) => void;
   previousActivity: NeighborActivity;
+  progressLabel?: string;
   progressPercent: number;
+  progressSummary?: string;
   requiredMinutes: number;
   syncLabel: string;
   tasks: CourseRunnerTaskNavigation[];
@@ -127,9 +131,10 @@ export function CourseRunnerFrame({
         </div>
         <div className="course-runner-header-progress">
           <div>
-            <span>有效觀看</span>
+            <span>{progressLabel ?? "有效觀看"}</span>
             <strong>
-              {confirmedMinutes}／{requiredMinutes || "—"} 分鐘
+              {progressSummary ??
+                `${confirmedMinutes}／${requiredMinutes || "—"} 分鐘`}
             </strong>
           </div>
           <div

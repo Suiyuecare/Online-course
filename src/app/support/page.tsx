@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { readSupportCenter } from "@/application/workspace";
 import { SupportCenter } from "@/components/support-center";
+import { publicSupportDefaults } from "@/content/public-support";
 import { requireUser } from "@/infrastructure/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 const publicSupport = {
-  email: process.env.SUPPORT_EMAIL ?? "edu.control@suiyuecare.com",
-  phone: process.env.SUPPORT_PHONE ?? "02-6604-5432",
-  phoneHref: process.env.SUPPORT_PHONE_HREF ?? "tel:0266045432",
-  hours: process.env.SUPPORT_HOURS ?? "週一至週五 09:00–18:00",
+  email: process.env.SUPPORT_EMAIL ?? publicSupportDefaults.email,
+  phone: process.env.SUPPORT_PHONE ?? publicSupportDefaults.phone,
+  phoneHref: process.env.SUPPORT_PHONE_HREF ?? publicSupportDefaults.phoneHref,
+  hours: process.env.SUPPORT_HOURS ?? publicSupportDefaults.hours,
 };
 
 function PublicSupportPage() {

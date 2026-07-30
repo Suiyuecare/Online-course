@@ -22,6 +22,10 @@
   positive time drift, or incorrect certificate.
 - Keep external status and dead-man monitoring independent of the primary
   Supabase/Vercel login plane.
+- Treat a failed `Production worker and demo pulse` GitHub Actions run as an
+  operations incident. Confirm the Vercel function response, durable-job queue,
+  worker heartbeat, and repository secret before retrying; never weaken the
+  health freshness gate to make the alert disappear.
 
 ## Legal and customer decision
 

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { publicSupportDefaults } from "@/content/public-support";
 
 export const metadata: Metadata = { title: "契約、退款與隱私說明" };
 
@@ -15,14 +17,34 @@ const operatingFields = [
 
 export default function LegalPage() {
   const complete = operatingFields.every(([, value]) => Boolean(value));
+  const disclosedOperatingFields = complete
+    ? operatingFields
+    : [
+        ["客服電話", process.env.SUPPORT_PHONE ?? publicSupportDefaults.phone],
+        [
+          "客服 Email",
+          process.env.SUPPORT_EMAIL ?? publicSupportDefaults.email,
+        ],
+        ["服務時間", process.env.SUPPORT_HOURS ?? publicSupportDefaults.hours],
+      ];
   return (
     <section className="page-shell narrow shell legal-page">
       <p className="eyebrow">報名前完整閱讀</p>
       <h1>服務契約、退款與隱私原則</h1>
       {!complete && (
         <div className="warning-panel">
-          <strong>正式營運資料尚未齊全，收費功能目前關閉</strong>
-          <p>完成律師、會計與銀行資料確認後，才會發布正式契約版本。</p>
+          <strong>目前為功能展示階段，尚未開放匯款或建立正式訂單</strong>
+          <p>
+            你可以先完整體驗學員、機構與管理後台；法人、銀行與正式契約資料會在通過律師、會計及內部雙人覆核後，才顯示於付款畫面。
+          </p>
+          <div className="button-row legal-demo-actions">
+            <Link className="button" href="/demo">
+              看完整功能導覽
+            </Link>
+            <Link className="button secondary" href="/support">
+              聯絡歲悅客服
+            </Link>
+          </div>
         </div>
       )}
       <article>
@@ -67,10 +89,10 @@ export default function LegalPage() {
         </p>
       </article>
       <dl className="operating-data">
-        {operatingFields.map(([label, value]) => (
+        {disclosedOperatingFields.map(([label, value]) => (
           <div key={label}>
             <dt>{label}</dt>
-            <dd>{value || "尚未完成正式設定"}</dd>
+            <dd>{value}</dd>
           </div>
         ))}
       </dl>

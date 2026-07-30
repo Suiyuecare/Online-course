@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { learnerCourseTaxonomy } from "@/content/showcase-courses";
+import { PublicCartLink } from "@/components/public-cart-link";
 
 export function SiteHeader() {
   return (
@@ -102,9 +103,13 @@ export function SiteHeader() {
         </form>
       </div>
       <nav aria-label="主要選單">
+        <Link className="nav-demo" href="/demo">
+          功能導覽
+        </Link>
         <Link href="/learner">我的學習</Link>
         <Link href="/organization">機構培訓</Link>
         <Link href="/support">客服中心</Link>
+        <PublicCartLink />
         <Link className="nav-action" href="/login">
           手機登入
         </Link>

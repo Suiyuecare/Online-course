@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   anonymousLearnerCartStorageKey,
   deduplicateLearnerCartItems,
+  learnerCartChangedEvent,
   learnerCartMutationSchema,
   mergeLearnerCartItems,
   parseLearnerCartStorage,
@@ -190,11 +191,13 @@ describe("learner server cart", () => {
   it("supports anonymous staging and account reconciliation in the UI", () => {
     const actions = source("src/components/learner-course-actions.tsx");
     const store = source("src/components/learner-portal-store.tsx");
+    const publicCart = source("src/components/public-cart-link.tsx");
     const layout = source("src/app/learner/layout.tsx");
 
     expect(actions).toContain("AddPublicCourseToCart");
     expect(actions).toContain("登入後會自動合併");
     expect(actions).toContain("anonymousLearnerCartStorageKey");
+    expect(actions).toContain("notifyLearnerCartChanged()");
     expect(actions).not.toContain('fetch("/api/cart"');
     expect(store).toContain("legacyLearnerPortalStorageKey");
     expect(store).toContain('operation: "merge"');
@@ -207,6 +210,14 @@ describe("learner server cart", () => {
     expect(store).toContain("account cache is display-only fallback data");
     expect(store).toContain('"x-suiyue-account-id": accountId');
     expect(store).toContain("incomingAnonymousItems.length === 0");
+    expect(store).toContain("notifyLearnerCartChanged()");
+    expect(publicCart).toContain(
+      "window.addEventListener(learnerCartChangedEvent, refresh)",
+    );
+    expect(publicCart).toContain(
+      "window.removeEventListener(learnerCartChangedEvent, refresh)",
+    );
+    expect(learnerCartChangedEvent).toBe("suiyue:learner-cart-changed");
     const migrationSource = store.slice(
       store.indexOf("const migrationItems"),
       store.indexOf("const fallback"),

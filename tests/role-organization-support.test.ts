@@ -182,13 +182,15 @@ describe("organization profile and offboarding", () => {
 describe("support boundary", () => {
   it("keeps login recovery public while authenticated threads remain isolated", () => {
     const supportPage = source("src/app/support/page.tsx");
+    const publicSupport = source("src/content/public-support.ts");
     const loginPage = source("src/app/login/page.tsx");
 
     expect(supportPage).toContain("function PublicSupportPage");
     expect(supportPage).toContain("if (!session)");
     expect(supportPage).not.toContain('redirect("/login")');
     expect(supportPage).toContain("歲悅客服不會向你索取完整簡訊驗證碼");
-    expect(supportPage).toContain("02-6604-5432");
+    expect(supportPage).toContain("publicSupportDefaults");
+    expect(publicSupport).toContain("02-6604-5432");
     expect(loginPage).toContain('href="/support"');
     expect(loginPage).toContain("不必先登入");
   });

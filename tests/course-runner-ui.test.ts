@@ -61,6 +61,36 @@ describe("digital classroom course runner", () => {
     expect(page).toContain("<ShowcaseCourseRunner");
   });
 
+  it("clears parent completion state when a demo quiz or survey restarts", () => {
+    const runner = source("src/components/showcase-course-runner.tsx");
+    const quiz = source("src/components/showcase-quiz-preview.tsx");
+    const survey = source("src/components/showcase-survey-preview.tsx");
+
+    expect(quiz).toContain("onReset?.()");
+    expect(survey).toContain("onReset?.()");
+    expect(runner).toContain("onReset={() => setQuizScore(null)}");
+    expect(runner).toContain("onReset={() => setSurveyCompleted(false)}");
+    expect(runner).toContain("score={quizScore}");
+    expect(runner).toContain("completed={surveyCompleted}");
+    expect(quiz).not.toContain("setScore");
+    expect(survey).not.toContain("setCompleted");
+  });
+
+  it("closes the demo completion loop without writing formal records", () => {
+    const runner = source("src/components/showcase-course-runner.tsx");
+
+    expect(runner).toContain('certificateActivityId = "demo-certificate"');
+    expect(runner).toContain("completionEligible");
+    expect(runner).toContain("載入完整合成成果");
+    expect(runner).toContain("合成證明可預覽");
+    expect(runner).toContain("不寫入資料庫");
+    expect(runner).toContain("disabled={presenceConfirmed}");
+    expect(runner).toContain("useAccessibleModal");
+    expect(runner).toContain(
+      'liveAttendanceComplete\n            ? "合成簽到退已完成"',
+    );
+  });
+
   it("shares the current Suiyue orange palette and navigation treatment", () => {
     const styles = source("src/app/globals.css");
 

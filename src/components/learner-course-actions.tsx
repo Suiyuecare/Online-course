@@ -8,6 +8,7 @@ import { useLearnerPortal } from "@/components/learner-portal-store";
 import {
   anonymousLearnerCartStorageKey,
   mergeLearnerCartItems,
+  notifyLearnerCartChanged,
   parseLearnerCartStorage,
   serializeLearnerCartStorage,
   type LearnerCartItem,
@@ -67,6 +68,7 @@ export function AddPublicCourseToCart({
       anonymousLearnerCartStorageKey,
       serializeLearnerCartStorage(next),
     );
+    notifyLearnerCartChanged();
     return true;
   }
 

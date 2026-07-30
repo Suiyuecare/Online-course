@@ -16,16 +16,16 @@ const demoPaths = [
   {
     number: "01",
     eyebrow: "B2C · 個人學員",
-    title: "從找課到進入教室",
+    title: "從學員中心到進入教室",
     description:
-      "體驗課程分類、課程介紹、單元大綱與教室介面，並說明在席確認、測驗及結訓證明的完整流程。",
+      "先看上課倒數、學習進度、證明、訂單與收藏，再進入課程介紹及教室體驗完整學習流程。",
     status: "可立即操作",
     statusTone: "ready",
-    href: "/courses/demo/dementia-compassionate-care",
+    href: "/demo/learner",
     action: "進入學員示範",
-    secondaryHref: "/learner/catalog",
+    secondaryHref: "/courses",
     secondaryAction: "瀏覽課程總覽",
-    highlights: ["課程探索與介紹", "影音教室與大綱", "10 分鐘在席機制"],
+    highlights: ["學員中心與購課紀錄", "影音教室與大綱", "10 分鐘在席機制"],
     icon: (
       <svg aria-hidden="true" viewBox="0 0 48 48">
         <path d="M24 22.4a8.2 8.2 0 1 0 0-16.4 8.2 8.2 0 0 0 0 16.4Z" />
@@ -45,7 +45,7 @@ const demoPaths = [
     href: "/demo/organization",
     action: "進入機構示範",
     secondaryHref: "/organization",
-    secondaryAction: "正式機構入口",
+    secondaryAction: "了解機構培訓",
     highlights: ["員工邀請與名冊", "點數帳本與派課", "機構成果報表"],
     icon: (
       <svg aria-hidden="true" viewBox="0 0 48 48">
@@ -64,8 +64,8 @@ const demoPaths = [
     statusTone: "ready",
     href: "/demo/staff",
     action: "進入後台示範",
-    secondaryHref: "/staff",
-    secondaryAction: "正式後台入口",
+    secondaryHref: "/legal",
+    secondaryAction: "查看治理原則",
     highlights: ["課程與題庫管理", "財務及資格審核", "角色權限與稽核"],
     icon: (
       <svg aria-hidden="true" viewBox="0 0 48 48">

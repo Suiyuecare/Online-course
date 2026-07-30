@@ -3,6 +3,12 @@ import { z } from "zod";
 export const learnerCartMaximumItems = 100;
 export const anonymousLearnerCartStorageKey =
   "suiyue:learner-cart:anonymous:v2";
+export const learnerCartChangedEvent = "suiyue:learner-cart-changed";
+
+export function notifyLearnerCartChanged() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(learnerCartChangedEvent));
+}
 
 const deliveryTypeSchema = z.enum(["recorded", "live", "hybrid"]);
 

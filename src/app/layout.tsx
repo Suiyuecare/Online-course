@@ -7,17 +7,22 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   ),
   title: {
-    default: "歲悅學苑｜長照積分課程",
+    default: "歲悅學苑｜長照積分課程封閉展示",
     template: "%s｜歲悅學苑",
   },
   description:
-    "手機就能完成的長照積分課程：錄播、同步直播與混合課程，學習進度與出席證據清楚可查。",
+    "歲悅學苑封閉展示版：預覽長照積分課程的錄播、同步直播、混合課程與學習紀錄流程；目前尚未開放報名或付款。",
+  icons: {
+    icon: [{ url: "/suiyue-milk.png", type: "image/png" }],
+    apple: [{ url: "/suiyue-milk.png", type: "image/png" }],
+  },
   openGraph: {
     type: "website",
     locale: "zh_TW",
     siteName: "歲悅學苑",
-    title: "歲悅學苑｜長照積分課程",
-    description: "手機就能完成的錄播、同步直播與混合型長照積分課程。",
+    title: "歲悅學苑｜長照積分課程封閉展示",
+    description:
+      "預覽錄播、同步直播、混合型長照積分課程與學習紀錄流程；目前尚未開放報名或付款。",
     images: [
       {
         url: "/suiyue-academy-og-v2.png",

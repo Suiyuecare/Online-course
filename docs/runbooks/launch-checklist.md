@@ -26,6 +26,11 @@ All feature switches remain closed until every applicable item is signed off.
   creation-spec readback, revocation, CSP, desktop Component View, mobile
   Client View.
 - Independent synthetic monitor and alert receiver.
+- The Hobby-plan Vercel cron remains a once-daily rescue pulse only. The
+  default-branch GitHub Actions `production-pulse.yml` must run every ten
+  minutes with `SUIYUE_PRODUCTION_CRON_SECRET`, or an approved Supabase
+  Cron/external scheduler must provide the same authenticated pulse. A daily
+  scheduler can never satisfy the 20-minute worker freshness gate.
 - Malware/quarantine worker and safe-download proof.
 - Backup, Storage manifest, tombstone replay, audit checkpoint, KMS recovery.
 
