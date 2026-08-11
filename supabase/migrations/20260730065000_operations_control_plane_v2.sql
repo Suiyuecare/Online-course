@@ -1352,7 +1352,7 @@ begin
           order by request.created_at desc
           limit 1
         )
-      ) order by policy.data_class), '[]'::jsonb)
+      ) order by policy.data_class)
       from (
         select distinct on (candidate.data_class) candidate.*
         from public.retention_policy_revisions candidate
