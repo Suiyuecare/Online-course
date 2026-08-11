@@ -79,21 +79,18 @@ insert into public.legal_documents (
 );
 
 insert into public.support_cases (
-  id, kind, status, priority, summary, response_due_at
+  id, kind, status, priority, summary, response_due_at, closed_at
 ) values
   (
     '9e200000-0000-4000-8000-000000000001',
     'general', 'open', 'high', 'SLA projection fixture',
-    now() + interval '1 hour'
+    now() + interval '1 hour', null
   ),
   (
     '9e200000-0000-4000-8000-000000000002',
     'general', 'closed', 'normal', 'Retention fixture',
-    now() - interval '30 days'
+    now() - interval '30 days', now() - interval '20 days'
   );
-update public.support_cases
-set closed_at = now() - interval '20 days'
-where id = '9e200000-0000-4000-8000-000000000002';
 
 insert into public.retention_policy_revisions (
   id, data_class, revision, online_days, archive_days,

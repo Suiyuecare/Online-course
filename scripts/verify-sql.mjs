@@ -55,6 +55,7 @@ const expectedFiles = [
   "20260730063000_admin_review_workflows.sql",
   "20260730064000_learner_pending_order_cancellation.sql",
   "20260730065000_operations_control_plane_v2.sql",
+  "20260811135006_fix_worker_database_integration.sql",
 ];
 if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) {
   throw new Error(
