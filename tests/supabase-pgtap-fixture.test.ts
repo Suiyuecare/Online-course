@@ -31,6 +31,23 @@ const courseCategoryFixture = readFileSync(
   join(process.cwd(), "supabase", "tests", "course_category_taxonomy.test.sql"),
   "utf8",
 );
+const b2bProofRoleFixture = readFileSync(
+  join(process.cwd(), "supabase", "tests", "b2b_proof_role_isolation.test.sql"),
+  "utf8",
+);
+const adminReviewFixture = readFileSync(
+  join(process.cwd(), "supabase", "tests", "admin_review_workflows.test.sql"),
+  "utf8",
+);
+const operationsV2Fixture = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "tests",
+    "operations_control_plane_v2.test.sql",
+  ),
+  "utf8",
+);
 
 describe("Supabase pgTAP role matrix fixture", () => {
   it("is transaction-scoped with a matching pgTAP plan", () => {
@@ -219,6 +236,105 @@ describe("course category pgTAP privilege fixture", () => {
     );
     expect(courseCategoryFixture).toContain(
       "a published course version cannot omit its category",
+    );
+  });
+});
+
+describe("B2B proof and role-isolation pgTAP fixture", () => {
+  it("is transaction-scoped with a matching twenty-three-assertion plan", () => {
+    expect(b2bProofRoleFixture.trimStart().startsWith("begin;")).toBe(true);
+    expect(b2bProofRoleFixture.trimEnd().endsWith("rollback;")).toBe(true);
+    expect(b2bProofRoleFixture).toContain("select extensions.plan(23);");
+    const assertions = (
+      b2bProofRoleFixture.match(
+        /select extensions.(?:ok|results_eq|throws_ok|is|lives_ok)\(/g,
+      ) ?? []
+    ).length;
+    expect(assertions).toBe(23);
+  });
+
+  it("proves safe proof persistence and mutual finance/training isolation", () => {
+    expect(b2bProofRoleFixture).toContain(
+      "the safe promoted path and sanitized hash persist",
+    );
+    expect(b2bProofRoleFixture).toContain(
+      "training manager receives no top-up records",
+    );
+    expect(b2bProofRoleFixture).toContain(
+      "training manager receives no finance point-ledger events",
+    );
+    expect(b2bProofRoleFixture).toContain(
+      "finance cannot read or export employee training outcomes",
+    );
+    expect(b2bProofRoleFixture).toContain(
+      "authenticated callers cannot bypass the role-safe training report",
+    );
+  });
+});
+
+describe("admin review workflows pgTAP fixture", () => {
+  it("is transaction-scoped with a matching twenty-one-assertion plan", () => {
+    expect(adminReviewFixture.trimStart().startsWith("begin;")).toBe(true);
+    expect(adminReviewFixture.trimEnd().endsWith("rollback;")).toBe(true);
+    expect(adminReviewFixture).toContain("select extensions.plan(21);");
+    const assertions = (
+      adminReviewFixture.match(
+        /select extensions.(?:ok|results_eq|throws_ok|is|lives_ok)\(/g,
+      ) ?? []
+    ).length;
+    expect(assertions).toBe(21);
+  });
+
+  it("proves masked review data, request binding, and content preservation", () => {
+    expect(adminReviewFixture).toContain(
+      "staff receives only the masked business number",
+    );
+    expect(adminReviewFixture).toContain(
+      "the unbound legacy organization review command is revoked",
+    );
+    expect(adminReviewFixture).toContain(
+      "a course decision idempotency key cannot be rebound",
+    );
+    expect(adminReviewFixture).toContain(
+      "authored modules remain after the review decision",
+    );
+    expect(adminReviewFixture).toContain(
+      "the course decision appends an audit event",
+    );
+  });
+});
+
+describe("operations control plane v2 pgTAP fixture", () => {
+  it("is transaction-scoped with a matching twenty-eight-assertion plan", () => {
+    expect(operationsV2Fixture.trimStart().startsWith("begin;")).toBe(true);
+    expect(operationsV2Fixture.trimEnd().endsWith("rollback;")).toBe(true);
+    expect(operationsV2Fixture).toContain("select extensions.plan(28);");
+    const assertions = (
+      operationsV2Fixture.match(
+        /select extensions.(?:ok|results_eq|throws_ok|is|lives_ok)\(/g,
+      ) ?? []
+    ).length;
+    expect(assertions).toBe(28);
+  });
+
+  it("proves safe projections, local-only escalation, and no purge", () => {
+    expect(operationsV2Fixture).toContain(
+      "the audit projection omits payload and reason text",
+    );
+    expect(operationsV2Fixture).toContain(
+      "SLA evidence recording sends no external notification",
+    );
+    expect(operationsV2Fixture).toContain(
+      "the dry-run proposer cannot approve their own evidence",
+    );
+    expect(operationsV2Fixture).toContain(
+      "one policy cannot hide a pending dry-run behind a newer request",
+    );
+    expect(operationsV2Fixture).toContain(
+      "the reviewer records a bound append-only evidence event first",
+    );
+    expect(operationsV2Fixture).toContain(
+      "the approved dry-run leaves candidate rows untouched",
     );
   });
 });

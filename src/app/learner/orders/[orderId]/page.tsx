@@ -6,6 +6,7 @@ import { LearnerPortalIcon } from "@/components/learner-portal-icon";
 import { LiveBookingCard } from "@/components/live-booking-card";
 import { OrderPaymentDetails } from "@/components/order-payment-details";
 import { PaymentProofForm } from "@/components/payment-proof-form";
+import { PendingOrderCancellation } from "@/components/pending-order-cancellation";
 import { RefundRequestForm } from "@/components/refund-request-form";
 import { presentStatus } from "@/domain/presentation";
 import { requireUser } from "@/infrastructure/supabase/server";
@@ -147,6 +148,18 @@ export default async function LearnerOrderPage({
         </div>
       </section>
 
+      {order.paidAt && order.amountPaidTwd > 0 && (
+        <div className="learner-payment-record-link-row">
+          <Link
+            className="button secondary"
+            href={`/learner/orders/${order.orderId}/payment-record`}
+          >
+            檢視／列印付款紀錄
+          </Link>
+          <small>此紀錄僅供付款核對，非統一發票／電子發票。</small>
+        </div>
+      )}
+
       <div className={`status-card status-${status.tone}`}>
         <strong>{status.label}</strong>
         <p>{status.description}</p>
@@ -185,6 +198,7 @@ export default async function LearnerOrderPage({
             targetId={order.orderId}
             amountTwd={order.amountDueTwd}
           />
+          <PendingOrderCancellation orderId={order.orderId} />
         </section>
       ) : (
         <section

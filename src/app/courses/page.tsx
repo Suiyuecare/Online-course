@@ -32,13 +32,13 @@ export default async function CoursesPage({
     <>
       <section className="course-catalog-hero">
         <Image
-          alt="社區照顧人員向長者說明長照服務資源"
+          alt="照顧服務員陪伴長者進行認知活動"
           className="course-catalog-hero-image"
           fill
           loading="eager"
           priority
           sizes="100vw"
-          src="/images/suiyue-original/course-long-term-care-policy.jpg"
+          src="/images/suiyue-original/home-hero-care-activity.jpg"
         />
         <div aria-hidden="true" className="course-catalog-hero-scrim" />
         <div className="shell">

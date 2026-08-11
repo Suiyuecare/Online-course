@@ -13,7 +13,7 @@ const learnerCsp = [
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
   `connect-src 'self' https://*.supabase.co https://*.cloudflarestream.com${connectDevelopment}`,
-  "frame-src https://challenges.cloudflare.com https://*.cloudflarestream.com https://www.youtube-nocookie.com",
+  "frame-src 'self' blob: https://challenges.cloudflare.com https://*.cloudflarestream.com",
   "media-src 'self' blob: https://*.cloudflarestream.com",
   "object-src 'none'",
   "base-uri 'self'",

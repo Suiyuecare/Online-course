@@ -33,6 +33,27 @@ All feature switches remain closed until every applicable item is signed off.
   scheduler can never satisfy the 20-minute worker freshness gate.
 - Malware/quarantine worker and safe-download proof.
 - Backup, Storage manifest, tombstone replay, audit checkpoint, KMS recovery.
+- Operations Control Plane dual-admin incident transition rehearsal, safe
+  database-only dead-letter retry, provider replay rejection, and evidence
+  ledger verification. Confirm `/api/health/live` exposes only liveness while
+  `/api/health` requires the cron bearer secret or platform-admin authorization,
+  remains fail-closed detailed readiness, and includes both durable-job and
+  notification-outbox backlog/dead letters.
+- Confirm the public legal center renders only the latest effective,
+  legal-approved database revision and SHA-256. During a database/projection
+  outage it must visibly close commerce and must not substitute hard-coded
+  contractual prose. Download must re-check status and content hash.
+- Rehearse support/refund SLA due-soon and overdue jobs. Verify the durable
+  worker appends one idempotent escalation event and sends no external
+  notification.
+- Rehearse audit filters and cursor pagination with platform admin; verify
+  learners and other staff roles cannot read it, and that payload, reason,
+  source IP, request ID, and raw target never appear.
+- Rehearse retention dry-run with two different platform administrators,
+  a bound append-only evidence event, and fresh TOTP for request, evidence, and
+  decision. Verify the evidence digest matches the exact candidate manifest,
+  candidate rows are unchanged, and every response/audit record states no
+  physical purge.
 
 ## Device and load acceptance
 

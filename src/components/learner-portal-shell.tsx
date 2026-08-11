@@ -314,12 +314,12 @@ function PortalChrome({
                     <strong>依照護需求探索</strong>
                     <small>選擇想加強的課程主題</small>
                   </span>
-                  <Link href="/learner/catalog#course-search">查看全部</Link>
+                  <Link href="/learner/catalog#official-courses">查看全部</Link>
                 </div>
                 <div className="learner-explore-list">
                   {learnerCourseTaxonomy.map((category, index) => (
                     <Link
-                      href={`/learner/catalog?category=${category.code}#course-search`}
+                      href={`/learner/catalog?category=${category.code}#official-courses`}
                       key={category.code}
                     >
                       <span aria-hidden="true">
@@ -335,7 +335,7 @@ function PortalChrome({
               </div>
             </details>
             <form
-              action="/learner/catalog#course-search"
+              action="/learner/catalog#official-courses"
               aria-label="搜尋歲悅學苑課程"
               className="learner-header-course-search"
               method="get"
@@ -377,7 +377,7 @@ function PortalChrome({
             <Link
               aria-label="搜尋課程"
               className="learner-icon-button learner-search-button"
-              href="/learner/catalog#course-search"
+              href="/learner/catalog#official-courses"
             >
               <LearnerPortalIcon name="search" />
             </Link>
@@ -399,7 +399,9 @@ function PortalChrome({
           </div>
         </div>
       </header>
-      <main className="learner-portal-main">{children}</main>
+      <main className="learner-portal-main" id="main-content">
+        {children}
+      </main>
       <nav aria-label="學員手機選單" className="learner-mobile-nav">
         {[
           ...navItems,

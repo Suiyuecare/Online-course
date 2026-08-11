@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ShowcaseCourse } from "@/content/showcase-courses";
-import { YouTubeDemoPreview } from "@/components/youtube-demo-preview";
+import { LocalCourseDemoPreview } from "@/components/local-course-demo-preview";
 
 const deliveryLabels = {
   recorded: "錄播",
@@ -82,12 +82,13 @@ export function ShowcaseCourseDetail({ course }: { course: ShowcaseCourse }) {
 
       <section className="showcase-course-content shell">
         <div>
-          <YouTubeDemoPreview
+          <LocalCourseDemoPreview
             posterAlt={course.coverAlt}
             posterImage={course.coverImage}
-            publisher={course.youtubePublisher}
-            title={course.youtubeTitle}
-            youtubeId={course.youtubeId}
+            referencePublisher={course.youtubePublisher}
+            referenceTitle={course.youtubeTitle}
+            referenceUrl={`https://www.youtube.com/watch?v=${course.youtubeId}`}
+            title={course.title}
           />
 
           <div className="showcase-key-facts">

@@ -1,18 +1,33 @@
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import {
+  rankCatalogRecommendations,
+  type CatalogRecommendationPreferences,
+} from "@/application/catalog-recommendations";
+import { readOwnLearnerRecommendationPreferences } from "@/application/learner-account-settings";
 import { readLearnerCenterRows } from "@/application/learner-center";
+import {
+  filterLearnerCourseLibrary,
+  hasLearnerCourseLibraryFilters,
+  learnerCourseDeliveryFilters,
+  learnerCourseProgress,
+  learnerCourseSortOptions,
+  learnerCourseStatusFilters,
+  parseLearnerCourseLibraryQuery,
+} from "@/application/learner-course-library";
 import { readOwnOrders } from "@/application/workspace";
+import { CourseCard } from "@/components/course-card";
 import { IdentityRecoveryForm } from "@/components/identity-recovery-form";
 import { LearnerCountdown } from "@/components/learner-countdown";
 import { LearnerPortalIcon } from "@/components/learner-portal-icon";
-import { ShowcaseCourseCard } from "@/components/showcase-course-card";
 import { showcaseCourses } from "@/content/showcase-courses";
 import {
   isLearnerContentWaiting,
   learnerUpcomingEvents,
 } from "@/domain/learner-upcoming";
 import { presentStatus } from "@/domain/presentation";
+import { catalogCourseListingWithReadiness } from "@/infrastructure/supabase/catalog";
 import { requireUser } from "@/infrastructure/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -48,20 +63,41 @@ function courseImage(row: {
 export default async function LearnerDashboard({
   searchParams,
 }: {
-  searchParams: Promise<{ restricted?: string }>;
+  searchParams: Promise<{
+    restricted?: string | string[];
+    q?: string | string[];
+    status?: string | string[];
+    delivery?: string | string[];
+    sort?: string | string[];
+  }>;
 }) {
-  const restricted = (await searchParams).restricted === "1";
+  const dashboardSearchParams = await searchParams;
+  const restrictedValue = dashboardSearchParams.restricted;
+  const restricted = Array.isArray(restrictedValue)
+    ? restrictedValue[0] === "1"
+    : restrictedValue === "1";
+  const libraryQuery = parseLearnerCourseLibraryQuery(dashboardSearchParams);
   const { supabase, user } = await requireUser().catch(() =>
     redirect("/login"),
   );
-  const [learningState, orderState] = await Promise.all([
-    readLearnerCenterRows(supabase)
-      .then((data) => ({ available: true as const, data }))
-      .catch(() => ({ available: false as const, data: [] })),
-    readOwnOrders(supabase, { limit: 4 })
-      .then((data) => ({ available: true as const, data }))
-      .catch(() => ({ available: false as const, data: [] })),
-  ]);
+  const [learningState, orderState, catalog, recommendationPreferences] =
+    await Promise.all([
+      readLearnerCenterRows(supabase)
+        .then((data) => ({ available: true as const, data }))
+        .catch(() => ({ available: false as const, data: [] })),
+      readOwnOrders(supabase, { limit: 4 })
+        .then((data) => ({ available: true as const, data }))
+        .catch(() => ({ available: false as const, data: [] })),
+      catalogCourseListingWithReadiness(),
+      readOwnLearnerRecommendationPreferences(supabase).catch(
+        () =>
+          ({
+            currentStatus: "undisclosed",
+            interests: [],
+            learningGoals: [],
+          }) satisfies CatalogRecommendationPreferences,
+      ),
+    ]);
   const rows = learningState.data;
   const orders = orderState.data;
   const name =
@@ -76,10 +112,19 @@ export default async function LearnerDashboard({
   const completedRows = rows.filter((row) =>
     ["completed", "submitted", "credited"].includes(row.enrollment_status),
   );
+  const filteredRows = filterLearnerCourseLibrary(rows, libraryQuery);
+  const libraryHasFilters = hasLearnerCourseLibraryFilters(libraryQuery);
+  const libraryResetHref = restricted
+    ? "/learner?restricted=1#my-learning-list"
+    : "/learner#my-learning-list";
   const certificateRows = rows.filter((row) => row.certificate_id);
-  const recommendationCourses = showcaseCourses
-    .filter((course) => !rows.some((row) => row.course_title === course.title))
-    .slice(0, 3);
+  const recommendationCourses =
+    catalog.status === "ready" && learningState.available
+      ? rankCatalogRecommendations(catalog.courses, recommendationPreferences, {
+          courseVersionIds: rows.map((row) => row.course_version_id),
+          slugs: rows.map((row) => row.course_slug),
+        }).slice(0, 3)
+      : [];
 
   return (
     <div className="learner-dashboard">
@@ -254,6 +299,95 @@ export default async function LearnerDashboard({
               </span>
             )}
           </div>
+          {learningState.available && rows.length > 0 && (
+            <>
+              <form
+                action="/learner#my-learning-list"
+                className="learner-course-library-controls"
+                method="get"
+              >
+                {restricted && (
+                  <input name="restricted" type="hidden" value="1" />
+                )}
+                <label
+                  className="learner-course-library-search"
+                  htmlFor="learner-course-library-query"
+                >
+                  <span>搜尋我的課程</span>
+                  <input
+                    defaultValue={libraryQuery.query}
+                    id="learner-course-library-query"
+                    maxLength={120}
+                    name="q"
+                    placeholder="輸入課程名稱"
+                    type="search"
+                  />
+                </label>
+                <label htmlFor="learner-course-library-status">
+                  <span>學習狀態</span>
+                  <select
+                    defaultValue={libraryQuery.status}
+                    id="learner-course-library-status"
+                    name="status"
+                  >
+                    {learnerCourseStatusFilters.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label htmlFor="learner-course-library-delivery">
+                  <span>授課形式</span>
+                  <select
+                    defaultValue={libraryQuery.delivery}
+                    id="learner-course-library-delivery"
+                    name="delivery"
+                  >
+                    {learnerCourseDeliveryFilters.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label htmlFor="learner-course-library-sort">
+                  <span>排序方式</span>
+                  <select
+                    defaultValue={libraryQuery.sort}
+                    id="learner-course-library-sort"
+                    name="sort"
+                  >
+                    {learnerCourseSortOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="learner-course-library-actions">
+                  <button className="button" type="submit">
+                    套用條件
+                  </button>
+                  {libraryHasFilters && (
+                    <Link className="button secondary" href={libraryResetHref}>
+                      清除條件
+                    </Link>
+                  )}
+                </div>
+              </form>
+              <p
+                aria-atomic="true"
+                aria-live="polite"
+                className="learner-course-library-count"
+                role="status"
+              >
+                {libraryHasFilters
+                  ? `找到 ${filteredRows.length} 門課程，共有 ${rows.length} 門`
+                  : `共有 ${rows.length} 門課程`}
+              </p>
+            </>
+          )}
           {!learningState.available ? (
             <div className="learner-friendly-empty learner-dashboard-empty">
               <span aria-hidden="true">
@@ -278,9 +412,22 @@ export default async function LearnerDashboard({
                 去找第一門課
               </Link>
             </div>
+          ) : filteredRows.length === 0 ? (
+            <div className="learner-friendly-empty learner-dashboard-empty">
+              <span aria-hidden="true">
+                <LearnerPortalIcon name="search" size={40} />
+              </span>
+              <h2>沒有符合這組條件的課程</h2>
+              <p>
+                你的課程與學習紀錄都還在，只是目前的搜尋或篩選沒有找到結果。
+              </p>
+              <Link className="button secondary" href={libraryResetHref}>
+                清除條件，查看全部
+              </Link>
+            </div>
           ) : (
             <div className="learner-course-list">
-              {rows.map((row) => {
+              {filteredRows.map((row) => {
                 const waitingForRelease = isLearnerContentWaiting(
                   row.content_available_at,
                 );
@@ -288,14 +435,7 @@ export default async function LearnerDashboard({
                   "enrollment",
                   row.enrollment_status,
                 );
-                const progress = Math.min(
-                  100,
-                  Math.round(
-                    (row.confirmed_valid_seconds /
-                      Math.max(row.required_seconds, 1)) *
-                      100,
-                  ),
-                );
+                const progress = learnerCourseProgress(row);
                 return (
                   <article key={row.enrollment_id}>
                     <div className="learner-course-list-cover">
@@ -406,15 +546,37 @@ export default async function LearnerDashboard({
             </div>
             <Link href="/learner/catalog">查看全部課程</Link>
           </div>
-          <div className="course-grid">
-            {recommendationCourses.map((course) => (
-              <ShowcaseCourseCard
-                course={course}
-                key={course.slug}
-                learnerMode
-              />
-            ))}
-          </div>
+          {catalog.status === "unavailable" || !learningState.available ? (
+            <div className="learner-available-now" role="status">
+              <span aria-hidden="true">
+                <LearnerPortalIcon name="support" size={30} />
+              </span>
+              <div>
+                <strong>暫時無法整理個人化推薦</strong>
+                <p>
+                  正式課程或學習資料恢復後會重新比對，不會拿示範課冒充可報名課程。
+                </p>
+              </div>
+              <Link href="/learner/catalog">查看課程總覽</Link>
+            </div>
+          ) : recommendationCourses.length > 0 ? (
+            <div className="course-grid">
+              {recommendationCourses.map((course) => (
+                <CourseCard course={course} key={course.slug} learnerMode />
+              ))}
+            </div>
+          ) : (
+            <div className="learner-available-now">
+              <span aria-hidden="true">
+                <LearnerPortalIcon name="book" size={30} />
+              </span>
+              <div>
+                <strong>目前沒有其他可推薦的正式課程</strong>
+                <p>已購買的課程不會重複出現在推薦清單。</p>
+              </div>
+              <Link href="/learner/catalog">查看課程總覽</Link>
+            </div>
+          )}
         </section>
 
         <section aria-labelledby="purchase-history-title">
@@ -425,12 +587,26 @@ export default async function LearnerDashboard({
             </div>
             <Link href="/learner/orders">查看全部訂單</Link>
           </div>
-          {orders.length > 0 ? (
+          {!orderState.available ? (
+            <div className="learner-available-now" role="alert">
+              <span aria-hidden="true">
+                <LearnerPortalIcon name="support" size={30} />
+              </span>
+              <div>
+                <strong>目前無法確認最近訂單</strong>
+                <p>這是暫時的資料讀取問題，不代表訂單不存在或付款紀錄消失。</p>
+              </div>
+              <Link href="/learner">重新讀取</Link>
+            </div>
+          ) : orders.length > 0 ? (
             <div className="learner-order-preview">
               {orders.slice(0, 3).map((order) => {
                 const status = presentStatus("order", order.status);
                 return (
-                  <Link href={`/orders/${order.orderId}`} key={order.orderId}>
+                  <Link
+                    href={`/learner/orders/${order.orderId}`}
+                    key={order.orderId}
+                  >
                     <div>
                       <span className={`status status-${status.tone}`}>
                         {status.label}

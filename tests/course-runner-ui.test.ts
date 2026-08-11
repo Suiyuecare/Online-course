@@ -56,7 +56,7 @@ describe("digital classroom course runner", () => {
     const page = source("src/app/courses/demo/[slug]/classroom/page.tsx");
 
     expect(detail).toContain("進入數位教室示範");
-    expect(runner).toContain("公開影片只用來展示教室操作");
+    expect(runner).toContain("本站自製教材導覽只用來展示教室操作");
     expect(runner).toContain("不保存進度");
     expect(page).toContain("<ShowcaseCourseRunner");
   });

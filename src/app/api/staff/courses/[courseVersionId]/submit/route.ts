@@ -11,7 +11,7 @@ export async function POST(
   context: { params: Promise<{ courseVersionId: string }> },
 ) {
   return mutation(request, async () => {
-    requireIdempotencyKey(request);
+    const idempotencyKey = requireIdempotencyKey(request);
     const { courseVersionId } = await context.params;
     z.uuid().parse(courseVersionId);
     const { reason } = await readJson(
@@ -21,9 +21,13 @@ export async function POST(
     const { supabase } = await requireUser();
     const { data, error } = await supabase.rpc(
       "submit_course_version_for_review",
-      { p_course_version_id: courseVersionId, p_reason: reason },
+      {
+        p_course_version_id: courseVersionId,
+        p_reason: reason,
+        p_idempotency_key: idempotencyKey,
+      },
     );
     if (error || !data) throw new Error("COURSE_SUBMISSION_REJECTED");
-    return { submitted: true };
+    return data;
   });
 }

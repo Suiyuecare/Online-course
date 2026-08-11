@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { CourseCategoryCode } from "@/domain/course-taxonomy";
 import { publicConfig } from "@/infrastructure/config";
@@ -41,6 +41,7 @@ export type CatalogCourse = {
     endsAt: string;
     bookingCloseAt: string;
   }[];
+  purchase_readiness?: CoursePurchaseReadiness;
 };
 
 export type CatalogCourseListing = {
@@ -80,6 +81,48 @@ export async function catalogCourseListing(): Promise<CatalogCourseListing> {
     };
   } catch {
     return { status: "unavailable", courses: [] };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function catalogCourseListingWithReadiness(): Promise<CatalogCourseListing> {
+  const listing = await catalogCourseListing();
+  if (listing.status !== "ready" || listing.courses.length === 0) {
+    return listing;
+  }
+
+  const config = publicConfig();
+  if (
+    !config.NEXT_PUBLIC_SUPABASE_URL ||
+    !config.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  ) {
+    return { status: "unavailable", courses: [] };
+  }
+  const client = createClient(
+    config.NEXT_PUBLIC_SUPABASE_URL,
+    config.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    { auth: { persistSession: false } },
+  );
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3_500);
+  try {
+    const readiness = await Promise.all(
+      listing.courses.map((course) =>
+        readCoursePurchaseReadiness(
+          client,
+          course.course_version_id,
+          controller.signal,
+        ),
+      ),
+    );
+    return {
+      status: "ready",
+      courses: listing.courses.map((course, index) => ({
+        ...course,
+        purchase_readiness: readiness[index],
+      })),
+    };
   } finally {
     clearTimeout(timeout);
   }
@@ -133,6 +176,42 @@ export type CoursePurchaseReadiness = {
   purchaseReady: boolean;
   reasons: string[];
 };
+
+const unavailableCoursePurchaseReadiness: CoursePurchaseReadiness = {
+  purchaseReady: false,
+  reasons: ["系統目前無法完成報名安全檢查，暫不接受新訂單。"],
+};
+
+async function readCoursePurchaseReadiness(
+  client: SupabaseClient,
+  courseVersionId: string,
+  signal?: AbortSignal,
+): Promise<CoursePurchaseReadiness> {
+  try {
+    let query = client.rpc("read_public_course_readiness", {
+      p_course_version_id: courseVersionId,
+    });
+    if (signal) query = query.abortSignal(signal);
+    const { data, error } = await query;
+    if (error || !data || typeof data !== "object") {
+      return unavailableCoursePurchaseReadiness;
+    }
+    const candidate = data as Record<string, unknown>;
+    if (
+      typeof candidate.purchaseReady !== "boolean" ||
+      !Array.isArray(candidate.reasons) ||
+      !candidate.reasons.every((reason) => typeof reason === "string")
+    ) {
+      return unavailableCoursePurchaseReadiness;
+    }
+    return {
+      purchaseReady: candidate.purchaseReady,
+      reasons: candidate.reasons,
+    };
+  } catch {
+    return unavailableCoursePurchaseReadiness;
+  }
+}
 
 const courseOutlineSchema = z
   .object({
@@ -215,31 +294,11 @@ export async function coursePurchaseReadiness(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 2_500);
   try {
-    const { data, error } = await client
-      .rpc("read_public_course_readiness", {
-        p_course_version_id: courseVersionId,
-      })
-      .abortSignal(controller.signal);
-    if (error || !data || typeof data !== "object") {
-      throw new Error("READINESS_UNAVAILABLE");
-    }
-    const candidate = data as Record<string, unknown>;
-    if (
-      typeof candidate.purchaseReady !== "boolean" ||
-      !Array.isArray(candidate.reasons) ||
-      !candidate.reasons.every((reason) => typeof reason === "string")
-    ) {
-      throw new Error("READINESS_INVALID");
-    }
-    return {
-      purchaseReady: candidate.purchaseReady,
-      reasons: candidate.reasons,
-    };
-  } catch {
-    return {
-      purchaseReady: false,
-      reasons: ["系統目前無法完成報名安全檢查，暫不接受新訂單。"],
-    };
+    return await readCoursePurchaseReadiness(
+      client,
+      courseVersionId,
+      controller.signal,
+    );
   } finally {
     clearTimeout(timeout);
   }

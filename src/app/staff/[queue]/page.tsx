@@ -2,6 +2,12 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 import Link from "next/link";
 import {
+  readCourseSubmissionReview,
+  readOrganizationApplicationReview,
+  type CourseSubmissionReview,
+  type OrganizationApplicationReview,
+} from "@/application/admin-review-workflows";
+import {
   readAccreditationOperationsWorkspace,
   readStaffQueueItems,
   readZoomOrphanCleanupWorklist,
@@ -12,13 +18,31 @@ import {
   type OrganizationLifecycleItem,
 } from "@/application/organization-lifecycle";
 import {
+  readOperationsControlPlane,
+  type OperationsControlPlane,
+} from "@/application/operations-control-plane";
+import {
+  readAuditExplorer,
+  readRetentionControlPlane,
+  readSlaWorkspace,
+  type AuditExplorer,
+  type RetentionControlPlane,
+  type SlaWorkspace,
+} from "@/application/operations-v2";
+import {
   readStaffRoleCandidates,
   type StaffRoleCandidate,
 } from "@/application/staff-role-directory";
 import { AccreditationOperationsPanel } from "@/components/accreditation-operations-panel";
+import { AuditExplorerPanel } from "@/components/audit-explorer-panel";
+import { CourseSubmissionReviewPanel } from "@/components/course-submission-review-panel";
 import { EmergencySuspendPanel } from "@/components/emergency-suspend-panel";
 import { FinanceBankImportPanel } from "@/components/finance-bank-import-panel";
 import { OrganizationLifecyclePanel } from "@/components/organization-lifecycle-panel";
+import { OperationsControlPanel } from "@/components/operations-control-panel";
+import { OrganizationApplicationReviewSummary } from "@/components/organization-application-review-summary";
+import { RetentionControlPanel } from "@/components/retention-control-panel";
+import { SlaWorkspacePanel } from "@/components/sla-workspace-panel";
 import { StaffRoleCandidatePanel } from "@/components/staff-role-candidate-panel";
 import { StaffQueueActions } from "@/components/staff-queue-actions";
 import {
@@ -82,6 +106,11 @@ export default async function StaffQueuePage({
     status?: string;
     cursor?: string;
     selected?: string;
+    auditAction?: string;
+    auditTarget?: string;
+    auditCursor?: string;
+    slaDeadline?: string;
+    slaReference?: string;
   }>;
 }) {
   const { queue } = await params;
@@ -134,6 +163,19 @@ export default async function StaffQueuePage({
   > | null = null;
   let organizationLifecycle: OrganizationLifecycleItem[] | null = null;
   let staffRoleCandidates: StaffRoleCandidate[] | null = null;
+  let operationsControlPlane: OperationsControlPlane | null = null;
+  let auditExplorer: AuditExplorer | null = null;
+  let slaWorkspace: SlaWorkspace | null = null;
+  let retentionControlPlane: RetentionControlPlane | null = null;
+  const slaCursor = z
+    .object({
+      deadlineAt: z.string().datetime({ offset: true }),
+      reference: z.string().regex(/^(SUP|REF)-[A-F0-9]{12}$/),
+    })
+    .safeParse({
+      deadlineAt: filters.slaDeadline,
+      reference: filters.slaReference,
+    });
   try {
     worklist = await readStaffQueueItems(supabase, {
       queue,
@@ -187,6 +229,13 @@ export default async function StaffQueuePage({
   }
   if (queue === "operations") {
     try {
+      operationsControlPlane = await readOperationsControlPlane(supabase);
+    } catch {
+      // Operational mutations remain fail-closed without the narrow,
+      // role-scoped projection. No direct queue, incident, or evidence table
+      // fallback is attempted.
+    }
+    try {
       staffRoleCandidates = await readStaffRoleCandidates(supabase, {
         search: filters.q,
         limit: 25,
@@ -195,9 +244,78 @@ export default async function StaffQueuePage({
       // Role onboarding remains unavailable rather than falling back to
       // auth.users or a broad people table read.
     }
+    try {
+      const cursor = z
+        .string()
+        .regex(/^[1-9][0-9]*$/)
+        .safeParse(filters.auditCursor);
+      auditExplorer = await readAuditExplorer(supabase, {
+        actionPrefix: filters.auditAction,
+        targetType: filters.auditTarget,
+        cursor: cursor.success ? cursor.data : undefined,
+        limit: 25,
+      });
+    } catch {
+      // Audit payloads, reasons, request identifiers and source addresses are
+      // never fetched as a fallback when the safe projection is unavailable.
+    }
+    try {
+      slaWorkspace = await readSlaWorkspace(supabase, "all", {
+        cursor: slaCursor.success ? slaCursor.data : undefined,
+        limit: 50,
+      });
+    } catch {
+      // The operations queue remains available without exposing support or
+      // refund case bodies through a broader table read.
+    }
+    try {
+      retentionControlPlane = await readRetentionControlPlane(supabase);
+    } catch {
+      // Retention controls fail closed. There is deliberately no direct-table,
+      // dynamic-SQL, or physical-delete fallback.
+    }
+  }
+  if (queue === "finance") {
+    try {
+      slaWorkspace = await readSlaWorkspace(supabase, "refund", {
+        cursor: slaCursor.success ? slaCursor.data : undefined,
+        limit: 50,
+      });
+    } catch {
+      // Refund details stay in their dedicated workflow; this panel only uses
+      // the safe SLA projection and disappears if it is unavailable.
+    }
   }
   const selected =
     worklist?.items.find((item) => item.itemId === filters.selected) ?? null;
+  let organizationApplicationReview: OrganizationApplicationReview | null =
+    null;
+  let courseSubmissionReview: CourseSubmissionReview | null = null;
+  if (
+    selected?.kind === "organization_application" &&
+    selected.status === "submitted"
+  ) {
+    try {
+      organizationApplicationReview = await readOrganizationApplicationReview(
+        supabase,
+        selected.itemId.replace(/^organization:/, ""),
+      );
+    } catch {
+      // Decisions stay hidden when the dedicated, masked review projection is
+      // unavailable. The general queue item is never treated as sufficient.
+    }
+  }
+  if (selected?.kind === "course_version" && selected.status === "in_review") {
+    try {
+      courseSubmissionReview = await readCourseSubmissionReview(
+        supabase,
+        selected.itemId.replace(/^course:/, ""),
+      );
+    } catch {
+      // Publish, return, and reject all fail closed without the narrow
+      // submission-review projection.
+    }
+  }
   const filterQuery = new URLSearchParams();
   if (filters.q) filterQuery.set("q", filters.q);
   if (filters.status) filterQuery.set("status", filters.status);
@@ -232,6 +350,89 @@ export default async function StaffQueuePage({
             <p>
               安全投影恢復前，網站不會要求管理員手動修改資料庫；申請審核清單仍可獨立使用。
             </p>
+          </div>
+        ))}
+      {queue === "operations" &&
+        (operationsControlPlane ? (
+          <OperationsControlPanel workspace={operationsControlPlane} />
+        ) : (
+          <div className="warning-panel">
+            <strong>營運控制台暫時無法使用</strong>
+            <p>
+              安全投影恢復前，事故狀態、dead-letter
+              與備援證據維持不可操作；系統不會改用直接資料表存取。
+            </p>
+          </div>
+        ))}
+      {queue === "operations" &&
+        (auditExplorer ? (
+          <AuditExplorerPanel
+            filters={{
+              actionPrefix: filters.auditAction,
+              targetType: filters.auditTarget,
+            }}
+            workspace={auditExplorer}
+          />
+        ) : (
+          <div className="warning-panel">
+            <strong>安全稽核查詢暫時無法使用</strong>
+            <p>
+              系統不會退回原始事件 payload、理由、來源 IP 或未遮罩目標識別。
+            </p>
+          </div>
+        ))}
+      {queue === "operations" &&
+        (slaWorkspace ? (
+          <SlaWorkspacePanel
+            nextHref={
+              slaWorkspace.nextCursor
+                ? `/staff/operations?${new URLSearchParams({
+                    slaDeadline: slaWorkspace.nextCursor.deadlineAt,
+                    slaReference: slaWorkspace.nextCursor.reference,
+                  }).toString()}`
+                : undefined
+            }
+            workspace={slaWorkspace}
+          />
+        ) : (
+          <div className="warning-panel">
+            <strong>SLA 安全投影暫時無法使用</strong>
+            <p>
+              自動升級排程仍由 durable worker
+              執行；此畫面不會改讀客服內容或退款帳務資料。
+            </p>
+          </div>
+        ))}
+      {queue === "operations" &&
+        (retentionControlPlane ? (
+          <RetentionControlPanel workspace={retentionControlPlane} />
+        ) : (
+          <div className="warning-panel">
+            <strong>保存政策 dry-run 暫時無法使用</strong>
+            <p>
+              候選摘要與雙人證據控制恢復前，不允許以人工 SQL
+              或任何實體清除取代。
+            </p>
+          </div>
+        ))}
+      {queue === "finance" &&
+        (slaWorkspace ? (
+          <SlaWorkspacePanel
+            nextHref={
+              slaWorkspace.nextCursor
+                ? `/staff/finance?${new URLSearchParams({
+                    slaDeadline: slaWorkspace.nextCursor.deadlineAt,
+                    slaReference: slaWorkspace.nextCursor.reference,
+                  }).toString()}`
+                : undefined
+            }
+            title="退款案件 SLA"
+            workspace={slaWorkspace}
+          />
+        ) : (
+          <div className="warning-panel">
+            <strong>退款 SLA 投影暫時無法使用</strong>
+            <p>退款內容與帳務資料不會透過一般工作佇列降級顯示。</p>
           </div>
         ))}
       {queue === "operations" &&
@@ -340,7 +541,46 @@ export default async function StaffQueuePage({
                     </div>
                   ))}
                 </dl>
-                <StaffQueueActions item={selected} />
+                {selected.kind === "organization_application" &&
+                  selected.status === "submitted" &&
+                  (organizationApplicationReview ? (
+                    <OrganizationApplicationReviewSummary
+                      review={organizationApplicationReview}
+                    />
+                  ) : (
+                    <div className="warning-panel">
+                      <strong>申請審核資料暫時無法讀取</strong>
+                      <p>
+                        完整的安全投影恢復前，核准與拒絕按鈕保持關閉，避免只依案件標題作成決定。
+                      </p>
+                    </div>
+                  ))}
+                {selected.kind === "course_version" &&
+                  selected.status === "in_review" &&
+                  (courseSubmissionReview ? (
+                    <CourseSubmissionReviewPanel
+                      review={courseSubmissionReview}
+                    />
+                  ) : (
+                    <div className="warning-panel">
+                      <strong>課程送審資料暫時無法讀取</strong>
+                      <p>
+                        發布、退回與駁回保持關閉；系統不會以不完整資料作成審核結果。
+                      </p>
+                    </div>
+                  ))}
+                {(!(
+                  selected.kind === "organization_application" &&
+                  selected.status === "submitted"
+                ) ||
+                  organizationApplicationReview?.canReview) &&
+                  (!(
+                    selected.kind === "course_version" &&
+                    selected.status === "in_review"
+                  ) ||
+                    courseSubmissionReview?.canDecide) && (
+                    <StaffQueueActions item={selected} />
+                  )}
               </>
             ) : (
               <div className="empty-state">

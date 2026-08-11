@@ -70,6 +70,12 @@ export async function GET(request: Request) {
   if (couponReleaseError) {
     degradedReasons.push("coupon_reservation_release_failed");
   }
+  const { error: slaEnqueueError } = await service.rpc(
+    "enqueue_due_sla_escalations",
+  );
+  if (slaEnqueueError) {
+    degradedReasons.push("sla_escalation_enqueue_failed");
+  }
   const allDisabled = config.EMERGENCY_DISABLE_ALL === "true";
   const emergencyAllowedJobTypes = allDisabled
     ? [
@@ -79,6 +85,7 @@ export async function GET(request: Request) {
         "zoom_orphan_cleanup",
         "quarantine_scan",
         "profile_media_purge",
+        "sla_escalation_record",
       ]
     : null;
   const excludedJobTypes =
@@ -345,6 +352,15 @@ async function processJob(
   job: DurableJobLease,
   workerId: string,
 ): Promise<"already_finalized" | void> {
+  if (job.job_type === "sla_escalation_record") {
+    const { error } = await serviceSupabase().rpc("record_sla_escalation", {
+      p_job_id: job.id,
+      p_worker_id: workerId,
+      p_lease_generation: job.lease_generation,
+    });
+    if (error) throw new Error("SLA_ESCALATION_RECORD_FAILED");
+    return;
+  }
   if (job.job_type === "provider_event_process") {
     const eventId = z.uuid().parse(job.payload.providerEventId);
     const { error } = await serviceSupabase().rpc("process_provider_event", {

@@ -21,6 +21,7 @@ export async function POST(request: Request) {
     return new PlatformApplication(supabase).applyForOrganization({
       legalName: input.legalName,
       taxIdBlindIndex: organizationTaxIdIndex(input.taxId),
+      taxIdLastFour: input.taxId.slice(-4),
       invoiceEmail: input.invoiceEmail,
       idempotencyKey: requireIdempotencyKey(request),
     });

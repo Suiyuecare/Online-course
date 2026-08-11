@@ -699,7 +699,7 @@ export function OrganizationActions({
           </form>
         </>
       )}
-      {["owner", "training_manager", "finance"].includes(role) && (
+      {details?.capabilities.canExportTrainingReport && (
         <form
           className="single-step-form"
           method="get"

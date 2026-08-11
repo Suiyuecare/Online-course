@@ -395,6 +395,9 @@ export const organizationWorkspaceDetailsSchema = z.object({
     canEditProfile: z.boolean(),
     canManageMembers: z.boolean(),
     canManageOwnersOrFinance: z.boolean(),
+    canViewFinance: z.boolean(),
+    canViewTraining: z.boolean(),
+    canExportTrainingReport: z.boolean(),
   }),
   members: z.array(
     z.object({

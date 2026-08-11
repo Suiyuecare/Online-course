@@ -21,7 +21,11 @@ export function SiteFrame({ children }: { children: ReactNode }) {
   const classroom = isClassroomPath(pathname);
 
   if (classroom) {
-    return <main className="classroom-site-main">{children}</main>;
+    return (
+      <main className="classroom-site-main" id="main-content">
+        {children}
+      </main>
+    );
   }
 
   if (isLearnerPortalPath(pathname)) {
@@ -31,7 +35,7 @@ export function SiteFrame({ children }: { children: ReactNode }) {
   return (
     <>
       <SiteHeader />
-      <main>{children}</main>
+      <main id="main-content">{children}</main>
       <SiteFooter />
     </>
   );

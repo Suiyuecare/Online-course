@@ -26,6 +26,10 @@ const schema = z.object({
     "emergency_suspend",
     "platform_prerequisite_review",
     "provider_reconcile",
+    "incident_transition",
+    "operations_dead_letter",
+    "operations_evidence",
+    "retention_dry_run",
   ]),
   target: z.string().min(1).max(200),
 });

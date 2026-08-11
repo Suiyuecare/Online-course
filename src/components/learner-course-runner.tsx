@@ -403,21 +403,27 @@ export function LearnerCourseRunner({
           title={activeLesson.title}
         />
         <section className="course-runner-material-viewer">
-          <div aria-hidden="true">PDF</div>
+          <div aria-hidden="true" className="course-runner-material-mark">
+            教材
+          </div>
           <h2>課程教材</h2>
           {materialsForLesson.length === 0 ? (
             <p>這個單元目前沒有可下載的教材。</p>
           ) : (
-            materialsForLesson.map((material) => (
-              <CourseMaterialDownloadButton
-                key={material.id}
-                materialId={material.id}
-                title={material.title}
-              />
-            ))
+            <div className="course-runner-material-list">
+              {materialsForLesson.map((material) => (
+                <CourseMaterialDownloadButton
+                  allowInlinePreview
+                  key={material.id}
+                  materialId={material.id}
+                  title={material.title}
+                />
+              ))}
+            </div>
           )}
           <p className="muted-copy">
-            下一版可在此區直接閱讀投影片與 PDF；目前先提供受保護下載。
+            PDF、JPG 與 PNG 可在教室內預覽；XLSX 與 CSV
+            維持下載後開啟。每次預覽或下載都會重新驗證修課權限，不會產生可轉傳的永久公開連結。
           </p>
         </section>
       </>

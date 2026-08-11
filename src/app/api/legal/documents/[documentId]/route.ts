@@ -1,7 +1,21 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { readEffectiveLegalCenter } from "@/application/legal-center";
 import { serviceSupabase } from "@/infrastructure/supabase/server";
+
+function notFound() {
+  return NextResponse.json(
+    { ok: false },
+    {
+      status: 404,
+      headers: {
+        "cache-control": "private, no-store",
+        "x-content-type-options": "nosniff",
+      },
+    },
+  );
+}
 
 export async function GET(
   _request: Request,
@@ -9,14 +23,20 @@ export async function GET(
 ) {
   const { documentId } = await context.params;
   if (!z.uuid().safeParse(documentId).success) {
-    return NextResponse.json({ ok: false }, { status: 404 });
+    return notFound();
   }
   try {
     const supabase = serviceSupabase();
+    const effectiveDocument = (await readEffectiveLegalCenter(supabase)).find(
+      (candidate) => candidate.documentId === documentId,
+    );
+    if (!effectiveDocument) {
+      return notFound();
+    }
     const { data: document, error } = await supabase
       .from("legal_documents")
       .select(
-        "object_path,content_sha256,approved_by_legal,effective_at,superseded_at",
+        "kind,revision,object_path,content_sha256,approved_by_legal,effective_at,superseded_at",
       )
       .eq("id", documentId)
       .maybeSingle();
@@ -24,11 +44,14 @@ export async function GET(
     if (
       error ||
       !document?.approved_by_legal ||
+      document.kind !== effectiveDocument.kind ||
+      document.revision !== effectiveDocument.revision ||
+      document.content_sha256 !== effectiveDocument.contentSha256 ||
       !document.effective_at ||
       Date.parse(document.effective_at) > now ||
       (document.superseded_at && Date.parse(document.superseded_at) <= now)
     ) {
-      return NextResponse.json({ ok: false }, { status: 404 });
+      return notFound();
     }
     if (document.object_path.startsWith("inline://platform-prerequisite/")) {
       const changeId = document.object_path.slice(
@@ -65,8 +88,10 @@ export async function GET(
       return new NextResponse(bytes, {
         headers: {
           "cache-control": "private, no-store",
-          "content-disposition": `attachment; filename="suiyue-contract-${documentId}.txt"`,
+          "content-disposition": `attachment; filename="suiyue-${document.kind}-v${document.revision}.txt"`,
           "content-type": "text/plain; charset=utf-8",
+          etag: `"${document.content_sha256}"`,
+          "x-legal-document-sha256": document.content_sha256,
           "x-content-type-options": "nosniff",
         },
       });
@@ -85,15 +110,23 @@ export async function GET(
     return new NextResponse(bytes, {
       headers: {
         "cache-control": "private, no-store",
-        "content-disposition": `attachment; filename="suiyue-contract-${documentId}.pdf"`,
+        "content-disposition": `attachment; filename="suiyue-${document.kind}-v${document.revision}.pdf"`,
         "content-type": "application/pdf",
+        etag: `"${document.content_sha256}"`,
+        "x-legal-document-sha256": document.content_sha256,
         "x-content-type-options": "nosniff",
       },
     });
   } catch {
     return NextResponse.json(
       { ok: false, error: "LEGAL_DOCUMENT_UNAVAILABLE" },
-      { status: 503, headers: { "cache-control": "no-store" } },
+      {
+        status: 503,
+        headers: {
+          "cache-control": "private, no-store",
+          "x-content-type-options": "nosniff",
+        },
+      },
     );
   }
 }

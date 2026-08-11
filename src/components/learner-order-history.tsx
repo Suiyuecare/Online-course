@@ -267,12 +267,22 @@ function OrderCard({ order }: { order: LearnerOrderHistoryOrder }) {
             </section>
           )}
 
-          <Link
-            className="button secondary"
-            href={`/learner/orders/${order.orderId}`}
-          >
-            {primaryActionLabel(order)}
-          </Link>
+          <div className="learner-order-detail-actions">
+            <Link
+              className="button secondary"
+              href={`/learner/orders/${order.orderId}`}
+            >
+              {primaryActionLabel(order)}
+            </Link>
+            {order.paidAt && order.amountPaidTwd > 0 && (
+              <Link
+                className="button secondary"
+                href={`/learner/orders/${order.orderId}/payment-record`}
+              >
+                付款紀錄
+              </Link>
+            )}
+          </div>
         </div>
       </details>
     </article>

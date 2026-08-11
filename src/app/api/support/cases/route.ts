@@ -13,6 +13,7 @@ const schema = z.object({
     "order",
     "organization",
     "account",
+    "privacy",
     "other",
   ]),
   summary: z.string().trim().min(5).max(200),

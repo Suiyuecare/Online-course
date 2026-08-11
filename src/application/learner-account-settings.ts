@@ -37,6 +37,13 @@ const learnerAccountSettingsReadSchema = z.object({
   updatedAt: z.string().nullable(),
 });
 
+const learnerRecommendationPreferencesSchema =
+  learnerAccountSettingsReadSchema.pick({
+    currentStatus: true,
+    learningGoals: true,
+    interests: true,
+  });
+
 const learnerAccountPrivateReadSchema = z.object({
   encryptedProfile: z.unknown().nullable(),
 });
@@ -69,6 +76,21 @@ export type LearnerAccountIdentity = {
   maskedPhone?: string | null;
   phoneVerified: boolean;
 };
+
+export type LearnerRecommendationPreferences = z.infer<
+  typeof learnerRecommendationPreferencesSchema
+>;
+
+export async function readOwnLearnerRecommendationPreferences(
+  client: SupabaseClient,
+): Promise<LearnerRecommendationPreferences> {
+  const { data, error } = await client.rpc("read_own_learner_account_settings");
+  const parsed = learnerRecommendationPreferencesSchema.safeParse(data);
+  if (error || !parsed.success) {
+    throw new Error("LEARNER_RECOMMENDATION_PREFERENCES_UNAVAILABLE");
+  }
+  return parsed.data;
+}
 
 export async function readOwnLearnerAccountSettings(
   client: SupabaseClient,

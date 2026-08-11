@@ -12,7 +12,7 @@ export async function POST(
   context: { params: Promise<{ courseVersionId: string }> },
 ) {
   return mutation(request, async () => {
-    requireIdempotencyKey(request);
+    const idempotencyKey = requireIdempotencyKey(request);
     const { courseVersionId } = await context.params;
     z.uuid().parse(courseVersionId);
     const { reason, stepUpNonce } = await readJson(
@@ -27,8 +27,9 @@ export async function POST(
       p_course_version_id: courseVersionId,
       p_reason: reason,
       p_nonce_hash: createHash("sha256").update(stepUpNonce).digest("hex"),
+      p_idempotency_key: idempotencyKey,
     });
     if (error) throw new Error(`DATABASE_REJECTED:${error.message}`);
-    return { published: data };
+    return data;
   });
 }
