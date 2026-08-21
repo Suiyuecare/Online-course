@@ -9,10 +9,31 @@ const migrationFiles = readdirSync(migrationDirectory)
 const migrations = migrationFiles
   .map((file) => readFileSync(join(migrationDirectory, file), "utf8"))
   .join("\n");
+const educationQualityMigration = readFileSync(
+  join(
+    migrationDirectory,
+    "20260821072228_education_quality_course_workflow.sql",
+  ),
+  "utf8",
+);
+const preapprovedStaffMigration = readFileSync(
+  join(
+    migrationDirectory,
+    "20260821075141_allow_preapproved_staff_admin_creation.sql",
+  ),
+  "utf8",
+);
+const stableStaffIdentityMigration = readFileSync(
+  join(
+    migrationDirectory,
+    "20260821075504_stabilize_preapproved_staff_identity_insert.sql",
+  ),
+  "utf8",
+);
 
 describe("clean migration chain", () => {
-  it("has the ten responsibility-separated migrations and forty forward hardening migrations", () => {
-    expect(migrationFiles).toHaveLength(50);
+  it("has the ten responsibility-separated migrations and forty-three forward hardening migrations", () => {
+    expect(migrationFiles).toHaveLength(53);
     expect(migrationFiles.map((file) => file.replace(/^\d+_/, ""))).toEqual([
       "reset_legacy_application.sql",
       "identity_rbac_legal.sql",
@@ -64,6 +85,9 @@ describe("clean migration chain", () => {
       "learner_pending_order_cancellation.sql",
       "operations_control_plane_v2.sql",
       "fix_worker_database_integration.sql",
+      "education_quality_course_workflow.sql",
+      "allow_preapproved_staff_admin_creation.sql",
+      "stabilize_preapproved_staff_identity_insert.sql",
     ]);
   });
 
@@ -139,6 +163,118 @@ describe("clean migration chain", () => {
     );
     expect(seed).not.toMatch(
       /insert\s+into\s+(?:public\.)?(?:courses|course_versions|people|orders|enrollments|certificates)\b/i,
+    );
+  });
+});
+
+describe("education-quality course workflow", () => {
+  it("accepts only exact HTTPS Google Forms registration targets", () => {
+    expect(educationQualityMigration).toContain(
+      "course_versions_registration_target_check",
+    );
+    expect(educationQualityMigration).toContain(
+      "^https://forms\\.gle/[A-Za-z0-9_-]+(?:[?#][A-Za-z0-9._~!$&()*+,;=:@%/?-]*)?$",
+    );
+    expect(educationQualityMigration).toContain(
+      "^https://docs\\.google\\.com/forms/d/(?:e/)?[A-Za-z0-9_-]+/viewform(?:[?#][A-Za-z0-9._~!$&()*+,;=:@%/?-]*)?$",
+    );
+    expect(educationQualityMigration).toContain(
+      "external_registration_url is not null",
+    );
+    expect(educationQualityMigration).not.toMatch(
+      /\^https:\/\/[^/'\n]*(?:\.\*|\[\^\/\]\*)[^/'\n]*google/i,
+    );
+    expect(educationQualityMigration).toMatch(
+      /registration_mode = 'google_form'[\s\S]*?and \([\s\S]*?forms\\\.gle[\s\S]*?or external_registration_url ~[\s\S]*?docs\\\.google\\\.com/,
+    );
+  });
+
+  it("scopes the teaching-quality workspace and registration edits to their creator", () => {
+    const ownerGuard =
+      /version\.created_by = actor\s+or internal\.has_exact_staff_role\('platform_admin'\)/g;
+    expect(
+      educationQualityMigration.match(ownerGuard)?.length,
+    ).toBeGreaterThanOrEqual(3);
+    expect(educationQualityMigration).toContain(
+      "COURSE_REGISTRATION_SETTINGS_FORBIDDEN",
+    );
+  });
+
+  it("closes the legacy publication bypass and keeps approval CEO-only", () => {
+    expect(educationQualityMigration).toMatch(
+      /revoke all on function internal\.publish_course_version_idempotent\(\s*uuid, text, text, uuid\s*\) from public, anon, authenticated, service_role;/,
+    );
+    expect(educationQualityMigration).toMatch(
+      /create or replace function internal\.publish_course_version_as_platform_admin[\s\S]*?security definer[\s\S]*?internal\.has_exact_staff_role\('platform_admin'\)[\s\S]*?EXECUTIVE_APPROVAL_REQUIRED/,
+    );
+    expect(educationQualityMigration).toMatch(
+      /create or replace function public\.publish_course_version[\s\S]*?security invoker[\s\S]*?select internal\.publish_course_version_as_platform_admin/,
+    );
+    expect(educationQualityMigration).not.toMatch(
+      /grant execute on function internal\.publish_course_version_idempotent\([\s\S]*?\) to authenticated;/,
+    );
+  });
+
+  it("admits only the protected teaching-quality email through Auth hooks", () => {
+    expect(educationQualityMigration).toContain("edu.control@suiyuecare.com");
+    for (const protectedClaim of [
+      "'account_type', '') = 'staff'",
+      "'staff_login', '') = 'true'",
+      "'staff_role', '') = 'course_admin'",
+      "'must_change_password', '') = 'true'",
+    ]) {
+      expect(educationQualityMigration).toContain(protectedClaim);
+    }
+    expect(educationQualityMigration).toMatch(
+      /revoke all on function internal\.before_user_created\(jsonb\)\s+from public, anon, authenticated, service_role;\s+grant execute on function internal\.before_user_created\(jsonb\)\s+to supabase_auth_admin;/,
+    );
+    expect(educationQualityMigration).toMatch(
+      /revoke all on function public\.provision_education_quality_staff\(uuid, text\)\s+from public, anon, authenticated, service_role;\s+grant execute on function public\.provision_education_quality_staff\(uuid, text\)\s+to service_role;/,
+    );
+    expect(educationQualityMigration).toMatch(
+      /revoke all on function internal\.provision_education_quality_staff\(uuid, text\)\s+from public, anon, authenticated, service_role;\s+grant execute on function internal\.provision_education_quality_staff\(uuid, text\)\s+to service_role;/,
+    );
+    const provisionBlock = educationQualityMigration.slice(
+      educationQualityMigration.indexOf(
+        "create or replace function internal.provision_education_quality_staff",
+      ),
+      educationQualityMigration.indexOf(
+        "create or replace function public.provision_education_quality_staff",
+      ),
+    );
+    expect(provisionBlock).not.toContain("auth.jwt()");
+
+    expect(preapprovedStaffMigration).toContain("edu.control@suiyuecare.com");
+    const identityTriggerBlock = preapprovedStaffMigration.slice(
+      preapprovedStaffMigration.indexOf(
+        "create or replace function internal.handle_new_phone_identity",
+      ),
+    );
+    expect(identityTriggerBlock).not.toContain(
+      "raw_app_meta_data ->> 'provider'",
+    );
+    expect(preapprovedStaffMigration).toMatch(
+      /grant execute on function internal\.before_user_created\(jsonb\)\s+to supabase_auth_admin;/,
+    );
+    expect(stableStaffIdentityMigration).toContain("preapproved_staff_email");
+    expect(stableStaffIdentityMigration).toContain(
+      "account.raw_app_meta_data ->> 'must_change_password' = 'true'",
+    );
+    expect(stableStaffIdentityMigration).toMatch(
+      /revoke all on function internal\.provision_education_quality_staff\(uuid, text\)\s+from public, anon, authenticated, service_role;\s+grant execute on function internal\.provision_education_quality_staff\(uuid, text\)\s+to service_role;/,
+    );
+  });
+
+  it("projects exactly one latest published version with registration fields", () => {
+    for (const field of [
+      "version.registration_mode",
+      "version.external_registration_url",
+      "version.registration_cta_label",
+    ]) {
+      expect(educationQualityMigration).toContain(field);
+    }
+    expect(educationQualityMigration).toMatch(
+      /join lateral \([\s\S]*?candidate\.status = 'published'[\s\S]*?candidate\.published_at desc nulls last,[\s\S]*?candidate\.version desc,[\s\S]*?limit 1\s*\) version on true/,
     );
   });
 });

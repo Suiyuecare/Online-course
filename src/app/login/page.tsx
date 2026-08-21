@@ -29,6 +29,12 @@ export default function LoginPage() {
         <Link className="button secondary auth-support-link" href="/support">
           查看客服電話與處理方式
         </Link>
+        <Link
+          className="button secondary auth-support-link"
+          href="/staff/login"
+        >
+          工作人員帳密登入
+        </Link>
       </aside>
     </section>
   );

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { CatalogCourse } from "@/infrastructure/supabase/catalog";
+import { safeGoogleFormUrl } from "@/domain/education-quality";
 import {
   AddOfficialCourseToCart,
   AddPublicCourseToCart,
@@ -21,6 +22,10 @@ export function CourseCard({
   learnerMode?: boolean;
 }) {
   const purchaseReady = course.purchase_readiness?.purchaseReady === true;
+  const registrationUrl =
+    course.registration_mode === "google_form"
+      ? safeGoogleFormUrl(course.external_registration_url)
+      : null;
 
   return (
     <article className="course-card">
@@ -60,13 +65,20 @@ export function CourseCard({
           <Link className="button secondary" href={`/courses/${course.slug}`}>
             查看課程
           </Link>
+          {registrationUrl && (
+            <a className="button" href={registrationUrl}>
+              {course.registration_cta_label}
+            </a>
+          )}
           {learnerMode && (
             <>
               <ToggleOfficialCourseFavorite course={course} />
-              {purchaseReady && <AddOfficialCourseToCart course={course} />}
+              {purchaseReady && !registrationUrl && (
+                <AddOfficialCourseToCart course={course} />
+              )}
             </>
           )}
-          {!learnerMode && purchaseReady && (
+          {!learnerMode && purchaseReady && !registrationUrl && (
             <AddPublicCourseToCart course={course} />
           )}
         </div>

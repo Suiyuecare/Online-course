@@ -56,6 +56,9 @@ const expectedFiles = [
   "20260730064000_learner_pending_order_cancellation.sql",
   "20260730065000_operations_control_plane_v2.sql",
   "20260811135006_fix_worker_database_integration.sql",
+  "20260821072228_education_quality_course_workflow.sql",
+  "20260821075141_allow_preapproved_staff_admin_creation.sql",
+  "20260821075504_stabilize_preapproved_staff_identity_insert.sql",
 ];
 if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) {
   throw new Error(
@@ -154,6 +157,16 @@ const required = [
   "internal.review_course_version_submission",
   "course_review_decision",
   "'contentPreserved', true",
+  "course_versions_registration_target_check",
+  "COURSE_REGISTRATION_SETTINGS_FORBIDDEN",
+  "internal.read_education_quality_workspace",
+  "internal.publish_course_version_as_platform_admin",
+  "EXECUTIVE_APPROVAL_REQUIRED",
+  "edu.control@suiyuecare.com",
+  "internal.provision_education_quality_staff",
+  "version.registration_mode",
+  "version.external_registration_url",
+  "version.registration_cta_label",
 ];
 for (const invariant of required) {
   if (!sql.includes(invariant))

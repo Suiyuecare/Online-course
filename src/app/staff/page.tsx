@@ -6,7 +6,13 @@ export const dynamic = "force-dynamic";
 
 const queues = [
   {
-    title: "課程與影片",
+    title: "教學品管課程上架",
+    href: "/staff/education",
+    queue: "education",
+    roles: ["course_admin"],
+  },
+  {
+    title: "進階課程與影片管理",
     href: "/staff/courses",
     queue: "courses",
     roles: ["course_admin", "accreditation_reviewer"],
@@ -70,7 +76,9 @@ const queues = [
 ] as const;
 
 export default async function StaffHome() {
-  const { supabase } = await requireUser().catch(() => redirect("/login"));
+  const { supabase } = await requireUser().catch(() =>
+    redirect("/staff/login"),
+  );
   const visibleQueues = (
     await Promise.all(
       queues.map(async (queue) => {
@@ -110,10 +118,10 @@ export default async function StaffHome() {
   return (
     <section className="dashboard-page shell">
       <div className="warning-panel">
-        <strong>後台需要手機 OTP＋TOTP AAL2</strong>
+        <strong>後台需要職員登入＋TOTP AAL2</strong>
         <p>
-          敏感操作還要重新完成 TOTP，取得綁定動作、目標與 nonce
-          的五分鐘一次性授權。
+          教學品管可使用公司帳密；既有工作人員仍可沿用手機登入。敏感操作還要重新完成
+          TOTP，取得綁定動作、目標與 nonce 的五分鐘一次性授權。
         </p>
       </div>
       <p className="eyebrow">工作人員後台</p>

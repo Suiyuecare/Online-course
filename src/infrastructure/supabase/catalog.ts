@@ -41,6 +41,9 @@ export type CatalogCourse = {
     endsAt: string;
     bookingCloseAt: string;
   }[];
+  registration_mode: "internal" | "google_form";
+  external_registration_url: string | null;
+  registration_cta_label: string;
   purchase_readiness?: CoursePurchaseReadiness;
 };
 
@@ -68,7 +71,7 @@ export async function catalogCourseListing(): Promise<CatalogCourseListing> {
     const { data, error } = await client
       .from("published_course_catalog")
       .select(
-        "slug,course_version_id,title,summary,description,learning_objectives,category_code,category_title,delivery_type,price_twd,recorded_refund_allocation_twd,live_refund_allocations,organization_point_price,accreditation_status,accreditation_points,has_cover,equipment_requirements,instructors,first_live_starts_at,legal_document_id,legal_document_sha256,live_sessions",
+        "slug,course_version_id,title,summary,description,learning_objectives,category_code,category_title,delivery_type,price_twd,recorded_refund_allocation_twd,live_refund_allocations,organization_point_price,accreditation_status,accreditation_points,has_cover,equipment_requirements,instructors,first_live_starts_at,legal_document_id,legal_document_sha256,live_sessions,registration_mode,external_registration_url,registration_cta_label",
       )
       .order("title")
       .abortSignal(controller.signal);

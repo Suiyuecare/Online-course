@@ -33,6 +33,9 @@ function course(
     legal_document_id: crypto.randomUUID(),
     legal_document_sha256: "a".repeat(64),
     live_sessions: [],
+    registration_mode: "internal",
+    external_registration_url: null,
+    registration_cta_label: "報名活動",
     purchase_readiness: {
       purchaseReady: true,
       reasons: [],

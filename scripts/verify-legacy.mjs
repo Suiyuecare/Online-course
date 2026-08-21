@@ -30,6 +30,12 @@ const cleanupOnlyLegacyObjects = new Map([
     new Set(["legacy seat-lot semantics", "subscriptions"]),
   ],
 ]);
+const narrowlyApprovedCapabilities = new Map([
+  [
+    "src/components/staff-email-login.tsx",
+    new Set(["password authentication"]),
+  ],
+]);
 
 function filesAt(path) {
   const stat = statSync(path);
@@ -46,6 +52,9 @@ for (const file of roots.flatMap(filesAt)) {
   const source = readFileSync(file, "utf8");
   for (const [pattern, capability] of forbidden) {
     if (cleanupOnlyLegacyObjects.get(relativePath)?.has(capability)) continue;
+    if (narrowlyApprovedCapabilities.get(relativePath)?.has(capability)) {
+      continue;
+    }
     if (pattern.test(source)) {
       failures.push(`${relativePath}: ${capability}`);
     }
@@ -62,4 +71,7 @@ console.log("Forbidden legacy capability proof: PASS");
 console.log(`Scanned roots: ${roots.join(", ")}`);
 console.log(
   "Cleanup-only allowlist: the guarded reset migration may name retired tables solely to drop them",
+);
+console.log(
+  "Active allowlist: only the protected staff login component may use password authentication",
 );

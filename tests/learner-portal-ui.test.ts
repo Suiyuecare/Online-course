@@ -151,9 +151,9 @@ describe("logged-in learner portal", () => {
     const catalog = source("src/infrastructure/supabase/catalog.ts");
 
     expect(card).toContain("course.purchase_readiness?.purchaseReady === true");
-    expect(card).toContain(
-      "purchaseReady && <AddOfficialCourseToCart course={course} />",
-    );
+    expect(card).toContain("purchaseReady && !registrationUrl");
+    expect(card).toContain("<AddOfficialCourseToCart course={course} />");
+    expect(card).toContain('course.registration_mode === "google_form"');
     expect(card).toContain("!learnerMode && purchaseReady");
     expect(catalog).toContain("catalogCourseListingWithReadiness");
     expect(catalog).toContain('"read_public_course_readiness"');

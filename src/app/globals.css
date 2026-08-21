@@ -829,6 +829,11 @@ input {
   min-height: 28px;
 }
 
+.staff-password-form {
+  display: grid;
+  gap: 14px;
+}
+
 .auth-support-link {
   margin-top: 18px;
   width: 100%;

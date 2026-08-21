@@ -57,12 +57,8 @@ const queueContent: Record<
 > = {
   courses: {
     title: "課程與影片",
-    description: "建立三種課型、不可變版本、題庫與雙人發布檢查。",
-    tasks: [
-      "草稿待補資料",
-      "Stream 處理失敗",
-      "待 accreditation reviewer 審核",
-    ],
+    description: "教學品管建立三種課型與報名頁，送交執行長核准後才會公開。",
+    tasks: ["草稿待補資料", "Stream 處理失敗", "待執行長核准上架"],
   },
   accreditation: {
     title: "積分審核與送審",
@@ -126,6 +122,10 @@ export default async function StaffQueuePage({
     operations: ["platform_admin"],
   };
   const { supabase } = await requireUser().catch(() => redirect("/login"));
+  const { data: isExecutiveApprover } = await supabase.rpc(
+    "authorize_exact_staff_role",
+    { p_required_role: "platform_admin" },
+  );
   const authorizations = await Promise.all(
     requiredRoles[queue].map((role) =>
       supabase.rpc("authorize_staff_action", {
@@ -288,6 +288,15 @@ export default async function StaffQueuePage({
   }
   const selected =
     worklist?.items.find((item) => item.itemId === filters.selected) ?? null;
+  const selectedActions = selected
+    ? {
+        ...selected,
+        actions: selected.actions.filter(
+          (action) =>
+            action.key !== "course_publish" || isExecutiveApprover === true,
+        ),
+      }
+    : null;
   let organizationApplicationReview: OrganizationApplicationReview | null =
     null;
   let courseSubmissionReview: CourseSubmissionReview | null = null;
@@ -579,7 +588,7 @@ export default async function StaffQueuePage({
                     selected.status === "in_review"
                   ) ||
                     courseSubmissionReview?.canDecide) && (
-                    <StaffQueueActions item={selected} />
+                    <StaffQueueActions item={selectedActions ?? selected} />
                   )}
               </>
             ) : (

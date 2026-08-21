@@ -1,5 +1,6 @@
 .next
 node_modules
+supabase/.temp
 pnpm-lock.yaml
 PLAN.md
 PLAN-REVIEW-LOG.md

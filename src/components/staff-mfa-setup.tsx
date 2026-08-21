@@ -6,6 +6,7 @@ import { staffBrowserSupabase } from "@/infrastructure/supabase/step-up-client";
 
 export function StaffMfaSetup() {
   const [verified, setVerified] = useState(false);
+  const [existingFactorId, setExistingFactorId] = useState<string | null>(null);
   const [factor, setFactor] = useState<{
     id: string;
     qrCode: string;
@@ -14,13 +15,25 @@ export function StaffMfaSetup() {
   const [message, setMessage] = useState("正在檢查 TOTP 狀態…");
 
   useEffect(() => {
-    void staffBrowserSupabase()
-      .auth.mfa.listFactors()
-      .then(({ data }) => {
-        const ready = data?.totp.some((item) => item.status === "verified");
-        setVerified(Boolean(ready));
-        setMessage(ready ? "TOTP 已設定。" : "尚未設定 TOTP。");
-      });
+    const supabase = staffBrowserSupabase();
+    void Promise.all([
+      supabase.auth.mfa.listFactors(),
+      supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+    ]).then(([factors, assurance]) => {
+      const readyFactor = factors.data?.totp.find(
+        (item) => item.status === "verified",
+      );
+      const elevated = assurance.data?.currentLevel === "aal2";
+      setVerified(elevated);
+      setExistingFactorId(elevated ? null : (readyFactor?.id ?? null));
+      setMessage(
+        elevated
+          ? "本次登入已完成 TOTP 驗證。"
+          : readyFactor
+            ? "請輸入驗證器 App 的六位數驗證碼以進入後台。"
+            : "尚未設定 TOTP。",
+      );
+    });
   }, []);
 
   async function enroll() {
@@ -40,17 +53,16 @@ export function StaffMfaSetup() {
     setMessage("請用驗證器 App 掃描，再輸入六位數驗證碼。");
   }
 
-  async function verify(code: string) {
-    if (!factor) return;
+  async function verifyFactor(factorId: string, code: string) {
     const supabase = staffBrowserSupabase();
     const { data: challenge, error: challengeError } =
-      await supabase.auth.mfa.challenge({ factorId: factor.id });
+      await supabase.auth.mfa.challenge({ factorId });
     if (challengeError) {
       setMessage("TOTP challenge 建立失敗。");
       return;
     }
     const { error } = await supabase.auth.mfa.verify({
-      factorId: factor.id,
+      factorId,
       challengeId: challenge.id,
       code,
     });
@@ -60,21 +72,53 @@ export function StaffMfaSetup() {
     }
     setVerified(true);
     setFactor(null);
+    setExistingFactorId(null);
     setMessage("TOTP 已驗證；現在可以進入工作人員後台。");
+  }
+
+  async function verify(code: string) {
+    if (!factor) return;
+    await verifyFactor(factor.id, code);
   }
 
   return (
     <section className="single-step-form">
       <h2>工作人員 TOTP</h2>
       <p>
-        手機 OTP 是第一層；後台需要驗證器 App 的
-        TOTP。敏感操作仍會要求當下再驗證一次。
+        完成第一階段登入後，後台還需要驗證器 App 的 TOTP。
+        敏感操作仍會要求當下再驗證一次。
       </p>
-      {!verified && !factor && (
-        <button className="button" onClick={() => void enroll()}>
-          開始設定 TOTP
-        </button>
-      )}
+      {!verified &&
+        !factor &&
+        (existingFactorId ? (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void verifyFactor(
+                existingFactorId,
+                String(new FormData(event.currentTarget).get("code")),
+              );
+            }}
+          >
+            <label>
+              六位數驗證碼
+              <input
+                autoComplete="one-time-code"
+                name="code"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                required
+              />
+            </label>
+            <button className="button" type="submit">
+              驗證並進入後台
+            </button>
+          </form>
+        ) : (
+          <button className="button" onClick={() => void enroll()}>
+            開始設定 TOTP
+          </button>
+        ))}
       {factor && (
         <>
           {/* Supabase generates this data URI locally for the enrolled factor. */}

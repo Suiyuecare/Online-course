@@ -13,7 +13,7 @@ export function CourseSubmissionReviewPanel({
   const [message, setMessage] = useState(
     review.canDecide
       ? "退回與駁回都會保留課綱、單元、題庫、素材與核定連結，課程回到草稿後可修正再送審。"
-      : "送審者不能審核自己的課程；請由另一位積分審核員處理。",
+      : "送審者不能審核自己的課程；最後上架必須由執行長／平台管理員核准。",
   );
 
   return (
