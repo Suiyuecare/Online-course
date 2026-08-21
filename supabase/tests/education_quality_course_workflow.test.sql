@@ -329,6 +329,7 @@ select set_config(
 
 insert into public.staff_roles (person_id, role) values
   (current_setting('test.education.admin_a')::uuid, 'course_admin'),
+  (current_setting('test.education.admin_a')::uuid, 'instructor'),
   (current_setting('test.education.admin_b')::uuid, 'course_admin'),
   (current_setting('test.education.executive')::uuid, 'platform_admin'),
   (current_setting('test.education.reviewer')::uuid, 'accreditation_reviewer');
@@ -430,9 +431,10 @@ insert into public.course_versions (
   );
 
 insert into public.instructors (
-  id, display_name, biography, credentials, active
+  id, person_id, display_name, biography, credentials, active
 ) values (
   '99615000-0000-4000-8000-000000000001',
+  current_setting('test.education.admin_a')::uuid,
   '照顧課程講師',
   '長期參與居家照顧與家屬支持工作。',
   '長照專業講師資格',
