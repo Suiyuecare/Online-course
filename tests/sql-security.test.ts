@@ -340,6 +340,37 @@ describe("Google Form review and publication isolation", () => {
     expect(googleFormPublicationMigration).toContain("'course.published'");
   });
 
+  it("bypasses global formal-course triggers only with a same-transaction step-up", () => {
+    expect(googleFormPublicationMigration).toContain(
+      "internal.google_form_publication_authorized",
+    );
+    expect(googleFormPublicationMigration).toContain(
+      "grant_row.consumed_at = transaction_timestamp()",
+    );
+    expect(googleFormPublicationMigration).not.toMatch(
+      /set_config\([^)]*google_form/i,
+    );
+    for (const triggerFunction of [
+      "internal.enforce_provider_ttl_before_publication",
+      "internal.require_content_release_before_publish",
+      "internal.validate_hybrid_before_publish",
+    ]) {
+      expect(googleFormPublicationMigration).toContain(triggerFunction);
+    }
+    for (const preservedFormalError of [
+      "CORE_PROVIDER_VALIDATION_EXPIRED",
+      "STREAM_PROVIDER_VALIDATION_EXPIRED",
+      "LIVE_PROVIDER_VALIDATION_EXPIRED",
+      "COURSE_CONTENT_RELEASE_REQUIRED",
+      "HYBRID_COMPONENT_CONFIGURATION_INCOMPLETE",
+    ]) {
+      expect(googleFormPublicationMigration).toContain(preservedFormalError);
+    }
+    expect(googleFormPublicationMigration).toContain(
+      "GOOGLE_FORM_PUBLICATION_AUTHORIZATION_REQUIRED",
+    );
+  });
+
   it("relaxes only the external catalog branch", () => {
     expect(googleFormPublicationMigration).toMatch(
       /version\.registration_mode = 'internal'[\s\S]*?version\.commerce_close_at > clock_timestamp\(\)[\s\S]*?accreditation\.status in \('applying', 'approved'\)[\s\S]*?legal\.approved_by_legal/,

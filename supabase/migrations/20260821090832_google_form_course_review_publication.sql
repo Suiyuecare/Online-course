@@ -127,6 +127,211 @@ $$;
 revoke all on function internal.google_form_course_page_is_complete(uuid)
   from public, anon, authenticated, service_role;
 
+-- Trigger-level authorization for the catalog-only publication transition.
+-- The step-up row must have been consumed for this exact course in the same
+-- database transaction. No client-controlled GUC or request flag is trusted.
+create or replace function internal.google_form_publication_authorized(
+  target_version uuid
+)
+returns boolean
+language sql
+security definer
+stable
+set search_path = pg_catalog, public, private
+as $$
+  select internal.has_exact_staff_role('platform_admin')
+    and internal.google_form_course_page_is_complete(target_version)
+    and exists (
+      select 1
+      from private.step_up_grants grant_row
+      join public.people person
+        on person.id = grant_row.actor_id
+      where grant_row.actor_id = internal.current_person_id()
+        and grant_row.action = 'course_publish'
+        and grant_row.target = target_version::text
+        and grant_row.identity_epoch = person.identity_epoch
+        and grant_row.consumed_at = transaction_timestamp()
+        and grant_row.totp_verified_at >=
+          transaction_timestamp() - interval '5 minutes'
+        and grant_row.expires_at > grant_row.consumed_at
+    )
+$$;
+
+revoke all on function internal.google_form_publication_authorized(uuid)
+  from public, anon, authenticated, service_role;
+
+-- Formal/internal courses retain every provider TTL check byte-for-byte. The
+-- only early return is a row-bound Google Form transition carrying a same-
+-- transaction, server-consumed executive step-up grant.
+create or replace function internal.enforce_provider_ttl_before_publication()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+begin
+  if new.status = 'published'
+     and new.registration_mode = 'google_form'
+     and tg_op = 'UPDATE'
+     and old.status <> 'published'
+  then
+    if not internal.google_form_publication_authorized(new.id) then
+      raise exception 'GOOGLE_FORM_PUBLICATION_AUTHORIZATION_REQUIRED';
+    end if;
+    return new;
+  end if;
+  if new.status <> 'published'
+     or (tg_op = 'UPDATE' and old.status = 'published')
+  then
+    return new;
+  end if;
+  if exists (
+    select 1
+    from unnest(array[
+      'supabase_phone_auth', 'twilio_verify', 'resend',
+      'managed_kms', 'malware_scanner', 'external_monitor'
+    ]) required(provider)
+    where not internal.provider_production_validation_is_current(
+      required.provider, clock_timestamp()
+    )
+  )
+  then
+    raise exception 'CORE_PROVIDER_VALIDATION_EXPIRED';
+  end if;
+  if new.delivery_type in ('recorded', 'hybrid')
+     and not internal.provider_production_validation_is_current(
+       'cloudflare_stream', clock_timestamp()
+     )
+  then
+    raise exception 'STREAM_PROVIDER_VALIDATION_EXPIRED';
+  end if;
+  if new.delivery_type in ('live', 'hybrid')
+     and (
+       not internal.provider_production_validation_is_current(
+         'zoom_oauth', clock_timestamp()
+       )
+       or not internal.provider_production_validation_is_current(
+         'zoom_meeting_sdk', clock_timestamp()
+       )
+     )
+  then
+    raise exception 'LIVE_PROVIDER_VALIDATION_EXPIRED';
+  end if;
+  return new;
+end
+$$;
+
+revoke all on function internal.enforce_provider_ttl_before_publication()
+  from public, anon, authenticated, service_role;
+
+create or replace function internal.require_content_release_before_publish()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+begin
+  if new.status = 'published'
+     and new.registration_mode = 'google_form'
+     and tg_op = 'UPDATE'
+     and old.status <> 'published'
+  then
+    if not internal.google_form_publication_authorized(new.id) then
+      raise exception 'GOOGLE_FORM_PUBLICATION_AUTHORIZATION_REQUIRED';
+    end if;
+    return new;
+  end if;
+  if new.status = 'published'
+     and new.delivery_type in ('recorded', 'hybrid')
+     and new.content_available_at is null
+  then
+    raise exception 'COURSE_CONTENT_RELEASE_REQUIRED';
+  end if;
+  return new;
+end
+$$;
+
+revoke all on function internal.require_content_release_before_publish()
+  from public, anon, authenticated, service_role;
+
+create or replace function internal.validate_hybrid_before_publish()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  global_required_seconds integer;
+  scoped_required_seconds integer;
+begin
+  if new.status = 'published'
+     and new.registration_mode = 'google_form'
+     and old.status <> 'published'
+  then
+    if not internal.google_form_publication_authorized(new.id) then
+      raise exception 'GOOGLE_FORM_PUBLICATION_AUTHORIZATION_REQUIRED';
+    end if;
+    return new;
+  end if;
+  if new.status <> 'published'
+     or old.status = 'published'
+     or new.delivery_type <> 'hybrid'
+  then
+    return new;
+  end if;
+
+  select requirement.required_watch_seconds
+    into global_required_seconds
+  from public.course_requirements requirement
+  where requirement.course_version_id = new.id;
+  select coalesce(sum(component.recorded_required_watch_seconds), 0)::integer
+    into scoped_required_seconds
+  from public.hybrid_components component
+  where component.course_version_id = new.id
+    and component.component_type = 'recorded'
+    and component.required;
+
+  if global_required_seconds is null
+     or global_required_seconds <= 0
+     or scoped_required_seconds <> global_required_seconds
+     or exists (
+       select 1
+       from public.hybrid_components component
+       where component.course_version_id = new.id
+         and component.component_type = 'recorded'
+         and component.required
+         and (
+           component.recorded_required_watch_seconds <= 0
+           or not exists (
+             select 1
+             from public.lessons lesson
+             join public.modules module on module.id = lesson.module_id
+             where module.course_version_id = new.id
+               and lesson.hybrid_component_id = component.id
+               and lesson.content_type = 'video'
+               and lesson.archived_at is null
+           )
+         )
+     )
+     or exists (
+       select 1
+       from public.lessons lesson
+       join public.modules module on module.id = lesson.module_id
+       where module.course_version_id = new.id
+         and lesson.content_type = 'video'
+         and lesson.archived_at is null
+         and lesson.hybrid_component_id is null
+     )
+  then
+    raise exception 'HYBRID_COMPONENT_CONFIGURATION_INCOMPLETE';
+  end if;
+  return new;
+end
+$$;
+
+revoke all on function internal.validate_hybrid_before_publish()
+  from public, anon, authenticated, service_role;
+
 create or replace function internal.update_course_registration_settings_guarded(
   target_version uuid,
   submitted_mode text,
@@ -911,6 +1116,85 @@ revoke all on public.published_course_catalog
   from public, anon, authenticated, service_role;
 grant select on public.published_course_catalog
   to anon, authenticated, service_role;
+
+-- The catalog view is SECURITY INVOKER, so its base-table RLS must admit the
+-- catalog-only Google Form branch. Formal/internal courses retain the exact
+-- commerce window requirement; accreditation, legal, and live-session
+-- policies remain untouched and therefore cannot be bypassed by this branch.
+drop policy if exists catalog_courses_read on public.courses;
+create policy catalog_courses_read on public.courses
+for select to anon, authenticated
+using (
+  exists (
+    select 1
+    from public.course_versions version
+    where version.course_id = courses.id
+      and version.status = 'published'
+      and (
+        (
+          version.registration_mode = 'internal'
+          and version.commerce_close_at > now()
+        )
+        or version.registration_mode = 'google_form'
+      )
+  )
+);
+
+drop policy if exists catalog_versions_read on public.course_versions;
+create policy catalog_versions_read on public.course_versions
+for select to anon, authenticated
+using (
+  status = 'published'
+  and (
+    (
+      registration_mode = 'internal'
+      and commerce_close_at > now()
+    )
+    or registration_mode = 'google_form'
+  )
+);
+
+drop policy if exists catalog_course_instructors_read
+  on public.course_instructors;
+create policy catalog_course_instructors_read on public.course_instructors
+for select to anon, authenticated
+using (
+  exists (
+    select 1
+    from public.course_versions version
+    where version.id = course_version_id
+      and version.status = 'published'
+      and (
+        (
+          version.registration_mode = 'internal'
+          and version.commerce_close_at > now()
+        )
+        or version.registration_mode = 'google_form'
+      )
+  )
+);
+
+drop policy if exists catalog_instructors_read on public.instructors;
+create policy catalog_instructors_read on public.instructors
+for select to anon, authenticated
+using (
+  active
+  and exists (
+    select 1
+    from public.course_instructors course_instructor
+    join public.course_versions version
+      on version.id = course_instructor.course_version_id
+    where course_instructor.instructor_id = instructors.id
+      and version.status = 'published'
+      and (
+        (
+          version.registration_mode = 'internal'
+          and version.commerce_close_at > now()
+        )
+        or version.registration_mode = 'google_form'
+      )
+  )
+);
 
 -- External registration can never be converted into a platform order by
 -- calling the RPC directly. Lock the authoritative version before delegating

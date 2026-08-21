@@ -171,6 +171,8 @@ const required = [
   "internal.submit_course_version_for_review_dispatch",
   "internal.publish_google_form_course_version_idempotent",
   "internal.google_form_course_page_is_complete",
+  "internal.google_form_publication_authorized",
+  "GOOGLE_FORM_PUBLICATION_AUTHORIZATION_REQUIRED",
   "internal.create_b2c_order_with_coupon_guarded",
   "internal.sync_own_learner_cart_guarded",
   "internal.present_legal_contract_guarded",

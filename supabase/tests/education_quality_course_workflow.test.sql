@@ -4,7 +4,7 @@ create extension if not exists pgtap with schema extensions;
 grant usage on schema extensions to authenticated;
 grant execute on all functions in schema extensions to authenticated;
 
-select extensions.plan(39);
+select extensions.plan(42);
 
 select extensions.results_eq(
   $$
@@ -105,6 +105,22 @@ select extensions.ok(
 );
 
 select extensions.ok(
+  not has_column_privilege(
+    'authenticated', 'public.course_versions', 'status', 'update'
+  )
+  and not has_column_privilege(
+    'authenticated', 'public.course_versions', 'registration_mode', 'update'
+  )
+  and not has_column_privilege(
+    'service_role', 'public.course_versions', 'status', 'update'
+  )
+  and not has_column_privilege(
+    'service_role', 'public.course_versions', 'registration_mode', 'update'
+  ),
+  'API roles cannot directly mutate publication or registration mode'
+);
+
+select extensions.ok(
   has_function_privilege(
     'authenticated',
     'public.update_course_registration_settings(uuid,text,text,text,uuid)',
@@ -135,6 +151,15 @@ select extensions.ok(
     'execute'
   ),
   'authenticated callers cannot bypass the guarded publication facade'
+);
+
+select extensions.ok(
+  not has_function_privilege(
+    'authenticated',
+    'internal.google_form_publication_authorized(uuid)',
+    'execute'
+  ),
+  'the trigger-level Google Form authorization proof is not directly executable'
 );
 
 select extensions.ok(
@@ -423,9 +448,11 @@ insert into public.course_versions (
   (
     '99620000-0000-4000-8000-000000000002',
     '99610000-0000-4000-8000-000000000002',
-    1, '品管乙測試課', '測試課程摘要', '測試課程詳情',
-    '["測試目標"]'::jsonb,
-    'daily_care_skills', 'live', 'draft', false,
+    1, '品管乙測試課',
+    '完整說明照顧服務的報名與上課重點',
+    '這是給學員與家屬閱讀的完整課程說明，包含報名方式、學習重點與上課準備資訊。',
+    '["了解照顧服務的報名與學習流程"]'::jsonb,
+    'daily_care_skills', 'live', 'draft', true,
     current_setting('test.education.admin_b')::uuid,
     '99620000-0000-4000-8000-000000000012'
   );
@@ -442,11 +469,17 @@ insert into public.instructors (
 );
 insert into public.course_instructors (
   course_version_id, instructor_id, sort_order
-) values (
-  '99620000-0000-4000-8000-000000000001',
-  '99615000-0000-4000-8000-000000000001',
-  0
-);
+) values
+  (
+    '99620000-0000-4000-8000-000000000001',
+    '99615000-0000-4000-8000-000000000001',
+    0
+  ),
+  (
+    '99620000-0000-4000-8000-000000000002',
+    '99615000-0000-4000-8000-000000000001',
+    0
+  );
 
 select set_config(
   'request.jwt.claims',
@@ -612,17 +645,29 @@ select set_config(
 insert into private.step_up_grants (
   actor_id, action, target, nonce_hash, identity_epoch,
   totp_verified_at, expires_at
-) values (
-  current_setting('test.education.executive')::uuid,
-  'course_publish',
-  '99620000-0000-4000-8000-000000000001',
-  repeat('b', 64),
+) values
   (
-    select identity_epoch from public.people
-    where id = current_setting('test.education.executive')::uuid
+    current_setting('test.education.executive')::uuid,
+    'course_publish',
+    '99620000-0000-4000-8000-000000000001',
+    repeat('b', 64),
+    (
+      select identity_epoch from public.people
+      where id = current_setting('test.education.executive')::uuid
+    ),
+    now(), now() + interval '4 minutes'
   ),
-  now(), now() + interval '4 minutes'
-);
+  (
+    current_setting('test.education.executive')::uuid,
+    'course_publish',
+    '99620000-0000-4000-8000-000000000002',
+    repeat('d', 64),
+    (
+      select identity_epoch from public.people
+      where id = current_setting('test.education.executive')::uuid
+    ),
+    now(), now() + interval '4 minutes'
+  );
 set local role authenticated;
 select extensions.is(
   jsonb_array_length(
@@ -656,6 +701,31 @@ select extensions.ok(
     'https://forms.gle/AbCdEf123',
   'the executive review projection includes a safe target and publish decision'
 );
+reset role;
+select extensions.throws_ok(
+  $$
+    do $attack$
+    begin
+      perform internal.consume_step_up_grant(
+        'course_publish',
+        '99620000-0000-4000-8000-000000000002',
+        repeat('d', 64)
+      );
+      update public.course_versions
+      set registration_mode = 'google_form',
+          external_registration_url = 'https://forms.gle/SameStatement123',
+          registration_cta_label = '報名活動',
+          status = 'published'
+      where id = '99620000-0000-4000-8000-000000000002';
+    end
+    $attack$;
+  $$,
+  'P0001',
+  'GOOGLE_FORM_PUBLICATION_AUTHORIZATION_REQUIRED',
+  'a privileged same-statement internal-to-Google publication cannot forge the persisted proof'
+);
+reset role;
+set local role authenticated;
 select extensions.is(
   public.update_course_registration_settings(
     '99620000-0000-4000-8000-000000000002',
