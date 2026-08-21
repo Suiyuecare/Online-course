@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type {
   EducationQualityCourse,
   EducationQualityWorkspace as EducationQualityWorkspaceData,
@@ -43,8 +43,10 @@ function formatTaipeiDate(value: string) {
 
 function RegistrationSettingsForm({
   course,
+  onDirtyChange,
 }: {
   course: EducationQualityCourse;
+  onDirtyChange: (dirty: boolean) => void;
 }) {
   const [registrationMode, setRegistrationMode] = useState(
     course.registrationMode,
@@ -52,6 +54,8 @@ function RegistrationSettingsForm({
   const [externalUrl, setExternalUrl] = useState(
     course.externalRegistrationUrl ?? "",
   );
+  const [ctaLabel, setCtaLabel] = useState(course.registrationCtaLabel);
+  const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(
     course.registrationMode === "google_form"
@@ -59,6 +63,21 @@ function RegistrationSettingsForm({
       : "學員會使用歲悅學苑既有的站內購課流程。",
   );
   const previewUrl = safeGoogleFormUrl(externalUrl);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const preventAccidentalExit = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", preventAccidentalExit);
+    return () =>
+      window.removeEventListener("beforeunload", preventAccidentalExit);
+  }, [dirty]);
+
+  function markDirty() {
+    setDirty(true);
+    onDirtyChange(true);
+  }
 
   return (
     <form
@@ -92,6 +111,8 @@ function RegistrationSettingsForm({
           },
         )
           .then(() => {
+            setDirty(false);
+            onDirtyChange(false);
             setMessage("報名設定已儲存。送審時會與課程版本一起鎖定。");
             window.setTimeout(() => window.location.reload(), 450);
           })
@@ -115,6 +136,7 @@ function RegistrationSettingsForm({
             const mode = event.target.value;
             if (mode === "internal" || mode === "google_form") {
               setRegistrationMode(mode);
+              markDirty();
               setMessage(
                 mode === "google_form"
                   ? "請貼上教學品管部管理的 Google 表單網址。"
@@ -134,7 +156,10 @@ function RegistrationSettingsForm({
             inputMode="url"
             maxLength={2048}
             name="externalRegistrationUrl"
-            onChange={(event) => setExternalUrl(event.target.value)}
+            onChange={(event) => {
+              setExternalUrl(event.target.value);
+              markDirty();
+            }}
             placeholder="https://forms.gle/..."
             required
             type="url"
@@ -145,11 +170,15 @@ function RegistrationSettingsForm({
       <label>
         報名按鈕文字
         <input
-          defaultValue={course.registrationCtaLabel}
           maxLength={20}
           minLength={2}
           name="registrationCtaLabel"
+          onChange={(event) => {
+            setCtaLabel(event.target.value);
+            markDirty();
+          }}
           required
+          value={ctaLabel}
         />
       </label>
       <div className="page-actions">
@@ -174,10 +203,15 @@ function RegistrationSettingsForm({
 
 function CourseItem({ course }: { course: EducationQualityCourse }) {
   const [busy, setBusy] = useState(false);
+  const [registrationDirty, setRegistrationDirty] = useState(false);
   const [message, setMessage] = useState("");
   const status = educationQualityStatusPresentation[course.status];
 
   function submitForReview() {
+    if (registrationDirty) {
+      setMessage("請先按「儲存報名設定」，再預覽或送交執行長審核。");
+      return;
+    }
     if (
       !window.confirm(
         "確定已用學員視角預覽，並要送交執行長審核嗎？送審後暫時不能編輯。",
@@ -226,25 +260,50 @@ function CourseItem({ course }: { course: EducationQualityCourse }) {
         {course.hasCover ? "封面已設定。" : "封面尚未設定。"}
       </p>
 
-      {course.canEdit && <RegistrationSettingsForm course={course} />}
+      {course.canEdit && (
+        <RegistrationSettingsForm
+          course={course}
+          onDirtyChange={setRegistrationDirty}
+        />
+      )}
+
+      {registrationDirty && (
+        <p className="closed-note">
+          報名設定尚未儲存；請先儲存，才可離開、預覽或送審。
+        </p>
+      )}
 
       <div className="page-actions">
         {course.canEdit && (
           <Link
+            aria-disabled={registrationDirty}
             className="button"
             href={`/staff/courses/editor?draft=${encodeURIComponent(
               course.courseVersionId,
             )}`}
+            onClick={(event) => {
+              if (registrationDirty) {
+                event.preventDefault();
+                setMessage("請先儲存報名設定，再編輯其他課程內容。");
+              }
+            }}
           >
             編輯全部課程內容
           </Link>
         )}
         {course.canEdit && (
           <Link
+            aria-disabled={registrationDirty}
             className="button secondary"
             href={`/staff/courses/editor?draft=${encodeURIComponent(
               course.courseVersionId,
             )}&preview=1#learner-preview`}
+            onClick={(event) => {
+              if (registrationDirty) {
+                event.preventDefault();
+                setMessage("請先儲存報名設定，再用學員視角預覽。");
+              }
+            }}
           >
             用學員視角預覽
           </Link>
@@ -252,7 +311,7 @@ function CourseItem({ course }: { course: EducationQualityCourse }) {
         {course.canSubmit && (
           <button
             className="button"
-            disabled={busy}
+            disabled={busy || registrationDirty}
             onClick={submitForReview}
             type="button"
           >

@@ -114,8 +114,20 @@ describe("education-quality course registration", () => {
       expect(catalog).toContain(field);
     }
     expect(detail).toContain("safeGoogleFormUrl");
-    expect(detail).toContain('registrationUrl ? "活動報名"');
-    expect(card).toContain("purchaseReady && !registrationUrl");
+    expect(detail).toContain(
+      'usesExternalRegistration ? "活動報名" : "報名前先知道"',
+    );
+    expect(detail).toContain("系統不會改用站內購買");
+    expect(card).toContain("purchaseReady && !usesExternalRegistration");
+    expect(card).toContain("報名連結暫時無法使用");
+  });
+
+  it("blocks review while registration edits are not saved", () => {
+    const workspace = source("src/components/education-quality-workspace.tsx");
+    expect(workspace).toContain("registrationDirty");
+    expect(workspace).toContain("disabled={busy || registrationDirty}");
+    expect(workspace).toContain("請先按「儲存報名設定」");
+    expect(workspace).toContain('window.addEventListener("beforeunload"');
   });
 
   it("keeps final publication visible only to the executive approver", () => {

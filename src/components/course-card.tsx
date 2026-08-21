@@ -22,10 +22,10 @@ export function CourseCard({
   learnerMode?: boolean;
 }) {
   const purchaseReady = course.purchase_readiness?.purchaseReady === true;
-  const registrationUrl =
-    course.registration_mode === "google_form"
-      ? safeGoogleFormUrl(course.external_registration_url)
-      : null;
+  const usesExternalRegistration = course.registration_mode === "google_form";
+  const registrationUrl = usesExternalRegistration
+    ? safeGoogleFormUrl(course.external_registration_url)
+    : null;
 
   return (
     <article className="course-card">
@@ -70,15 +70,18 @@ export function CourseCard({
               {course.registration_cta_label}
             </a>
           )}
+          {usesExternalRegistration && !registrationUrl && (
+            <span className="closed-note">報名連結暫時無法使用</span>
+          )}
           {learnerMode && (
             <>
               <ToggleOfficialCourseFavorite course={course} />
-              {purchaseReady && !registrationUrl && (
+              {purchaseReady && !usesExternalRegistration && (
                 <AddOfficialCourseToCart course={course} />
               )}
             </>
           )}
-          {!learnerMode && purchaseReady && !registrationUrl && (
+          {!learnerMode && purchaseReady && !usesExternalRegistration && (
             <AddPublicCourseToCart course={course} />
           )}
         </div>

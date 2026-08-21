@@ -58,10 +58,10 @@ export default async function CoursePage({
   const { slug } = await params;
   const course = await catalogCourse(slug);
   if (!course) notFound();
-  const registrationUrl =
-    course.registration_mode === "google_form"
-      ? safeGoogleFormUrl(course.external_registration_url)
-      : null;
+  const usesExternalRegistration = course.registration_mode === "google_form";
+  const registrationUrl = usesExternalRegistration
+    ? safeGoogleFormUrl(course.external_registration_url)
+    : null;
   const [readiness, outline, favorite] = await Promise.all([
     coursePurchaseReadiness(course.course_version_id),
     courseOutline(course.course_version_id),
@@ -199,16 +199,23 @@ export default async function CoursePage({
         )}
       </div>
       <aside className="purchase-card">
-        <h2>{registrationUrl ? "活動報名" : "報名前先知道"}</h2>
-        {registrationUrl ? (
-          <>
-            <p>
-              點擊下方按鈕後，會前往本活動經執行長審核通過的 Google 報名表單。
-            </p>
-            <a className="button" href={registrationUrl}>
-              {course.registration_cta_label}
-            </a>
-          </>
+        <h2>{usesExternalRegistration ? "活動報名" : "報名前先知道"}</h2>
+        {usesExternalRegistration ? (
+          registrationUrl ? (
+            <>
+              <p>
+                點擊下方按鈕後，會前往本活動經執行長審核通過的 Google 報名表單。
+              </p>
+              <a className="button" href={registrationUrl}>
+                {course.registration_cta_label}
+              </a>
+            </>
+          ) : (
+            <div className="closed-note">
+              <strong>報名連結暫時無法使用</strong>
+              <p>系統不會改用站內購買，請稍後再試或聯絡客服。</p>
+            </div>
+          )
         ) : (
           <>
             <ol>

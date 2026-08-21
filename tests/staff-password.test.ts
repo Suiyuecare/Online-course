@@ -49,5 +49,8 @@ describe("staff credential safeguards", () => {
     expect(setup).toContain('currentLevel === "aal2"');
     expect(setup).toContain("existingFactorId");
     expect(setup).toContain("void verifyFactor(");
+    expect(setup).toContain("pendingFactorId");
+    expect(setup).toContain("factors.data?.all.find");
+    expect(setup).toContain("supabase.auth.mfa.unenroll");
   });
 });
