@@ -8,7 +8,7 @@ select extensions.plan(24);
 
 select extensions.results_eq(
   $$
-    select column_name
+    select column_name::text
     from information_schema.columns
     where table_schema = 'public'
       and table_name = 'course_versions'
@@ -45,7 +45,7 @@ select extensions.ok(
 
 select extensions.results_eq(
   $$
-    select column_name
+    select column_name::text
     from information_schema.columns
     where table_schema = 'public'
       and table_name = 'published_course_catalog'
