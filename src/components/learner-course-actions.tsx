@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { CatalogCourse } from "@/infrastructure/supabase/catalog";
+import type {
+  CatalogCourse,
+  InternalCatalogCourse,
+} from "@/infrastructure/supabase/catalog";
 import { LearnerPortalIcon } from "@/components/learner-portal-icon";
 import { useLearnerPortal } from "@/components/learner-portal-store";
 import {
@@ -14,7 +17,7 @@ import {
   type LearnerCartItem,
 } from "@/domain/learner-cart";
 
-function cartItemFromCourse(course: CatalogCourse): LearnerCartItem {
+function cartItemFromCourse(course: InternalCatalogCourse): LearnerCartItem {
   return {
     courseVersionId: course.course_version_id,
     slug: course.slug,
@@ -32,7 +35,7 @@ export function AddPublicCourseToCart({
   course,
 }: {
   className?: string;
-  course: CatalogCourse;
+  course: InternalCatalogCourse;
 }) {
   const [added, setAdded] = useState(false);
   const [announcement, setAnnouncement] = useState("");
@@ -102,7 +105,11 @@ export function AddPublicCourseToCart({
   );
 }
 
-export function AddOfficialCourseToCart({ course }: { course: CatalogCourse }) {
+export function AddOfficialCourseToCart({
+  course,
+}: {
+  course: InternalCatalogCourse;
+}) {
   const { addCartItem, cart, cartPendingIds, cartSyncStatus } =
     useLearnerPortal();
   const alreadyAdded = cart.some(

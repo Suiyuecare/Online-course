@@ -151,11 +151,15 @@ describe("logged-in learner portal", () => {
     const catalog = source("src/infrastructure/supabase/catalog.ts");
 
     expect(card).toContain("course.purchase_readiness?.purchaseReady === true");
-    expect(card).toContain("purchaseReady && !usesExternalRegistration");
+    expect(card).toContain(
+      'purchaseReady && course.registration_mode === "internal"',
+    );
     expect(card).toContain("<AddOfficialCourseToCart course={course} />");
     expect(card).toContain('course.registration_mode === "google_form"');
     expect(card).toContain("報名連結暫時無法使用");
-    expect(card).toContain("!learnerMode && purchaseReady");
+    expect(card).toMatch(
+      /!learnerMode\s*&&\s*purchaseReady\s*&&\s*course\.registration_mode === "internal"/,
+    );
     expect(catalog).toContain("catalogCourseListingWithReadiness");
     expect(catalog).toContain('"read_public_course_readiness"');
   });

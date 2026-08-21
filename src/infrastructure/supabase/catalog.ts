@@ -1,9 +1,10 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { CourseCategoryCode } from "@/domain/course-taxonomy";
+import { safeGoogleFormUrl } from "@/domain/education-quality";
 import { publicConfig } from "@/infrastructure/config";
 
-export type CatalogCourse = {
+type CatalogCourseBase = {
   slug: string;
   course_version_id: string;
   title: string;
@@ -13,15 +14,12 @@ export type CatalogCourse = {
   category_code: CourseCategoryCode;
   category_title: string;
   delivery_type: "recorded" | "live" | "hybrid";
-  price_twd: number;
-  recorded_refund_allocation_twd: number;
   live_refund_allocations: {
     componentId: string;
     title: string;
     amountTwd: number;
   }[];
   organization_point_price: number | null;
-  accreditation_status: "applying" | "approved";
   accreditation_points: number | null;
   has_cover: boolean;
   equipment_requirements: string;
@@ -31,8 +29,6 @@ export type CatalogCourse = {
     credentials: string;
   }[];
   first_live_starts_at: string | null;
-  legal_document_id: string;
-  legal_document_sha256: string;
   live_sessions: {
     id: string;
     componentId: string | null;
@@ -41,11 +37,33 @@ export type CatalogCourse = {
     endsAt: string;
     bookingCloseAt: string;
   }[];
-  registration_mode: "internal" | "google_form";
-  external_registration_url: string | null;
   registration_cta_label: string;
   purchase_readiness?: CoursePurchaseReadiness;
 };
+
+export type InternalCatalogCourse = CatalogCourseBase & {
+  registration_mode: "internal";
+  external_registration_url: null;
+  price_twd: number;
+  recorded_refund_allocation_twd: number;
+  accreditation_status: "applying" | "approved";
+  legal_document_id: string;
+  legal_document_sha256: string;
+};
+
+export type ExternalRegistrationCatalogCourse = CatalogCourseBase & {
+  registration_mode: "google_form";
+  external_registration_url: string;
+  price_twd: number | null;
+  recorded_refund_allocation_twd: number | null;
+  accreditation_status: "applying" | "approved" | null;
+  legal_document_id: string | null;
+  legal_document_sha256: string | null;
+};
+
+export type CatalogCourse =
+  | InternalCatalogCourse
+  | ExternalRegistrationCatalogCourse;
 
 export type CatalogCourseListing = {
   status: "ready" | "unavailable";
@@ -112,11 +130,16 @@ export async function catalogCourseListingWithReadiness(): Promise<CatalogCourse
   try {
     const readiness = await Promise.all(
       listing.courses.map((course) =>
-        readCoursePurchaseReadiness(
-          client,
-          course.course_version_id,
-          controller.signal,
-        ),
+        course.registration_mode === "google_form"
+          ? Promise.resolve({
+              purchaseReady: false,
+              reasons: ["外部報名課程不會建立歲悅購物車或訂單。"],
+            })
+          : readCoursePurchaseReadiness(
+              client,
+              course.course_version_id,
+              controller.signal,
+            ),
       ),
     );
     return {
@@ -136,6 +159,9 @@ export async function catalogCourses(): Promise<CatalogCourse[]> {
 }
 
 export function catalogRefundAllocationIsValid(course: CatalogCourse) {
+  if (course.registration_mode === "google_form") {
+    return safeGoogleFormUrl(course.external_registration_url) !== null;
+  }
   if (
     !Number.isInteger(course.price_twd) ||
     course.price_twd < 0 ||

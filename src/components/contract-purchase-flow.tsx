@@ -11,7 +11,7 @@ import {
   parseLearnerCartStorage,
   serializeLearnerCartStorage,
 } from "@/domain/learner-cart";
-import type { CatalogCourse } from "@/infrastructure/supabase/catalog";
+import type { InternalCatalogCourse } from "@/infrastructure/supabase/catalog";
 
 type Acceptance = {
   acceptanceId: string;
@@ -76,7 +76,7 @@ export function ContractPurchaseFlow({
 }: {
   accountId: string | null;
   coupons: CheckoutCouponOption[];
-  course: CatalogCourse;
+  course: InternalCatalogCourse;
 }) {
   const [acceptance, setAcceptance] = useState<Acceptance | null>(null);
   const [message, setMessage] = useState("");
@@ -93,7 +93,7 @@ export function ContractPurchaseFlow({
   const sessionGroups = useMemo(
     () =>
       course.live_sessions.reduce<
-        Record<string, CatalogCourse["live_sessions"]>
+        Record<string, InternalCatalogCourse["live_sessions"]>
       >((groups, session) => {
         const group = session.componentId ?? "course";
         (groups[group] ??= []).push(session);

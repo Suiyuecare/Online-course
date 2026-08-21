@@ -59,6 +59,7 @@ const expectedFiles = [
   "20260821072228_education_quality_course_workflow.sql",
   "20260821075141_allow_preapproved_staff_admin_creation.sql",
   "20260821075504_stabilize_preapproved_staff_identity_insert.sql",
+  "20260821090832_google_form_course_review_publication.sql",
 ];
 if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) {
   throw new Error(
@@ -167,6 +168,12 @@ const required = [
   "version.registration_mode",
   "version.external_registration_url",
   "version.registration_cta_label",
+  "internal.submit_course_version_for_review_dispatch",
+  "internal.publish_google_form_course_version_idempotent",
+  "internal.google_form_course_page_is_complete",
+  "internal.create_b2c_order_with_coupon_guarded",
+  "internal.sync_own_learner_cart_guarded",
+  "internal.present_legal_contract_guarded",
 ];
 for (const invariant of required) {
   if (!sql.includes(invariant))

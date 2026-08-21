@@ -63,7 +63,9 @@ export default async function CoursePage({
     ? safeGoogleFormUrl(course.external_registration_url)
     : null;
   const [readiness, outline, favorite] = await Promise.all([
-    coursePurchaseReadiness(course.course_version_id),
+    course.registration_mode === "google_form"
+      ? Promise.resolve({ purchaseReady: false, reasons: [] })
+      : coursePurchaseReadiness(course.course_version_id),
     courseOutline(course.course_version_id),
     favoriteState(slug),
   ]);
@@ -84,12 +86,13 @@ export default async function CoursePage({
         </div>
         <p className="eyebrow">長照積分課程</p>
         <h1>{course.title}</h1>
-        {course.accreditation_status === "applying" && (
-          <div className="warning-panel">
-            <strong>積分申請中、尚未核定，不保證取得點數</strong>
-            <p>核准前不會開放正式內容、直播入場或核發積分證明。</p>
-          </div>
-        )}
+        {course.registration_mode === "internal" &&
+          course.accreditation_status === "applying" && (
+            <div className="warning-panel">
+              <strong>積分申請中、尚未核定，不保證取得點數</strong>
+              <p>核准前不會開放正式內容、直播入場或核發積分證明。</p>
+            </div>
+          )}
         <p className="lead">{course.summary}</p>
         <p>{course.description}</p>
         <div className="detail-grid">
@@ -103,18 +106,33 @@ export default async function CoursePage({
                   : "錄播＋同步直播"}
             </strong>
           </div>
-          <div>
-            <span>含稅價格</span>
-            <strong>NT$ {course.price_twd.toLocaleString("zh-TW")}</strong>
-          </div>
-          <div>
-            <span>長照積分</span>
-            <strong>
-              {course.accreditation_points
-                ? `${course.accreditation_points} 點`
-                : "依核定結果"}
-            </strong>
-          </div>
+          {course.registration_mode === "google_form" ? (
+            <>
+              <div>
+                <span>報名方式</span>
+                <strong>外部報名</strong>
+              </div>
+              <div>
+                <span>報名後續</span>
+                <strong>由主辦單位通知</strong>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <span>含稅價格</span>
+                <strong>NT$ {course.price_twd.toLocaleString("zh-TW")}</strong>
+              </div>
+              <div>
+                <span>長照積分</span>
+                <strong>
+                  {course.accreditation_points
+                    ? `${course.accreditation_points} 點`
+                    : "依核定結果"}
+                </strong>
+              </div>
+            </>
+          )}
         </div>
         <section>
           <h2>學習目標</h2>
@@ -126,7 +144,11 @@ export default async function CoursePage({
         </section>
         <section className="public-course-outline">
           <h2>課程大綱</h2>
-          <p>免費試看不需要登入；其餘付費單元購課後才會開放。</p>
+          <p>
+            {course.registration_mode === "google_form"
+              ? "報名完成後的上課方式與通知，由主辦單位說明。"
+              : "免費試看不需要登入；其餘付費單元購課後才會開放。"}
+          </p>
           {outline.modules.length === 0 ? (
             <p>課綱目前整理中，完成後會在這裡公布。</p>
           ) : (
@@ -146,8 +168,9 @@ export default async function CoursePage({
                           <strong>{lesson.title}</strong>
                           <span>
                             {lessonTypeLabel(lesson.type)}・
-                            {durationLabel(lesson.durationSeconds)}・
-                            {lesson.preview ? "可免費試看" : "付費單元"}
+                            {durationLabel(lesson.durationSeconds)}
+                            {course.registration_mode === "internal" &&
+                              `・${lesson.preview ? "可免費試看" : "付費單元"}`}
                           </span>
                         </div>
                         {lesson.preview && lesson.id && (
@@ -165,7 +188,9 @@ export default async function CoursePage({
             </ol>
           )}
         </section>
-        <RefundAllocationDisclosure course={course} />
+        {course.registration_mode === "internal" && (
+          <RefundAllocationDisclosure course={course} />
+        )}
         <section>
           <h2>講師</h2>
           {course.instructors.map((instructor) => (
@@ -203,10 +228,17 @@ export default async function CoursePage({
         {usesExternalRegistration ? (
           registrationUrl ? (
             <>
+              <p>外部報名／由主辦單位通知。</p>
               <p>
-                點擊下方按鈕後，會前往本活動經執行長審核通過的 Google 報名表單。
+                點擊下方按鈕後會前往已經執行長審核的 Google
+                表單；歲悅網站不會建立購物車、訂單或付款記錄。
               </p>
-              <a className="button" href={registrationUrl}>
+              <a
+                className="button"
+                href={registrationUrl}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
                 {course.registration_cta_label}
               </a>
             </>

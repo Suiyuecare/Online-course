@@ -45,28 +45,43 @@ export function CourseCard({
         </div>
       </div>
       <div className="course-body">
-        {course.accreditation_status === "applying" && (
-          <p className="warning">積分申請中、尚未核定，不保證取得點數</p>
-        )}
+        {course.registration_mode === "internal" &&
+          course.accreditation_status === "applying" && (
+            <p className="warning">積分申請中、尚未核定，不保證取得點數</p>
+          )}
         <p className="eyebrow">
           {course.category_title}・{deliveryLabels[course.delivery_type]}
         </p>
         <h3>{course.title}</h3>
         <p>{course.summary}</p>
         <div className="course-meta">
-          <strong>NT$ {course.price_twd.toLocaleString("zh-TW")}</strong>
-          <span>
-            {course.accreditation_points
-              ? `${course.accreditation_points} 積分`
-              : "積分依核定結果"}
-          </span>
+          {course.registration_mode === "google_form" ? (
+            <>
+              <strong>外部報名</strong>
+              <span>由主辦單位通知</span>
+            </>
+          ) : (
+            <>
+              <strong>NT$ {course.price_twd.toLocaleString("zh-TW")}</strong>
+              <span>
+                {course.accreditation_points
+                  ? `${course.accreditation_points} 積分`
+                  : "積分依核定結果"}
+              </span>
+            </>
+          )}
         </div>
         <div className="learner-course-card-actions">
           <Link className="button secondary" href={`/courses/${course.slug}`}>
             查看課程
           </Link>
           {registrationUrl && (
-            <a className="button" href={registrationUrl}>
+            <a
+              className="button"
+              href={registrationUrl}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
               {course.registration_cta_label}
             </a>
           )}
@@ -76,14 +91,16 @@ export function CourseCard({
           {learnerMode && (
             <>
               <ToggleOfficialCourseFavorite course={course} />
-              {purchaseReady && !usesExternalRegistration && (
+              {purchaseReady && course.registration_mode === "internal" && (
                 <AddOfficialCourseToCart course={course} />
               )}
             </>
           )}
-          {!learnerMode && purchaseReady && !usesExternalRegistration && (
-            <AddPublicCourseToCart course={course} />
-          )}
+          {!learnerMode &&
+            purchaseReady &&
+            course.registration_mode === "internal" && (
+              <AddPublicCourseToCart course={course} />
+            )}
         </div>
       </div>
     </article>

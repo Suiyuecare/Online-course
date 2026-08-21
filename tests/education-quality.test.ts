@@ -18,11 +18,9 @@ describe("education-quality course registration", () => {
     );
     expect(
       safeGoogleFormUrl(
-        "https://docs.google.com/forms/d/e/1FAIpQLSc_safe123/viewform?usp=sf_link",
+        "https://docs.google.com/forms/d/e/1FAIpQLSc_safe123/viewform?usp=sf_link&entry.123=%E7%8E%8B#prefill",
       ),
-    ).toBe(
-      "https://docs.google.com/forms/d/e/1FAIpQLSc_safe123/viewform?usp=sf_link",
-    );
+    ).toBe("https://docs.google.com/forms/d/e/1FAIpQLSc_safe123/viewform");
 
     for (const value of [
       "http://forms.gle/Abc_123",
@@ -105,6 +103,8 @@ describe("education-quality course registration", () => {
     const catalog = source("src/infrastructure/supabase/catalog.ts");
     const detail = source("src/app/courses/[slug]/page.tsx");
     const card = source("src/components/course-card.tsx");
+    const contract = source("src/app/courses/[slug]/contract/page.tsx");
+    const orderRoute = source("src/app/api/orders/route.ts");
 
     for (const field of [
       "registration_mode",
@@ -118,8 +118,14 @@ describe("education-quality course registration", () => {
       'usesExternalRegistration ? "活動報名" : "報名前先知道"',
     );
     expect(detail).toContain("系統不會改用站內購買");
-    expect(card).toContain("purchaseReady && !usesExternalRegistration");
+    expect(card).toContain('course.registration_mode === "internal"');
+    expect(card).toContain("外部報名");
+    expect(card).toContain("由主辦單位通知");
     expect(card).toContain("報名連結暫時無法使用");
+    expect(contract).toContain('course.registration_mode === "google_form"');
+    expect(contract).toContain("redirect(`/courses/");
+    expect(orderRoute).toContain('select("registration_mode")');
+    expect(orderRoute).toContain("EXTERNAL_REGISTRATION_REQUIRED");
   });
 
   it("blocks review while registration edits are not saved", () => {
@@ -132,9 +138,22 @@ describe("education-quality course registration", () => {
 
   it("keeps final publication visible only to the executive approver", () => {
     const queue = source("src/app/staff/[queue]/page.tsx");
-    expect(queue).toContain('p_required_role: "platform_admin"');
-    expect(queue).toContain(
-      'action.key !== "course_publish" || isExecutiveApprover === true',
+    const reviewPanel = source(
+      "src/components/course-submission-review-panel.tsx",
     );
+    const publishRoute = source(
+      "src/app/api/staff/courses/[courseVersionId]/publish/route.ts",
+    );
+    expect(queue).toContain('p_required_role: "platform_admin"');
+    expect(queue).toContain("isExecutiveApprover === true &&");
+    expect(queue).toContain("courseSubmissionReview.canPublish");
+    expect(queue).toContain('action.key !== "course_publish"');
+    expect(reviewPanel).toContain(
+      'obtainStepUp("course_publish", review.courseVersionId)',
+    );
+    expect(reviewPanel).toContain("核准並上架 Google 表單報名頁");
+    expect(publishRoute).toContain('supabase.rpc("authorize_exact_staff_role"');
+    expect(publishRoute).toContain('p_required_role: "platform_admin"');
+    expect(publishRoute).toContain("EXECUTIVE_APPROVAL_REQUIRED");
   });
 });

@@ -34,7 +34,10 @@ export function safeGoogleFormUrl(value: unknown): string | null {
     (url.hostname === "forms.gle" && shortFormPath.test(url.pathname)) ||
     (url.hostname === "docs.google.com" && fullFormPath.test(url.pathname));
 
-  return pathAllowed ? url.toString() : null;
+  // Google share links may include tracking or prefill parameters. They are
+  // intentionally discarded so staff cannot publish a URL containing
+  // learner data (for example entry.* values) or an opaque redirect fragment.
+  return pathAllowed ? `${url.origin}${url.pathname}` : null;
 }
 
 export const googleFormUrlSchema = z

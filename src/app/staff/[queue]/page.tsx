@@ -292,8 +292,7 @@ export default async function StaffQueuePage({
     ? {
         ...selected,
         actions: selected.actions.filter(
-          (action) =>
-            action.key !== "course_publish" || isExecutiveApprover === true,
+          (action) => action.key !== "course_publish",
         ),
       }
     : null;
@@ -568,6 +567,10 @@ export default async function StaffQueuePage({
                   selected.status === "in_review" &&
                   (courseSubmissionReview ? (
                     <CourseSubmissionReviewPanel
+                      canPublish={
+                        isExecutiveApprover === true &&
+                        courseSubmissionReview.canPublish
+                      }
                       review={courseSubmissionReview}
                     />
                   ) : (

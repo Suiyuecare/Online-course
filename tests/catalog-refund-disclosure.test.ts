@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   catalogRefundAllocationIsValid,
   type CatalogCourse,
+  type ExternalRegistrationCatalogCourse,
 } from "@/infrastructure/supabase/catalog";
 
 function allocationCourse(
@@ -17,6 +18,21 @@ function allocationCourse(
 }
 
 describe("published refund allocation disclosure", () => {
+  it("keeps an approved external form visible without commerce fields", () => {
+    const course = {
+      registration_mode: "google_form",
+      external_registration_url:
+        "https://docs.google.com/forms/d/e/Approved_Form_123/viewform",
+      price_twd: null,
+      recorded_refund_allocation_twd: null,
+      accreditation_status: null,
+      accreditation_points: null,
+      legal_document_id: null,
+      legal_document_sha256: null,
+    } as ExternalRegistrationCatalogCourse;
+    expect(catalogRefundAllocationIsValid(course)).toBe(true);
+  });
+
   it("accepts a hybrid allocation only when every component sums to price", () => {
     expect(
       catalogRefundAllocationIsValid(

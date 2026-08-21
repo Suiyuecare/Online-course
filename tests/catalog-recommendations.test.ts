@@ -3,13 +3,16 @@ import {
   rankCatalogRecommendations,
   type CatalogRecommendationPreferences,
 } from "@/application/catalog-recommendations";
-import type { CatalogCourse } from "@/infrastructure/supabase/catalog";
+import type {
+  CatalogCourse,
+  InternalCatalogCourse,
+} from "@/infrastructure/supabase/catalog";
 
 function course(
   slug: string,
   categoryCode: CatalogCourse["category_code"],
-  overrides: Partial<CatalogCourse> = {},
-): CatalogCourse {
+  overrides: Partial<InternalCatalogCourse> = {},
+): InternalCatalogCourse {
   return {
     slug,
     course_version_id: crypto.randomUUID(),

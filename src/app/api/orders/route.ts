@@ -21,6 +21,17 @@ export async function POST(request: Request) {
     const { supabase, user } = await requireUser();
     assertExpectedAccount(request, user.id);
     const input = await readJson(request, schema);
+    const { data: registration, error: registrationError } = await supabase
+      .from("published_course_catalog")
+      .select("registration_mode")
+      .eq("course_version_id", input.courseVersionId)
+      .maybeSingle();
+    if (registrationError || !registration) {
+      throw new Error("COURSE_PURCHASE_UNAVAILABLE");
+    }
+    if (registration.registration_mode === "google_form") {
+      throw new Error("EXTERNAL_REGISTRATION_REQUIRED");
+    }
     const order = await new PlatformApplication(supabase).createOrder({
       ...input,
       idempotencyKey: requireIdempotencyKey(request),

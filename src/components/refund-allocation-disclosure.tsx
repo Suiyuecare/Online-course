@@ -1,9 +1,9 @@
-import type { CatalogCourse } from "@/infrastructure/supabase/catalog";
+import type { InternalCatalogCourse } from "@/infrastructure/supabase/catalog";
 
 export function RefundAllocationDisclosure({
   course,
 }: {
-  course: CatalogCourse;
+  course: InternalCatalogCourse;
 }) {
   const rows = [
     ...(course.recorded_refund_allocation_twd > 0 ||

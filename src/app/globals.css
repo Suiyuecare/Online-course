@@ -649,6 +649,11 @@ input:focus-visible,
   margin: 6px 0 0;
 }
 
+.warning-panel code {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .status-card {
   background: var(--white);
   border: 1px solid var(--line);
@@ -1766,6 +1771,39 @@ input {
 .context-action-form {
   border-top: 1px solid var(--line);
   padding-top: 18px;
+}
+
+.review-course-preview {
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 18px;
+  scroll-margin-top: 110px;
+}
+
+.review-course-preview h4,
+.review-course-preview h5,
+.review-course-preview p {
+  margin: 0;
+}
+
+.review-course-preview-cover {
+  align-items: center;
+  aspect-ratio: 16 / 9;
+  background: var(--surface-accent);
+  border-radius: 14px;
+  color: var(--muted);
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.review-course-preview-cover img {
+  object-fit: cover;
 }
 
 .operating-data,

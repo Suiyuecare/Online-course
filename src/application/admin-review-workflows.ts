@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { googleFormUrlSchema } from "@/domain/education-quality";
 
 export const organizationApplicationReviewSchema = z
   .object({
@@ -19,18 +20,45 @@ export type OrganizationApplicationReview = z.infer<
   typeof organizationApplicationReviewSchema
 >;
 
-export const courseSubmissionReviewSchema = z
-  .object({
-    courseVersionId: z.string().uuid(),
-    title: z.string().min(1),
-    version: z.number().int().positive(),
-    status: z.literal("in_review"),
-    submittedBy: z.string().min(1),
-    submittedAt: z.string(),
-    submissionReason: z.string().nullable(),
-    canDecide: z.boolean(),
-  })
-  .strict();
+const courseSubmissionReviewBaseSchema = z.strictObject({
+  courseVersionId: z.string().uuid(),
+  slug: z.string().trim().min(1).max(200),
+  title: z.string().min(1),
+  summary: z.string().trim().min(1).max(500),
+  description: z.string().trim().min(1).max(10_000),
+  learningObjectives: z.array(z.string().trim().min(1).max(300)),
+  deliveryType: z.enum(["recorded", "live", "hybrid"]),
+  hasCover: z.boolean(),
+  instructors: z.array(
+    z.strictObject({
+      name: z.string().trim().min(1).max(200),
+      biography: z.string().trim().min(1).max(5_000),
+      credentials: z.string().trim().min(1).max(1_000),
+    }),
+  ),
+  version: z.number().int().positive(),
+  status: z.literal("in_review"),
+  submittedBy: z.string().min(1),
+  submittedAt: z.string(),
+  submissionReason: z.string().nullable(),
+  registrationCtaLabel: z.string().trim().min(2).max(20),
+  canDecide: z.boolean(),
+  canPublish: z.boolean(),
+});
+
+export const courseSubmissionReviewSchema = z.discriminatedUnion(
+  "registrationMode",
+  [
+    courseSubmissionReviewBaseSchema.extend({
+      registrationMode: z.literal("internal"),
+      externalRegistrationUrl: z.null(),
+    }),
+    courseSubmissionReviewBaseSchema.extend({
+      registrationMode: z.literal("google_form"),
+      externalRegistrationUrl: googleFormUrlSchema,
+    }),
+  ],
+);
 
 export type CourseSubmissionReview = z.infer<
   typeof courseSubmissionReviewSchema

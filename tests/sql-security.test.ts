@@ -30,10 +30,17 @@ const stableStaffIdentityMigration = readFileSync(
   ),
   "utf8",
 );
+const googleFormPublicationMigration = readFileSync(
+  join(
+    migrationDirectory,
+    "20260821090832_google_form_course_review_publication.sql",
+  ),
+  "utf8",
+);
 
 describe("clean migration chain", () => {
-  it("has the ten responsibility-separated migrations and forty-three forward hardening migrations", () => {
-    expect(migrationFiles).toHaveLength(53);
+  it("has the ten responsibility-separated migrations and forty-four forward hardening migrations", () => {
+    expect(migrationFiles).toHaveLength(54);
     expect(migrationFiles.map((file) => file.replace(/^\d+_/, ""))).toEqual([
       "reset_legacy_application.sql",
       "identity_rbac_legal.sql",
@@ -88,6 +95,7 @@ describe("clean migration chain", () => {
       "education_quality_course_workflow.sql",
       "allow_preapproved_staff_admin_creation.sql",
       "stabilize_preapproved_staff_identity_insert.sql",
+      "google_form_course_review_publication.sql",
     ]);
   });
 
@@ -276,6 +284,129 @@ describe("education-quality course workflow", () => {
     expect(educationQualityMigration).toMatch(
       /join lateral \([\s\S]*?candidate\.status = 'published'[\s\S]*?candidate\.published_at desc nulls last,[\s\S]*?candidate\.version desc,[\s\S]*?limit 1\s*\) version on true/,
     );
+  });
+});
+
+describe("Google Form review and publication isolation", () => {
+  it("stores only an exact Google origin and path without prefill data", () => {
+    expect(googleFormPublicationMigration).toContain(
+      "drop constraint if exists course_versions_registration_target_check",
+    );
+    expect(googleFormPublicationMigration).toContain(
+      "^https://forms\\.gle/[A-Za-z0-9_-]+$",
+    );
+    expect(googleFormPublicationMigration).toContain(
+      "^https://docs\\.google\\.com/forms/d/(?:e/)?[A-Za-z0-9_-]+/viewform$",
+    );
+    expect(googleFormPublicationMigration).not.toMatch(
+      /forms\\\.gle[^'\n]*\[\?#\]/,
+    );
+    expect(googleFormPublicationMigration).toContain(
+      "internal.is_strict_google_form_url",
+    );
+  });
+
+  it("dispatches only an author's draft and keeps formal gates unchanged", () => {
+    expect(googleFormPublicationMigration).toContain(
+      "internal.submit_course_version_for_review_dispatch",
+    );
+    expect(googleFormPublicationMigration).toContain(
+      "author is distinct from internal.current_person_id()",
+    );
+    expect(googleFormPublicationMigration).toMatch(
+      /if registration_path = 'google_form' then[\s\S]*?submit_google_form_course_version_for_review_idempotent[\s\S]*?return internal\.submit_course_version_for_review_idempotent/,
+    );
+    expect(googleFormPublicationMigration).toMatch(
+      /revoke all on function\s+internal\.submit_course_version_for_review_idempotent\(uuid, text, uuid\)\s+from public, anon, authenticated, service_role;/,
+    );
+  });
+
+  it("requires a different exact platform administrator at AAL2 to publish", () => {
+    expect(googleFormPublicationMigration).toContain(
+      "internal.publish_google_form_course_version_idempotent",
+    );
+    expect(googleFormPublicationMigration).toContain(
+      "not internal.has_exact_staff_role('platform_admin')",
+    );
+    expect(googleFormPublicationMigration).toContain(
+      "version_row.submitted_by = actor",
+    );
+    expect(googleFormPublicationMigration).toContain(
+      "internal.consume_step_up_grant(",
+    );
+    expect(googleFormPublicationMigration).toContain(
+      "'executiveAal2Verified', true",
+    );
+    expect(googleFormPublicationMigration).toContain("'course.published'");
+  });
+
+  it("relaxes only the external catalog branch", () => {
+    expect(googleFormPublicationMigration).toMatch(
+      /version\.registration_mode = 'internal'[\s\S]*?version\.commerce_close_at > clock_timestamp\(\)[\s\S]*?accreditation\.status in \('applying', 'approved'\)[\s\S]*?legal\.approved_by_legal/,
+    );
+    expect(googleFormPublicationMigration).toMatch(
+      /or \(\s*version\.registration_mode = 'google_form'[\s\S]*?version\.has_cover[\s\S]*?jsonb_array_length[\s\S]*?instructor\.active/,
+    );
+    expect(googleFormPublicationMigration).toContain(
+      "candidate.published_at desc nulls last",
+    );
+  });
+
+  it("keeps external registration out of commerce, cart, and contracts", () => {
+    for (const guard of [
+      "internal.create_b2c_order_guarded",
+      "internal.create_b2c_order_with_coupon_guarded",
+      "internal.sync_own_learner_cart_guarded",
+      "internal.present_legal_contract_guarded",
+      "internal.assign_organization_course_guarded",
+      "internal.batch_assign_organization_course_guarded",
+    ]) {
+      expect(googleFormPublicationMigration).toContain(guard);
+    }
+    expect(googleFormPublicationMigration).toContain(
+      "registration_path <> 'internal'",
+    );
+    expect(googleFormPublicationMigration).toContain(
+      "EXTERNAL_REGISTRATION_REQUIRED",
+    );
+    expect(googleFormPublicationMigration).toMatch(
+      /revoke all on function internal\.create_b2c_order_with_coupon\([\s\S]*?\) from public, anon, authenticated, service_role;/,
+    );
+    expect(googleFormPublicationMigration).toMatch(
+      /revoke all on function internal\.create_b2c_order\([\s\S]*?\) from public, anon, authenticated, service_role;/,
+    );
+    expect(googleFormPublicationMigration).toMatch(
+      /revoke all on function internal\.assign_organization_course\([\s\S]*?\) from public, anon, authenticated, service_role;/,
+    );
+    expect(googleFormPublicationMigration).toMatch(
+      /revoke all on function internal\.batch_assign_organization_course\([\s\S]*?\) from public, anon, authenticated, service_role;/,
+    );
+  });
+
+  it("resolves the submitted review row during executive publication", () => {
+    expect(googleFormPublicationMigration).toMatch(
+      /from public\.course_publication_reviews publication[\s\S]*?publication\.status = 'pending'[\s\S]*?for update;/,
+    );
+    expect(googleFormPublicationMigration).toMatch(
+      /update public\.course_publication_reviews publication[\s\S]*?status = 'approved'[\s\S]*?where publication\.id = review_row\.id;/,
+    );
+  });
+
+  it("shows the CEO the registration target and learner-facing preview", () => {
+    for (const projection of [
+      "'slug', course.slug",
+      "'summary', version.summary",
+      "'description', version.description",
+      "'learningObjectives', version.learning_objectives",
+      "'deliveryType', version.delivery_type",
+      "'hasCover', version.has_cover",
+      "'registrationMode', version.registration_mode",
+      "'externalRegistrationUrl'",
+      "'registrationCtaLabel'",
+      "'canPublish'",
+    ]) {
+      expect(googleFormPublicationMigration).toContain(projection);
+    }
   });
 });
 

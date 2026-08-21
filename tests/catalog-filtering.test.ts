@@ -7,11 +7,15 @@ import {
   filterCatalogCourses,
   parseCatalogFilters,
 } from "@/application/catalog-filtering";
-import type { CatalogCourse } from "@/infrastructure/supabase/catalog";
+import type {
+  CatalogCourse,
+  InternalCatalogCourse,
+} from "@/infrastructure/supabase/catalog";
 
 function course(
-  overrides: Partial<CatalogCourse> & Pick<CatalogCourse, "slug" | "title">,
-): CatalogCourse {
+  overrides: Partial<InternalCatalogCourse> &
+    Pick<InternalCatalogCourse, "slug" | "title">,
+): InternalCatalogCourse {
   const { slug, title, ...remainingOverrides } = overrides;
   return {
     slug,

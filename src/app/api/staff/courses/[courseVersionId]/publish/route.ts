@@ -23,6 +23,13 @@ export async function POST(
       }),
     );
     const { supabase } = await requireUser();
+    const { data: executiveAuthorized, error: authorizationError } =
+      await supabase.rpc("authorize_exact_staff_role", {
+        p_required_role: "platform_admin",
+      });
+    if (authorizationError || executiveAuthorized !== true) {
+      throw new Error("EXECUTIVE_APPROVAL_REQUIRED");
+    }
     const { data, error } = await supabase.rpc("publish_course_version", {
       p_course_version_id: courseVersionId,
       p_reason: reason,

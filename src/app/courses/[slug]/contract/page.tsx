@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { readCheckoutCouponOptions } from "@/application/workspace";
 import { ContractPurchaseFlow } from "@/components/contract-purchase-flow";
 import { RefundAllocationDisclosure } from "@/components/refund-allocation-disclosure";
@@ -35,6 +35,9 @@ export default async function ContractPage({
   const { slug } = await params;
   const course = await catalogCourse(slug);
   if (!course) notFound();
+  if (course.registration_mode === "google_form") {
+    redirect(`/courses/${encodeURIComponent(slug)}`);
+  }
   const [readiness, checkout] = await Promise.all([
     coursePurchaseReadiness(course.course_version_id),
     checkoutContext(course.course_version_id),
