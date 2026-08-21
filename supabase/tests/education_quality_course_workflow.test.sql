@@ -8,7 +8,7 @@ select extensions.plan(24);
 
 select extensions.results_eq(
   $$
-    select column_name::text
+    select column_name::text collate "C"
     from information_schema.columns
     where table_schema = 'public'
       and table_name = 'course_versions'
@@ -17,13 +17,13 @@ select extensions.results_eq(
         'external_registration_url',
         'registration_cta_label'
       )
-    order by column_name
+    order by column_name::text collate "C"
   $$,
   $$
     values
-      ('external_registration_url'::text),
-      ('registration_cta_label'::text),
-      ('registration_mode'::text)
+      ('external_registration_url'::text collate "C"),
+      ('registration_cta_label'::text collate "C"),
+      ('registration_mode'::text collate "C")
   $$,
   'course versions store all three registration settings'
 );
@@ -45,7 +45,7 @@ select extensions.ok(
 
 select extensions.results_eq(
   $$
-    select column_name::text
+    select column_name::text collate "C"
     from information_schema.columns
     where table_schema = 'public'
       and table_name = 'published_course_catalog'
@@ -54,13 +54,13 @@ select extensions.results_eq(
         'external_registration_url',
         'registration_cta_label'
       )
-    order by column_name
+    order by column_name::text collate "C"
   $$,
   $$
     values
-      ('external_registration_url'::text),
-      ('registration_cta_label'::text),
-      ('registration_mode'::text)
+      ('external_registration_url'::text collate "C"),
+      ('registration_cta_label'::text collate "C"),
+      ('registration_mode'::text collate "C")
   $$,
   'the public catalog projects exactly the three registration fields'
 );
